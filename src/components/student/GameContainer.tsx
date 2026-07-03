@@ -1,0 +1,196 @@
+import { useEffect, useRef, useState } from 'react';
+import { usePhaser } from '../../hooks/usePhaser';
+import { QuizOverlay } from './QuizOverlay';
+import { UpgradeSelect } from './UpgradeSelect';
+import { GameHUD } from './GameHUD';
+import { MobileControls } from './MobileControls';
+import { PostGameOverlay } from './PostGameOverlay';
+import { useQuizStore } from '../../stores/quizStore';
+import { quizTimeLimit } from '../../types/quiz';
+import { EventBus, GameEvents } from '../../game/utils/EventBus';
+import type { UpgradeOption } from '../../types/game';
+
+interface GameContainerProps {
+  nickname: string;
+  onExit: () => void;
+  onShowLeaderboard: () => void;
+}
+
+export function GameContainer({ nickname, onExit, onShowLeaderboard }: GameContainerProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [filteredUpgrades, setFilteredUpgrades] = useState<UpgradeOption[]>([]);
+  const [isMobile, setIsMobile] = useState(false);
+  const [bankError, setBankError] = useState(false);
+
+  const {
+    isReady,
+    playerState,
+    levelUpData,
+    finishData,
+    selectUpgrade,
+    clearLevelUp,
+    pauseGame,
+    restartGame,
+    sendJoystickInput,
+  } = usePhaser('game-container', {
+    isSolo: true,
+    playerName: nickname,
+  });
+
+  const { currentQuiz, streak, loadUnitBank, drawQuiz, submitAnswer, resetQuizSession } =
+    useQuizStore();
+
+  useEffect(() => {
+    loadUnitBank().then((ok) => {
+      if (!ok) setBankError(true);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // 레벨업 → 웨이브 기반 난이도로 퀴즈 추첨 (설계 §1.4)
+  useEffect(() => {
+    if (!levelUpData) return;
+    const quiz = drawQuiz(playerState?.wave ?? 1);
+    if (quiz) {
+      setShowQuiz(true);
+      pauseGame();
+    } else {
+      // 문제은행 로드 실패 등 예외 — 퀴즈 없이 업그레이드 제공
+      setFilteredUpgrades(levelUpData.upgrades as UpgradeOption[]);
+      EventBus.emit(GameEvents.QUIZ_RESULT, { correct: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [levelUpData]);
+
+  const handleQuizAnswer = (selectedIndex: number, isCorrect: boolean) => {
+    submitAnswer(selectedIndex, 0);
+    setShowQuiz(false);
+
+    if (isCorrect) {
+      // 정답: 업그레이드 3택 (설계 §6)
+      if (levelUpData) setFilteredUpgrades(levelUpData.upgrades as UpgradeOption[]);
+      EventBus.emit(GameEvents.QUIZ_RESULT, { correct: true });
+    } else {
+      // 오답/타임아웃: 레벨업 소모 — 업그레이드 없음. 재개 보호는 GameScene 담당
+      setFilteredUpgrades([]);
+      clearLevelUp();
+      EventBus.emit(GameEvents.QUIZ_RESULT, { correct: false });
+    }
+  };
+
+  const handleUpgradeSelect = (type: string, id: string) => {
+    selectUpgrade(type, id);
+    setFilteredUpgrades([]);
+  };
+
+  const handleRestart = () => {
+    setShowQuiz(false);
+    setFilteredUpgrades([]);
+    resetQuizSession();
+    restartGame();
+  };
+
+  const handleJoystickMove = (x: number, y: number) => sendJoystickInput(x, y);
+
+  const showUpgradeSelect = !showQuiz && filteredUpgrades.length > 0;
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100vh', background: '#0a0a0f', overflow: 'hidden' }}>
+      <div
+        id="game-container"
+        ref={containerRef}
+        tabIndex={0}
+        style={{ width: '100%', height: '100%', outline: 'none' }}
+        onMouseDown={(e) => e.currentTarget.focus()}
+      />
+
+      {isReady && !finishData && <GameHUD />}
+
+      {isMobile && isReady && !levelUpData && !showQuiz && !finishData && (
+        <MobileControls onMove={handleJoystickMove} />
+      )}
+
+      {bankError && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 16,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            padding: '10px 20px',
+            borderRadius: 12,
+            background: 'rgba(244,63,94,0.15)',
+            border: '1px solid rgba(244,63,94,0.4)',
+            color: '#fda4af',
+            fontSize: 13,
+            zIndex: 60,
+          }}
+        >
+          문제은행을 불러오지 못했습니다 — 퀴즈 없이 진행됩니다
+        </div>
+      )}
+
+      {showQuiz && currentQuiz && (
+        <QuizOverlay
+          quiz={currentQuiz}
+          timeLimit={quizTimeLimit(currentQuiz.type)}
+          streak={streak}
+          onAnswer={handleQuizAnswer}
+        />
+      )}
+
+      {showUpgradeSelect && !finishData && (
+        <UpgradeSelect
+          upgrades={filteredUpgrades.map((u) => ({
+            ...u,
+            name: (u as any).nameKo || u.name,
+            description: (u as any).descriptionKo || u.description,
+          }))}
+          onSelect={handleUpgradeSelect}
+        />
+      )}
+
+      {finishData && (
+        <PostGameOverlay
+          nickname={nickname}
+          finish={finishData}
+          onRestart={handleRestart}
+          onExit={onExit}
+          onShowLeaderboard={onShowLeaderboard}
+        />
+      )}
+
+      {!isReady && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#0a0a0f',
+            gap: 24,
+          }}
+        >
+          <div className="dot-spinner">
+            <div className="dot" />
+            <div className="dot" />
+            <div className="dot" />
+          </div>
+          <div style={{ color: '#71717a', fontSize: 14, fontWeight: 500 }}>게임 로딩 중...</div>
+        </div>
+      )}
+    </div>
+  );
+}
