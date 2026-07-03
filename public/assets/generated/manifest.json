@@ -1,0 +1,107 @@
+{
+ "batch": "3a",
+ "generated_at": "2026-07-03T16:21:44+00:00",
+ "style_anchors": [
+  "B1_pixel_keyvisual.png",
+  "B2_pixel_lineup.png"
+ ],
+ "palette_size": 48,
+ "assets": [
+  {
+   "id": "hero_walk",
+   "file": "hero_walk_strip.png",
+   "kind": "strip",
+   "native": 64,
+   "frames": 4,
+   "frame_w": 44,
+   "frame_h": 68,
+   "baseline_y": 66,
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "slime_family_0",
+   "group": "slime_family",
+   "file": "slime_green.png",
+   "kind": "family",
+   "native": 48,
+   "frames": 1,
+   "frame_w": 52,
+   "frame_h": 44,
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "slime_family_1",
+   "group": "slime_family",
+   "file": "slime_blue.png",
+   "kind": "family",
+   "native": 48,
+   "frames": 1,
+   "frame_w": 52,
+   "frame_h": 44,
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "slime_family_2",
+   "group": "slime_family",
+   "file": "slime_red.png",
+   "kind": "family",
+   "native": 48,
+   "frames": 1,
+   "frame_w": 52,
+   "frame_h": 44,
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "slime_family_3",
+   "group": "slime_family",
+   "file": "slime_elite.png",
+   "kind": "family",
+   "native": 48,
+   "frames": 1,
+   "frame_w": 52,
+   "frame_h": 50,
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "weapon_pencil",
+   "group": "weapon_pencil",
+   "file": "weapon_pencil.png",
+   "kind": "single",
+   "native": 48,
+   "frames": 1,
+   "frame_w": 52,
+   "frame_h": 52,
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "weapon_banana",
+   "group": "weapon_banana",
+   "file": "weapon_banana.png",
+   "kind": "single",
+   "native": 40,
+   "frames": 1,
+   "frame_w": 36,
+   "frame_h": 44,
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "weapon_star",
+   "group": "weapon_star",
+   "file": "weapon_star.png",
+   "kind": "single",
+   "native": 32,
+   "frames": 1,
+   "frame_w": 36,
+   "frame_h": 35,
+   "attempts": 1,
+   "qa": "pass"
+  }
+ ]
+}

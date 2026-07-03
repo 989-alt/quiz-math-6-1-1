@@ -1,0 +1,52 @@
+{
+  "batch": "3a",
+  "max_attempts": 3,
+  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png"],
+  "jobs": [
+    {
+      "id": "hero_walk",
+      "kind": "strip",
+      "cells": 4,
+      "native": 64,
+      "aspect_ratio": "16:9",
+      "outputs": ["hero_walk_strip.png"],
+      "prompt": "Pixel art animation sprite strip: exactly 4 frames arranged in a single horizontal row (1x4 grid), 4 equal-width columns, one full-body character per column, generous empty magenta space between and around the columns, no drop shadows on the background. The SAME character appears in all 4 frames at the same size: the cute brave elementary school student adventurer boy from the reference images, with messy brown hair, small flowing red cape, white short-sleeve shirt, blue shorts and red sneakers. The 4 frames form a walking animation cycle facing the viewer: (1) right foot stepping forward, (2) feet passing in the middle, (3) left foot stepping forward, (4) feet passing in the middle again. Feet planted on the same invisible ground line in every frame."
+    },
+    {
+      "id": "slime_family",
+      "kind": "family",
+      "cells": 4,
+      "native": 48,
+      "aspect_ratio": "16:9",
+      "outputs": ["slime_green.png", "slime_blue.png", "slime_red.png", "slime_elite.png"],
+      "prompt": "Pixel art monster family sheet: exactly 4 slime monsters arranged in a single horizontal row, 4 equal-width columns, one slime per column, generous empty magenta space between and around them, no drop shadows on the background. All four belong to the same slime species drawn in identical style and size, with 4 clearly distinct variants: (1) a green slime with a happy face, (2) a sky-blue slime with a calm face, (3) a red slime with tiny angry eyebrows, (4) a purple elite slime wearing a small golden crown. Each slime is a rounded blob with a flat-ish top and a tiny sprout antenna, NOT teardrop-shaped, no pointed drip tip on top. Cute simple big eyes and a glossy highlight on the upper left of each body."
+    },
+    {
+      "id": "weapon_pencil",
+      "kind": "single",
+      "cells": 1,
+      "native": 48,
+      "aspect_ratio": "1:1",
+      "outputs": ["weapon_pencil.png"],
+      "prompt": "Single pixel art in-game weapon sprite: one yellow wooden pencil with a pink eraser at the back end and a sharp graphite tip at the front, drawn in strict side view, lying diagonally pointing to the upper right, used as a thrown projectile. Just the one pencil object and nothing else, no hands, no character, no drop shadow on the background."
+    },
+    {
+      "id": "weapon_banana",
+      "kind": "single",
+      "cells": 1,
+      "native": 40,
+      "aspect_ratio": "1:1",
+      "outputs": ["weapon_banana.png"],
+      "prompt": "Single pixel art in-game weapon sprite: one ripe yellow banana used as a spinning boomerang projectile, drawn in strict side view as a curved crescent shape with small brown tips. Just the one banana object and nothing else, no hands, no character, no drop shadow on the background."
+    },
+    {
+      "id": "weapon_star",
+      "kind": "single",
+      "cells": 1,
+      "native": 32,
+      "aspect_ratio": "1:1",
+      "outputs": ["weapon_star.png"],
+      "prompt": "Single pixel art in-game weapon sprite: one shiny golden five-pointed star projectile with a small glossy highlight on the upper left point. Just the one star object and nothing else, no sparkle trail, no character, no drop shadow on the background."
+    }
+  ]
+}
