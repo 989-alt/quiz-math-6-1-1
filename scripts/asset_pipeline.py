@@ -82,6 +82,12 @@ class PipelineError(RuntimeError):
     """후처리 실패 (재생성으로 복구 시도)."""
 
 
+# 잡 단위로 격리해 재시도할 오류들. urllib은 HTTPError/URLError(OSError 계열),
+# 손상 응답은 JSONDecodeError(ValueError)/KeyError, 손상 이미지는
+# UnidentifiedImageError(OSError)를 던진다 — 한 잡의 실패가 배치를 죽이면 안 됨.
+JOB_ERRORS = (PipelineError, RuntimeError, TimeoutError, OSError, ValueError, KeyError)
+
+
 # ---------------------------------------------------------------- kie.ai API
 
 def load_api_key() -> str:
@@ -455,19 +461,26 @@ def main() -> None:
         if not pending:
             break
         print(f"--- attempt {attempt}: {[j['id'] for j in pending]}", flush=True)
-        tasks: list[tuple[dict, str | None]] = []
+        # (job, task_id, create_err): reuse-raw면 task_id=None,
+        # createTask 실패도 잡 단위 실패로 격리 (배치 전체 중단 금지)
+        tasks: list[tuple[dict, str | None, Exception | None]] = []
         for job in pending:
             raw = RAW_DIR / f"{job['id']}_a{attempt}.png"
             if args.reuse_raw and raw.exists():
-                tasks.append((job, None))
+                tasks.append((job, None, None))
                 continue
-            tasks.append((job, create_task(api_key, job, anchors, hints[job["id"]])))
+            try:
+                tasks.append((job, create_task(api_key, job, anchors, hints[job["id"]]), None))
+            except JOB_ERRORS as exc:
+                tasks.append((job, None, exc))
             time.sleep(1)
 
         still_failing: list[dict] = []
-        for job, task_id in tasks:
+        for job, task_id, create_err in tasks:
             raw = RAW_DIR / f"{job['id']}_a{attempt}.png"
             try:
+                if create_err is not None:
+                    raise PipelineError(f"createTask: {create_err}")
                 if task_id is not None:
                     urls = poll_task(api_key, job["id"], task_id)
                     if not urls:
@@ -475,7 +488,7 @@ def main() -> None:
                     download(urls[0], raw)
                 entries = postprocess(job, raw, palette)
                 failed = qa_entries(entries, palette)
-            except (PipelineError, RuntimeError, TimeoutError) as exc:
+            except JOB_ERRORS as exc:
                 print(f"[FAIL ] {job['id']} attempt {attempt}: {exc}", flush=True)
                 entries, failed = [], ["pipeline"]
             if failed:
