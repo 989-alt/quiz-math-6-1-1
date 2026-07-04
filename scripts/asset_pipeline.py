@@ -438,8 +438,11 @@ def postprocess(job: dict, raw_path: Path, palette: np.ndarray) -> list[dict]:
         strip, meta = compose_strip(frames, job.get("align", "bottom"))
         out = job["outputs"][0]
         Image.fromarray(strip).save(GEN_DIR / out)
-        entries.append({"id": job["id"], "file": out, "kind": "strip",
-                        "native": native, "frames": job["cells"], **meta})
+        entry = {"id": job["id"], "file": out, "kind": "strip",
+                 "native": native, "frames": job["cells"], **meta}
+        if job.get("group"):  # 보스 개별 파트 스트립이 그룹에 소속되도록(선택)
+            entry["group"] = job["group"]
+        entries.append(entry)
     elif kind == "multi":
         # 한 번의 생성(1xN 시트)에서 여러 산출물(idle/walk 스트립 + 단일 프레임)로
         # 분배 — 보스처럼 여러 애니메이션이 같은 개체여야 할 때 정체성/크기 일관성

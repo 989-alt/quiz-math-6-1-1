@@ -1,0 +1,20 @@
+{
+  "batch": "3b-boss-slime-fix",
+  "max_attempts": 4,
+  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png"],
+  "note": "slime_king 이동 리젝 대응: 제자리 상하 스쿼시(공중상 없음) → 진짜 도약 아크로 재생성. 6프레임 점프(F3~F5 몸체가 지면에서 분리된 작은 그림자 위로 떠오름). manifest 슬롯=기존 walk 파트(boss_slime_king_walk_strip.png)를 덮어씀, id=boss_slime_king_walk, group=boss_slime_king 유지. 각 프레임에 지면 그림자 포함 → align=bottom 이 그림자를 baseline 에 맞추고 몸체는 프레임 내에서 떠오름.",
+  "jobs": [
+    {
+      "id": "boss_slime_king_walk",
+      "kind": "strip",
+      "cells": 6,
+      "native": 128,
+      "group": "boss_slime_king",
+      "align": "bottom",
+      "aspect_ratio": "16:9",
+      "outputs": ["boss_slime_king_walk_strip.png"],
+      "identity_files": ["boss_slime_king_idle_strip.png"],
+      "prompt": "Pixel art 6-frame JUMP / LEAP animation sprite strip of a giant boss slime that moves by hopping into the air: exactly 6 frames arranged in a single horizontal row (1x6 grid), 6 equal-width columns, one pose per column, generous empty magenta space between and around every column so columns never touch, no drop shadows painted on the magenta background. The SAME boss appears in all 6 frames at the same identity and drawn size: a colossal royal green slime king wearing a large golden crown studded with red gems, a rounded blob with a flat-ish top, big cute eyes and a smug grin, a glossy highlight on the upper left of its body. It is a rounded gel blob, NOT teardrop-shaped, no pointed drip tip on top. Each column also contains a separate flat dark-green oval CAST SHADOW drawn on the ground line at the very bottom of that column, and the vertical distance between the slime body and its shadow is the key storytelling element that must clearly change frame to frame to show a real airborne jump. Per frame: FRAME 1 REST - the slime sits as a wide rounded blob resting ON the ground, its base touching a wide oval shadow directly beneath it. FRAME 2 ANTICIPATION - the slime squashes DOWN and WIDE, flattened low to gather energy, still on the ground with a wide shadow beneath it. FRAME 3 LAUNCH - the slime stretches UP and NARROW, elongated vertically as its bottom just leaves the ground, a small visible GAP opens between the bottom of its body and the shadow, and the shadow has begun to shrink. FRAME 4 AIRBORNE APEX - the slime is clearly lifted high OFF the ground with a big empty vertical gap between its rounded body at the top of the column and a much SMALLER oval shadow far below it at the bottom of the column, this is the peak of the jump. FRAME 5 DESCENDING - the slime is falling, stretched slightly downward, dropping toward a shadow that is growing larger again, still a gap between body and shadow. FRAME 6 LANDING - the slime slams back down flattened WIDE on impact with a little dust puff at its base, sitting on a wide oval shadow again. On frames 3, 4 and 5 the slime body must be drawn physically ABOVE the ground with clear empty space separating it from a smaller shadow beneath, so that when the frames cycle the slime reads as leaping up into the air and coming back down, not merely wobbling in place."
+    }
+  ]
+}

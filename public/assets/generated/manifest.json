@@ -1,5 +1,5 @@
 {
- "batch": "3b-hero-walk-fix",
+ "batch": "3b-boss-slime-fix",
  "batches": [
   "3a",
   "3b-hero",
@@ -12,9 +12,10 @@
   "3b-collect",
   "3b-env",
   "3b-ui",
-  "3b-hero-walk-fix"
+  "3b-hero-walk-fix",
+  "3b-boss-slime-fix"
  ],
- "generated_at": "2026-07-04T01:13:35+00:00",
+ "generated_at": "2026-07-04T01:52:22+00:00",
  "style_anchors": [
   "B1_pixel_keyvisual.png",
   "B2_pixel_lineup.png"
@@ -463,19 +464,6 @@
    "frame_w": 106,
    "frame_h": 86,
    "baseline_y": 84,
-   "attempts": 1,
-   "qa": "pass"
-  },
-  {
-   "id": "boss_slime_king_walk",
-   "group": "boss_slime_king",
-   "file": "boss_slime_king_walk_strip.png",
-   "kind": "strip",
-   "native": 128,
-   "frames": 2,
-   "frame_w": 125,
-   "frame_h": 132,
-   "baseline_y": 130,
    "attempts": 1,
    "qa": "pass"
   },
@@ -1442,21 +1430,6 @@
    "qa": "pass"
   },
   {
-   "id": "ground_tile",
-   "file": "ground_tile.png",
-   "kind": "image",
-   "native": 512,
-   "frames": 1,
-   "frame_w": 512,
-   "frame_h": 512,
-   "qa_skip": [
-    "density",
-    "outline"
-   ],
-   "attempts": 1,
-   "qa": "pass"
-  },
-  {
    "id": "keyart_home",
    "file": "keyart_home.png",
    "kind": "image",
@@ -1487,15 +1460,43 @@
    "qa": "pass"
   },
   {
+   "id": "ground_tile",
+   "file": "ground_tile.png",
+   "kind": "image",
+   "native": 512,
+   "frames": 1,
+   "frame_w": 512,
+   "frame_h": 512,
+   "qa_skip": [
+    "density",
+    "outline"
+   ],
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
    "id": "hero_walk",
    "file": "hero_walk_strip.png",
    "kind": "strip",
    "native": 64,
-   "frames": 4,
-   "frame_w": 45,
+   "frames": 6,
+   "frame_w": 48,
    "frame_h": 68,
    "baseline_y": 66,
    "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "boss_slime_king_walk",
+   "file": "boss_slime_king_walk_strip.png",
+   "kind": "strip",
+   "native": 128,
+   "frames": 6,
+   "frame_w": 95,
+   "frame_h": 132,
+   "baseline_y": 130,
+   "group": "boss_slime_king",
+   "attempts": 2,
    "qa": "pass"
   }
  ]
