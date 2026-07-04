@@ -102,11 +102,10 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
 
     this.setVelocity(velocity.x, velocity.y);
 
-    // Flip sprite based on direction
-    if (velocity.x < 0) {
-      this.setFlipX(true);
-    } else {
-      this.setFlipX(false);
+    // 스프라이트는 정면(카메라) 기준 아트. 보스는 뒤집으면 거울처럼 보여 어색하므로
+    // 항상 정면(플레이어를 바라봄) 유지. 일반 몬스터만 이동 방향으로 좌우 반전.
+    if (!this.isBoss) {
+      this.setFlipX(velocity.x < 0);
     }
 
     // Update HP bar position for bosses
