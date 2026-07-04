@@ -6,7 +6,7 @@ import { WeaponManager, WeaponInfoList, BonusInfoList } from '../weapons/WeaponM
 import { PassiveInfoList } from '../weapons/PassiveManager';
 import { EventBus, GameEvents } from '../utils/EventBus';
 import { GAME_CONFIG } from '../config';
-import { GROUND_TILE_KEY } from '../assetKeys';
+import { GROUND_TILE_KEY, DECO_SOLID_KEYS } from '../assetKeys';
 
 // 청크 좌표 → 결정적 시드 해시 (같은 월드 위치엔 항상 같은 장식)
 function hashChunk(cx: number, cy: number): number {
@@ -51,8 +51,10 @@ export class GameScene extends Phaser.Scene {
   private bgm: Phaser.Sound.BaseSound | null = null;
 
   private background!: Phaser.GameObjects.TileSprite;
-  // 결정적 청크 장식: "cx,cy" → 그 청크에 배치된 deco 이미지들
-  private decoChunks: Map<string, Phaser.GameObjects.Image[]> = new Map();
+  // 결정적 청크 장식: "cx,cy" → 그 청크에 배치된 deco 오브젝트들(일반 이미지 + solid 정적 이미지)
+  private decoChunks: Map<string, Phaser.GameObjects.GameObject[]> = new Map();
+  // solid deco의 정적 충돌 바디 그룹 (플레이어·몬스터가 통과 못 함)
+  private obstacles!: Phaser.Physics.Arcade.StaticGroup;
   private static readonly CHUNK_SIZE = 512;
 
   constructor() {
@@ -70,6 +72,8 @@ export class GameScene extends Phaser.Scene {
     this.monsters = this.physics.add.group({ classType: Monster });
     this.xpGems = this.physics.add.group({ classType: XPGem });
     this.projectiles = this.physics.add.group();
+    // solid deco 정적 장애물 그룹 (청크 라이프사이클로 멤버가 생성/파괴됨)
+    this.obstacles = this.physics.add.staticGroup();
 
     // Check for textures and create fallbacks if needed
     if (!this.textures.exists('player')) {
@@ -102,6 +106,10 @@ export class GameScene extends Phaser.Scene {
 
     // Setup collisions
     this.setupCollisions();
+
+    // 몬스터 vs solid 장애물 충돌은 그룹끼리라 단 한 번만 등록 (몬스터 그룹은 리셋 시
+    // 파괴되지 않고 clear만 되므로 재등록 불필요 — 중복 등록하면 분리가 두 번 적용됨)
+    this.physics.add.collider(this.monsters, this.obstacles);
 
     // Setup event listeners
     this.setupEventListeners();
@@ -215,10 +223,11 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // 범위 밖 청크 컬링
-    for (const [key, imgs] of this.decoChunks) {
+    // 범위 밖 청크 컬링 (일반 이미지 + solid 정적 이미지 모두 destroy → 바디 누수 없음.
+    // 정적 이미지는 destroy 시 obstacles 그룹에서 자동 제거됨)
+    for (const [key, objs] of this.decoChunks) {
       if (!needed.has(key)) {
-        imgs.forEach((im) => im.destroy());
+        objs.forEach((o) => o.destroy());
         this.decoChunks.delete(key);
       }
     }
@@ -239,6 +248,18 @@ export class GameScene extends Phaser.Scene {
     'deco_rune_stone', 'deco_pond', 'deco_signpost',
   ];
 
+  // 종류별 기준 화면 폭(px). 랜드마크는 크게, 작은 잡동사니는 작게. 실제 스케일은
+  // (기준폭 / 텍스처 native 폭) × 넓은 랜덤배율[0.6–1.5]로 같은 종류도 눈에 띄게 달라짐.
+  private static readonly DECO_BASE_SIZE: Record<string, number> = {
+    deco_pond: 150, deco_rune_stone: 130, deco_fallen_log: 140, deco_signpost: 110,
+    deco_rock: 78, deco_stump: 68,
+    deco_crystals: 62, deco_bush: 60, deco_flower_bush: 56, deco_mushrooms: 54,
+  };
+  // 군집으로 뭉쳐 자연스러운 덤불을 이루는 식생/광물(같은 에셋 2–5개 겹쳐 배치).
+  private static readonly DECO_CLUMP_KEYS: ReadonlySet<string> = new Set<string>([
+    'deco_bush', 'deco_flower_bush', 'deco_mushrooms', 'deco_crystals',
+  ]);
+
   private pickWeightedDeco(rand: () => number): string {
     const table = GameScene.DECO_TABLE;
     const total = table.reduce((s, d) => s + d.w, 0);
@@ -250,21 +271,74 @@ export class GameScene extends Phaser.Scene {
     return table[0].key;
   }
 
+  /**
+   * 단일 deco 배치. solid이면 obstacles 정적 그룹에 넣고 밑동(footprint)에만 충돌 바디를
+   * 만든다(투명 padding 제외). soft면 일반 이미지. 크기는 종류별 기준 × 넓은 랜덤배율.
+   */
   private placeDeco(
     decoKey: string,
     px: number,
     py: number,
     rand: () => number,
-    imgs: Phaser.GameObjects.Image[]
+    objs: Phaser.GameObjects.GameObject[]
   ): void {
     if (!this.textures.exists(decoKey)) return;
-    const img = this.add.image(px, py, decoKey);
-    img.setScale(0.85 + rand() * 0.4);
+
+    const solid = DECO_SOLID_KEYS.has(decoKey);
+    const base = GameScene.DECO_BASE_SIZE[decoKey] ?? 70;
+
+    const img = solid
+      ? (this.obstacles.create(px, py, decoKey) as Phaser.Physics.Arcade.Sprite)
+      : this.add.image(px, py, decoKey);
+
+    // 크기 변주: (기준 화면폭 / native 폭) × 랜덤배율[0.6–1.5]
+    const nativeW = img.width || base;
+    const scale = (base / nativeW) * (0.6 + rand() * 0.9);
+    img.setScale(scale);
     img.setAlpha(0.95);
     if (rand() < 0.5) img.setFlipX(true); // 좌우 뒤집기로 반복감 감소
     // y가 클수록(아래=가까움) 위에 그려 겹침을 자연스럽게. 엔티티(depth≥2) 아래 유지.
     img.setDepth(1 + (((py % 100000) + 100000) % 100000) / 1e8);
-    imgs.push(img);
+
+    if (solid) {
+      // 스케일 적용 후 바디를 밑동에 맞게 축소·재배치. displayWidth/Height는 스케일이
+      // 반영된 화면 크기이므로 그 비율로 폭 ~62% / 높이 ~40%의 발밑 사각형을 만든다.
+      const sprite = img as Phaser.Physics.Arcade.Sprite;
+      sprite.refreshBody(); // 스케일 반영해 바디를 스프라이트 전체에 동기화
+      const body = sprite.body as Phaser.Physics.Arcade.StaticBody;
+      const fw = sprite.displayWidth * 0.62;
+      const fh = sprite.displayHeight * 0.4;
+      body.setSize(fw, fh);
+      // 밑동(하단)으로 이동: 스프라이트 중심에서 아래로 내려 발밑에 배치, 소량 여백.
+      const baseY = py + sprite.displayHeight / 2 - fh / 2 - sprite.displayHeight * 0.06;
+      body.position.set(px - fw / 2, baseY - fh / 2);
+      body.updateCenter();
+    }
+
+    objs.push(img);
+  }
+
+  /**
+   * clump 친화 종류(덤불·꽃·버섯·수정)는 45% 확률로 같은 에셋 2–5개를 작은 오프셋·다른
+   * 스케일·랜덤 좌우반전으로 겹쳐 배치해 빽빽한 덤불을 이룬다. 그 외엔 단일 배치.
+   */
+  private placeDecoOrClump(
+    decoKey: string,
+    px: number,
+    py: number,
+    rand: () => number,
+    objs: Phaser.GameObjects.GameObject[]
+  ): void {
+    if (GameScene.DECO_CLUMP_KEYS.has(decoKey) && rand() < 0.45) {
+      const copies = 2 + Math.floor(rand() * 4); // 2–5개
+      for (let i = 0; i < copies; i++) {
+        const ox = (rand() - 0.5) * 64;
+        const oy = (rand() - 0.5) * 44;
+        this.placeDeco(decoKey, px + ox, py + oy, rand, objs);
+      }
+    } else {
+      this.placeDeco(decoKey, px, py, rand, objs);
+    }
   }
 
   /**
@@ -278,15 +352,15 @@ export class GameScene extends Phaser.Scene {
     const rand = mulberry32(hashChunk(cx, cy));
     const baseX = cx * CHUNK;
     const baseY = cy * CHUNK;
-    const imgs: Phaser.GameObjects.Image[] = [];
+    const objs: Phaser.GameObjects.GameObject[] = [];
 
     // ① 희소 랜드마크
     if (rand() < 0.08) {
       const lm = GameScene.DECO_LANDMARKS[Math.floor(rand() * GameScene.DECO_LANDMARKS.length)];
-      this.placeDeco(lm, baseX + (0.2 + rand() * 0.6) * CHUNK, baseY + (0.2 + rand() * 0.6) * CHUNK, rand, imgs);
+      this.placeDeco(lm, baseX + (0.2 + rand() * 0.6) * CHUNK, baseY + (0.2 + rand() * 0.6) * CHUNK, rand, objs);
     }
 
-    // ② 작은 잡초·바위 군집
+    // ② 작은 잡초·바위 군집 (일부는 같은 에셋 clump으로 빽빽하게)
     const densityRoll = rand();
     const clusters = densityRoll < 0.25 ? 0 : densityRoll < 0.7 ? 1 : 2;
     for (let c = 0; c < clusters; c++) {
@@ -296,15 +370,19 @@ export class GameScene extends Phaser.Scene {
       for (let i = 0; i < n; i++) {
         const ox = (rand() - 0.5) * 140;
         const oy = (rand() - 0.5) * 140;
-        this.placeDeco(this.pickWeightedDeco(rand), ccx + ox, ccy + oy, rand, imgs);
+        this.placeDecoOrClump(this.pickWeightedDeco(rand), ccx + ox, ccy + oy, rand, objs);
       }
     }
 
-    this.decoChunks.set(key, imgs);
+    this.decoChunks.set(key, objs);
   }
 
   // ... (setupCollisions, handlePlayerMonsterCollision, etc. remain the same) ...
   private setupCollisions(): void {
+    // Player vs solid 장애물 (통과 불가). 플레이어는 리셋마다 재생성되므로 여기서 재등록해
+    // 새 플레이어에 연결한다(구 플레이어는 파괴돼 이전 collider는 자연 무력화).
+    this.physics.add.collider(this.player, this.obstacles);
+
     // Player vs Monsters
     this.physics.add.overlap(
       this.player,
@@ -419,6 +497,13 @@ export class GameScene extends Phaser.Scene {
     this.monsters.clear(true, true);
     this.xpGems.clear(true, true);
     this.projectiles.clear(true, true);
+
+    // 이전 판의 배경 장식·정적 장애물 바디 제거 (다음 판으로 남지 않게). decoChunks가
+    // 일반 이미지 + solid 정적 이미지를 모두 들고 있으므로 여기서 전부 destroy → 비우고,
+    // obstacles 그룹은 안전차원에서 한 번 더 비운다(이미 비어 있음).
+    this.decoChunks.forEach((objs) => objs.forEach((o) => o.destroy()));
+    this.decoChunks.clear();
+    this.obstacles.clear(true, true);
 
     // Reset state
     this.survivalTime = 0;

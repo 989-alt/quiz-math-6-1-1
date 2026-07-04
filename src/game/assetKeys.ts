@@ -35,4 +35,12 @@ export const DECO_KEYS = [
   'deco_fallen_log', 'deco_crystals', 'deco_bush', 'deco_signpost', 'deco_pond',
 ] as const;
 
+// Solid decorations that block movement (get static physics bodies at their base
+// footprint). Everything else (deco_mushrooms / deco_flower_bush / deco_bush) is soft
+// vegetation and stays walk-through.
+export const DECO_SOLID_KEYS: ReadonlySet<string> = new Set<string>([
+  'deco_rock', 'deco_stump', 'deco_fallen_log', 'deco_rune_stone',
+  'deco_crystals', 'deco_signpost', 'deco_pond',
+]);
+
 export const GROUND_TILE_KEY = 'ground_tile';
