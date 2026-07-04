@@ -6,14 +6,18 @@ offset-wrap 경계 블렌딩: 원본을 (h/2, w/2) 롤링한 이미지는 바깥
 근처는 롤링본, 중앙은 원본을 쓰고 그 사이를 페이드하면 wrap 경계가 이어진
 타일이 된다. 블렌딩으로 생긴 중간색은 마스터 팔레트로 재양자화.
 
-검증: 2x2 타일링 렌더 기준 wrap 경계(마지막 열↔첫 열, 마지막 행↔첫 행)의
-인접 픽셀 diff가 내부 인접 경계 diff 분포의 SEAM_PERCENTILE 백분위 이하면 통과.
-실패 시 exit 1.
+검증: 타일을 토러스(상하/좌우가 이어진 원환)로 보고, 축별 인접 경계 diff
+집합(내부 경계 전부 + wrap 경계)에서 max/median 비율이 SEAM_MAX_RATIO 이하면
+통과. 실패 시 exit 1.
 
-주의: 픽셀아트의 인접 컬럼/로우 diff는 바이모달(픽셀 블록 내부 ~0, 블록 경계
-스파이크)이라 "내부 평균 대비 배수" 기준은 wrap 경계가 우연히 블록 경계에
-걸리면 오탐한다. wrap 경계 diff가 내부의 정상적인 블록 경계 diff 분포 범위
-이내인지로 판정한다 (진짜 이어붙인 seam은 p95를 크게 초과).
+왜 wrap 경계 diff를 직접 임계와 비교하지 않는가: roll_to_quiet_edge가 wrap
+경계를 '가장 조용한 경계(전역 최소)'로 맞추므로, wrap-seam 을 내부 경계 통계와
+비교하면 최소값은 언제나 그 분포 이하 → 항상 통과하는 무의미한 게이트가 된다
+(tautology). 대신 토러스 전체에서 '가장 거친 경계'가 텍스처 고유 거칠기(median)
+대비 비정상적으로 튀는지를 본다. 이 지표는 롤링(토러스 회전)에 불변이라
+roll_to_quiet_edge로 우회할 수 없고, 이어붙인 seam은 그것이 wrap이든 내부든
+max 를 끌어올려 비율을 초과시킨다 → 진짜로 실패할 수 있는 게이트.
+(실측: 심리스 타일 max/median≈2.6, 하드 seam 타일 ≈6.2.)
 
 사용: python scripts/make_seamless.py public/assets/generated/ground_tile.png
       (제자리 덮어쓰기 + docs/asset_review/ground_tile_2x2.png 프리뷰 생성)
@@ -30,8 +34,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import asset_qa  # noqa: E402
 from asset_pipeline import REVIEW_DIR, quantize_to_palette  # noqa: E402
 
-BLEND_PX = 40         # 경계 페이드 폭
-SEAM_PERCENTILE = 95  # wrap 경계 diff 허용 상한: 내부 인접 경계 diff 분포의 백분위
+BLEND_PX = 40          # 경계 페이드 폭
+SEAM_MAX_RATIO = 3.0   # 토러스 경계 diff 의 max/median 허용 상한 (심리스≈2.6, seam≈6.2)
 
 
 def make_seamless(arr: np.ndarray) -> np.ndarray:
@@ -58,20 +62,28 @@ def roll_to_quiet_edge(arr: np.ndarray) -> np.ndarray:
     return np.roll(np.roll(arr, -((kx + 1) % w), axis=1), -((ky + 1) % h), axis=0)
 
 
-def seam_metrics(arr: np.ndarray) -> tuple[float, float, float, float]:
-    """(wrap 세로 경계 diff, wrap 가로 경계 diff, 내부 컬럼 diff p95, 내부 로우 diff p95)
+def _torus_boundaries(f: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """축별 인접 경계 diff (내부 경계 전부 + wrap 경계). RGB만 사용."""
+    rgb = f[..., :3]
+    col = np.append(np.abs(np.diff(rgb, axis=1)).mean(axis=(0, 2)),  # (w-1,) 내부
+                    np.abs(rgb[:, -1] - rgb[:, 0]).mean())            # + wrap
+    row = np.append(np.abs(np.diff(rgb, axis=0)).mean(axis=(1, 2)),  # (h-1,) 내부
+                    np.abs(rgb[-1, :] - rgb[0, :]).mean())            # + wrap
+    return col, row
 
-    내부 인접 경계별 평균 diff의 분포에서 백분위를 구한다 — 픽셀 블록 경계
-    스파이크까지 포함한 '정상 diff 범위'의 상한이며, 진짜 seam은 이를 초과한다.
+
+def seam_metrics(arr: np.ndarray) -> tuple[float, float, float, float]:
+    """(가로축 max/median 비율, 세로축 max/median 비율, wrap 세로 seam, wrap 가로 seam)
+
+    비율은 롤링에 불변이라 게이트를 우회할 수 없다. wrap seam 은 참고용 출력.
     """
     f = arr.astype(np.float64)
-    seam_x = float(np.abs(f[:, -1] - f[:, 0]).mean())
-    seam_y = float(np.abs(f[-1, :] - f[0, :]).mean())
-    col_diffs = np.abs(np.diff(f, axis=1)).mean(axis=(0, 2))  # 경계별 평균 (w-1,)
-    row_diffs = np.abs(np.diff(f, axis=0)).mean(axis=(1, 2))  # 경계별 평균 (h-1,)
-    p_col = float(np.percentile(col_diffs, SEAM_PERCENTILE))
-    p_row = float(np.percentile(row_diffs, SEAM_PERCENTILE))
-    return seam_x, seam_y, p_col, p_row
+    col, row = _torus_boundaries(f)
+    ratio_x = float(col.max() / max(np.median(col), 1e-6))
+    ratio_y = float(row.max() / max(np.median(row), 1e-6))
+    seam_x = float(np.abs(f[:, -1, :3] - f[:, 0, :3]).mean())
+    seam_y = float(np.abs(f[-1, :, :3] - f[0, :, :3]).mean())
+    return ratio_x, ratio_y, seam_x, seam_y
 
 
 def main() -> None:
@@ -87,10 +99,11 @@ def main() -> None:
     out = roll_to_quiet_edge(out)
     Image.fromarray(out).save(path)
 
-    seam_x, seam_y, p_col, p_row = seam_metrics(out)
-    ok = seam_x <= p_col and seam_y <= p_row
-    print(f"[seam] vertical {seam_x:.2f} (limit p{SEAM_PERCENTILE} {p_col:.2f}) / "
-          f"horizontal {seam_y:.2f} (limit p{SEAM_PERCENTILE} {p_row:.2f})", flush=True)
+    ratio_x, ratio_y, seam_x, seam_y = seam_metrics(out)
+    ok = ratio_x <= SEAM_MAX_RATIO and ratio_y <= SEAM_MAX_RATIO
+    print(f"[seam] torus max/median  x={ratio_x:.2f}  y={ratio_y:.2f}  "
+          f"(limit {SEAM_MAX_RATIO})", flush=True)
+    print(f"[seam] wrap boundary diff x={seam_x:.2f}  y={seam_y:.2f} (info)", flush=True)
 
     # 2x2 타일링 프리뷰 (사람 눈 확인용)
     h, w = out.shape[:2]
@@ -101,7 +114,8 @@ def main() -> None:
     print(f"[seam] preview: {preview}", flush=True)
 
     if not ok:
-        sys.exit(f"SEAM CHECK FAILED: wrap seam diff exceeds internal p{SEAM_PERCENTILE}")
+        sys.exit(f"SEAM CHECK FAILED: torus max/median exceeds {SEAM_MAX_RATIO} "
+                 f"(x={ratio_x:.2f}, y={ratio_y:.2f}) — visible seam")
     print("seamless check passed", flush=True)
 
 
