@@ -10,7 +10,7 @@ export class Pencil extends WeaponBase {
   descriptionKo = '빠른 직선 공격';
   maxLevel = 8;
 
-  private lastDirection: number = 1;
+  private lastDirection: number = 0; // 라디안 (0 = 오른쪽). 적이 없을 때의 폴백 방향.
 
   constructor(scene: GameScene, player: Player) {
     super(scene, player);
@@ -42,8 +42,11 @@ export class Pencil extends WeaponBase {
     const pierce = this.getPierce();
     const area = this.getArea();
 
-    // Track player facing direction
-    if (this.player.body) {
+    // 가장 가까운 적을 자동 조준해 발사(무기다운 동작). 적이 없으면 마지막 이동방향으로.
+    const target = this.findClosestEnemy();
+    if (target) {
+      this.lastDirection = Math.atan2(target.y - this.player.y, target.x - this.player.x);
+    } else if (this.player.body) {
       const vel = this.player.body.velocity;
       if (vel.x !== 0 || vel.y !== 0) {
         this.lastDirection = Math.atan2(vel.y, vel.x);

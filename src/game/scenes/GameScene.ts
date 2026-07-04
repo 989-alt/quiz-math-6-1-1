@@ -6,7 +6,7 @@ import { WeaponManager, WeaponInfoList, BonusInfoList } from '../weapons/WeaponM
 import { PassiveInfoList } from '../weapons/PassiveManager';
 import { EventBus, GameEvents } from '../utils/EventBus';
 import { GAME_CONFIG } from '../config';
-import { GROUND_TILE_KEY, DECO_SOLID_KEYS } from '../assetKeys';
+import { GROUND_TILE_KEY } from '../assetKeys';
 
 // 청크 좌표 → 결정적 시드 해시 (같은 월드 위치엔 항상 같은 장식)
 function hashChunk(cx: number, cy: number): number {
@@ -271,9 +271,47 @@ export class GameScene extends Phaser.Scene {
     return table[0].key;
   }
 
+  // 텍스처별 불투명(alpha>임계) 픽셀 경계 캐시 — 충돌 바디를 그림 외곽에 맞추는 데 사용.
+  private opaqueBoundsCache: Map<string, { x: number; y: number; w: number; h: number }> = new Map();
+
+  /** 텍스처의 불투명 영역 bbox(텍스처 픽셀 좌표). 투명 padding을 제외한 실제 그림 테두리. */
+  private getOpaqueBounds(key: string): { x: number; y: number; w: number; h: number } {
+    const cached = this.opaqueBoundsCache.get(key);
+    if (cached) return cached;
+
+    const src = this.textures.get(key).getSourceImage() as HTMLImageElement | HTMLCanvasElement;
+    const tw = src.width;
+    const th = src.height;
+    let minX = tw, minY = th, maxX = -1, maxY = -1;
+
+    // 소스 이미지를 캔버스에 그려 픽셀 alpha를 한 번만 스캔(키당 캐시).
+    const canvas = Phaser.Display.Canvas.CanvasPool.create(this, tw, th);
+    const ctx = canvas.getContext('2d', { willReadFrequently: true } as CanvasRenderingContext2DSettings)!;
+    ctx.drawImage(src as CanvasImageSource, 0, 0);
+    const data = ctx.getImageData(0, 0, tw, th).data;
+    for (let y = 0; y < th; y++) {
+      for (let x = 0; x < tw; x++) {
+        if (data[(y * tw + x) * 4 + 3] > 12) { // alpha 임계 (fringe 무시)
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    Phaser.Display.Canvas.CanvasPool.remove(canvas);
+
+    const bounds = maxX < 0
+      ? { x: 0, y: 0, w: tw, h: th } // 전부 투명이면(비정상) 전체 사용
+      : { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+    this.opaqueBoundsCache.set(key, bounds);
+    return bounds;
+  }
+
   /**
-   * 단일 deco 배치. solid이면 obstacles 정적 그룹에 넣고 밑동(footprint)에만 충돌 바디를
-   * 만든다(투명 padding 제외). soft면 일반 이미지. 크기는 종류별 기준 × 넓은 랜덤배율.
+   * 단일 deco 배치. 모든 deco를 obstacles 정적 그룹에 넣고, 충돌 바디를 그림 외곽
+   * (불투명 픽셀 bbox)에 맞춰 생성한다 — 투명 padding 제외, 오브젝트 전체를 덮어
+   * 위로 통과되지 않게. 크기는 종류별 기준 × 넓은 랜덤배율.
    */
   private placeDeco(
     decoKey: string,
@@ -284,38 +322,35 @@ export class GameScene extends Phaser.Scene {
   ): void {
     if (!this.textures.exists(decoKey)) return;
 
-    const solid = DECO_SOLID_KEYS.has(decoKey);
     const base = GameScene.DECO_BASE_SIZE[decoKey] ?? 70;
-
-    const img = solid
-      ? (this.obstacles.create(px, py, decoKey) as Phaser.Physics.Arcade.Sprite)
-      : this.add.image(px, py, decoKey);
+    const sprite = this.obstacles.create(px, py, decoKey) as Phaser.Physics.Arcade.Sprite;
 
     // 크기 변주: (기준 화면폭 / native 폭) × 랜덤배율[0.6–1.5]
-    const nativeW = img.width || base;
+    const nativeW = sprite.width || base;
     const scale = (base / nativeW) * (0.6 + rand() * 0.9);
-    img.setScale(scale);
-    img.setAlpha(0.95);
-    if (rand() < 0.5) img.setFlipX(true); // 좌우 뒤집기로 반복감 감소
+    const flipped = rand() < 0.5;
+    sprite.setScale(scale);
+    sprite.setAlpha(0.95);
+    if (flipped) sprite.setFlipX(true); // 좌우 뒤집기로 반복감 감소
     // y가 클수록(아래=가까움) 위에 그려 겹침을 자연스럽게. 엔티티(depth≥2) 아래 유지.
-    img.setDepth(1 + (((py % 100000) + 100000) % 100000) / 1e8);
+    sprite.setDepth(1 + (((py % 100000) + 100000) % 100000) / 1e8);
 
-    if (solid) {
-      // 스케일 적용 후 바디를 밑동에 맞게 축소·재배치. displayWidth/Height는 스케일이
-      // 반영된 화면 크기이므로 그 비율로 폭 ~62% / 높이 ~40%의 발밑 사각형을 만든다.
-      const sprite = img as Phaser.Physics.Arcade.Sprite;
-      sprite.refreshBody(); // 스케일 반영해 바디를 스프라이트 전체에 동기화
-      const body = sprite.body as Phaser.Physics.Arcade.StaticBody;
-      const fw = sprite.displayWidth * 0.62;
-      const fh = sprite.displayHeight * 0.4;
-      body.setSize(fw, fh);
-      // 밑동(하단)으로 이동: 스프라이트 중심에서 아래로 내려 발밑에 배치, 소량 여백.
-      const baseY = py + sprite.displayHeight / 2 - fh / 2 - sprite.displayHeight * 0.06;
-      body.position.set(px - fw / 2, baseY - fh / 2);
-      body.updateCenter();
-    }
+    // 충돌 바디를 그림 외곽(불투명 bbox)에 맞춰 배치 (스케일·좌우반전 반영)
+    const b = this.getOpaqueBounds(decoKey);
+    const body = sprite.body as Phaser.Physics.Arcade.StaticBody;
+    const bw = b.w * scale;
+    const bh = b.h * scale;
+    // 불투명 영역 중심의, 텍스처 중심 대비 오프셋(픽셀) → 월드 좌표(스케일 적용)
+    let dx = (b.x + b.w / 2 - sprite.width / 2) * scale;
+    const dy = (b.y + b.h / 2 - sprite.height / 2) * scale;
+    if (flipped) dx = -dx; // 좌우반전 시 x 오프셋도 반전
+    const worldCx = px + dx;
+    const worldCy = py + dy;
+    body.setSize(bw, bh);
+    body.position.set(worldCx - bw / 2, worldCy - bh / 2);
+    body.updateCenter();
 
-    objs.push(img);
+    objs.push(sprite);
   }
 
   /**
