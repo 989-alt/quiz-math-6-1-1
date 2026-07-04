@@ -79,8 +79,10 @@ def seam_metrics(arr: np.ndarray) -> tuple[float, float, float, float]:
     """
     f = arr.astype(np.float64)
     col, row = _torus_boundaries(f)
-    ratio_x = float(col.max() / max(np.median(col), 1e-6))
-    ratio_y = float(row.max() / max(np.median(row), 1e-6))
+    # 0~255 diff 스케일 기준 floor 1.0 — 평탄/저변동 타일에서 median≈0일 때
+    # 1e-6 floor면 비율이 폭발해 오탐(항상 FAIL)하므로 스케일에 맞춘 값 사용
+    ratio_x = float(col.max() / max(np.median(col), 1.0))
+    ratio_y = float(row.max() / max(np.median(row), 1.0))
     seam_x = float(np.abs(f[:, -1, :3] - f[:, 0, :3]).mean())
     seam_y = float(np.abs(f[-1, :, :3] - f[0, :, :3]).mean())
     return ratio_x, ratio_y, seam_x, seam_y
