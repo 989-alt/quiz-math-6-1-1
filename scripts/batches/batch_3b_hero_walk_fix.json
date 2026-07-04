@@ -1,0 +1,18 @@
+{
+  "batch": "3b-hero-walk-fix",
+  "max_attempts": 3,
+  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png"],
+  "note": "사용자 리젝 반영 hero_walk 재생성: ①좌우 다리가 교차(가위질) 없이 4프레임 내내 같은 자세 ②팔 움직임 부자연. 프레임별 다리/팔 위상을 명시한 워크사이클 스펙으로 교체. 수용 기준=QA 통과 + 육안으로 다리 교차 확인(스크립트로 판정 불가).",
+  "jobs": [
+    {
+      "id": "hero_walk",
+      "kind": "strip",
+      "cells": 4,
+      "native": 64,
+      "aspect_ratio": "16:9",
+      "outputs": ["hero_walk_strip.png"],
+      "identity_files": ["hero_idle_strip.png"],
+      "prompt": "Pixel art animation sprite strip: exactly 4 frames arranged in a single horizontal row (1x4 grid), 4 equal-width columns, one full-body character per column, generous empty magenta space between and around the columns, no drop shadows on the background. The SAME character appears in all 4 frames at the same size: the cute brave elementary school student adventurer boy shown in the small reference sprite, with messy brown hair, small flowing red cape, white short-sleeve shirt, blue shorts and red sneakers. The 4 frames are a classic 4-frame walk cycle viewed from the front three-quarter top-down angle, with the legs CLEARLY ALTERNATING and scissoring like an open pair of scissors, and the arms swinging opposite to the legs. Frame 1: LEFT leg planted far forward, RIGHT leg trailing far behind with heel lifted, RIGHT arm swung forward across the body, LEFT arm swung back. Frame 2: passing pose, both legs together under the body, knees slightly bent, both arms hanging at his sides. Frame 3: mirror of frame 1 - RIGHT leg planted far forward, LEFT leg trailing far behind with heel lifted, LEFT arm swung forward, RIGHT arm swung back. Frame 4: passing pose again, both legs together under the body, arms at his sides. The leg positions must look clearly different between frame 1 and frame 3 (opposite legs forward), with a wide visible stride gap between the front foot and the back foot in frames 1 and 3. Feet planted on the same invisible ground line in every frame."
+    }
+  ]
+}

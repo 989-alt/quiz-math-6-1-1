@@ -1,0 +1,35 @@
+{
+  "batch": "3b-monsters",
+  "max_attempts": 3,
+  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png"],
+  "note": "몬스터 패밀리 시트 3장 (비행 4 + 야수 4 + 정예 3). 슬라임 4종(3A)과 합쳐 총 15종.",
+  "jobs": [
+    {
+      "id": "flying_family",
+      "kind": "family",
+      "cells": 4,
+      "native": 48,
+      "aspect_ratio": "16:9",
+      "outputs": ["monster_bat.png", "monster_wasp.png", "monster_ghost.png", "monster_crow.png"],
+      "prompt": "Pixel art monster family sheet: exactly 4 flying monsters arranged in a single horizontal row, 4 equal-width columns, one monster per column, generous empty magenta space between and around them, no drop shadows on the background. All four drawn in identical style and size, hovering in the air: (1) a round purple bat with wide spread wings, big ears and tiny fangs, (2) a chubby yellow-and-black striped wasp with round translucent-looking wings drawn in solid pixels and a small stinger, (3) a pale mint-green ghost with stubby little arms and a wavy hem at the bottom of its body - the ghost has a rounded flat-topped head, NOT teardrop-shaped, no pointed drip tip on top and no tongue sticking out, (4) a black crow with folded wings, an orange beak and small angry eyes. Cute simple big eyes on each monster."
+    },
+    {
+      "id": "beast_family",
+      "kind": "family",
+      "cells": 4,
+      "native": 48,
+      "aspect_ratio": "16:9",
+      "outputs": ["monster_boar.png", "monster_wolf.png", "monster_badger.png", "monster_fox.png"],
+      "prompt": "Pixel art monster family sheet: exactly 4 beast monsters arranged in a single horizontal row, 4 equal-width columns, one beast per column, generous empty magenta space between and around them, no drop shadows on the background. All four drawn in identical style and size, standing on four legs in side view facing left, feet on the same invisible ground line: (1) a stocky brown wild boar with small white tusks and a bristly mane, (2) a grey wolf with a bushy tail and pointed ears, (3) a black-and-white badger with a striped face and short legs, (4) an orange fox with a white-tipped fluffy tail and a sly smile. Cute simple eyes on each beast."
+    },
+    {
+      "id": "elite_family",
+      "kind": "family",
+      "cells": 3,
+      "native": 48,
+      "aspect_ratio": "16:9",
+      "outputs": ["monster_elite_knight.png", "monster_elite_mage.png", "monster_elite_crowned.png"],
+      "prompt": "Pixel art monster family sheet: exactly 3 elite monsters arranged in a single horizontal row, 3 equal-width columns, one monster per column, generous empty magenta space between and around them, no drop shadows on the background. All three drawn in identical style and size, standing upright facing the viewer, feet on the same invisible ground line: (1) a small green goblin knight wearing grey steel plate armor and a horned helmet, holding a tiny round shield, (2) a purple imp mage wearing a dark hooded robe, holding a small wooden staff topped with a glowing teal orb, (3) a red demon imp wearing a small golden crown, with tiny bat wings and a pointed tail. Cute villainous big eyes on each."
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "batch": "3b-collect",
+  "max_attempts": 3,
+  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png"],
+  "note": "수집물: XP젬 소/중/대(16/20/24) + 회복 하트/포션(24) + 자석 아이템(24). natives로 산출물별 native 분리.",
+  "jobs": [
+    {
+      "id": "collect_family",
+      "kind": "family",
+      "cells": 6,
+      "native": 24,
+      "natives": [16, 20, 24, 24, 24, 24],
+      "aspect_ratio": "16:9",
+      "outputs": ["xp_gem_small.png", "xp_gem_mid.png", "xp_gem_large.png", "heal_heart.png", "heal_potion.png", "magnet_item.png"],
+      "prompt": "Pixel art collectible item sheet: exactly 6 collectible item sprites arranged in a single horizontal row, 6 equal-width columns, one item per column, generous empty magenta space between and around them, no drop shadows on the background. All drawn in identical style at the same drawn size: (1) a cyan XP gem crystal shaped like a classic faceted diamond with a bright top facet, (2) the exact same cyan faceted gem again, (3) the exact same cyan faceted gem a third time, (4) a shiny red heart with a white glossy highlight on the upper left, (5) a small round glass potion bottle with a brown cork stopper, filled with pink liquid and a glossy highlight, (6) a red U-shaped horseshoe magnet with silver-white tips and a tiny golden star badge on its curve."
+    }
+  ]
+}

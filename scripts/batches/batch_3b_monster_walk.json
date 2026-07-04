@@ -1,0 +1,158 @@
+{
+  "batch": "3b-monster-walk",
+  "max_attempts": 3,
+  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png"],
+  "note": "몬스터 15종 walk 2f 스트립. identity_files=해당 몬스터 정지 스프라이트(확대 업로드)로 정체성 유지.",
+  "jobs": [
+    {
+      "id": "slime_green_walk",
+      "kind": "strip",
+      "cells": 2,
+      "native": 48,
+      "aspect_ratio": "16:9",
+      "outputs": ["slime_green_walk_strip.png"],
+      "identity_files": ["slime_green.png"],
+      "prompt": "Pixel art animation sprite strip: exactly 2 frames arranged in a single horizontal row (1x2 grid), 2 equal-width columns, one monster per column, generous empty magenta space between and around the columns, no drop shadows on the background. The SAME monster appears in both frames at the same size: the green slime with a happy face shown in the small reference sprite - a rounded blob with a flat-ish top and a tiny sprout antenna, NOT teardrop-shaped, no pointed drip tip on top, big cute eyes and a glossy highlight on the upper left. The 2 frames form a bouncing hop cycle: (1) squashed slightly wide and flat against the ground, (2) stretched slightly tall mid-hop. Bottom of the slime on the same invisible ground line in both frames."
+    },
+    {
+      "id": "slime_blue_walk",
+      "kind": "strip",
+      "cells": 2,
+      "native": 48,
+      "aspect_ratio": "16:9",
+      "outputs": ["slime_blue_walk_strip.png"],
+      "identity_files": ["slime_blue.png"],
+      "prompt": "Pixel art animation sprite strip: exactly 2 frames arranged in a single horizontal row (1x2 grid), 2 equal-width columns, one monster per column, generous empty magenta space between and around the columns, no drop shadows on the background. The SAME monster appears in both frames at the same size: the sky-blue slime with a calm face shown in the small reference sprite - a rounded blob with a flat-ish top and a tiny sprout antenna, NOT teardrop-shaped, no pointed drip tip on top, big cute calm eyes and a glossy highlight on the upper left. The 2 frames form a bouncing hop cycle: (1) squashed slightly wide and flat against the ground, (2) stretched slightly tall mid-hop. Bottom of the slime on the same invisible ground line in both frames."
+    },
+    {
+      "id": "slime_red_walk",
+      "kind": "strip",
+      "cells": 2,
+      "native": 48,
+      "aspect_ratio": "16:9",
+      "outputs": ["slime_red_walk_strip.png"],
+      "identity_files": ["slime_red.png"],
+      "prompt": "Pixel art animation sprite strip: exactly 2 frames arranged in a single horizontal row (1x2 grid), 2 equal-width columns, one monster per column, generous empty magenta space between and around the columns, no drop shadows on the background. The SAME monster appears in both frames at the same size: the red slime with tiny angry eyebrows shown in the small reference sprite - a rounded blob with a flat-ish top and a tiny sprout antenna, NOT teardrop-shaped, no pointed drip tip on top, big cute angry eyes and a glossy highlight on the upper left. The 2 frames form a bouncing hop cycle: (1) squashed slightly wide and flat against the ground, (2) stretched slightly tall mid-hop. Bottom of the slime on the same invisible ground line in both frames."
+    },
+    {
+      "id": "slime_elite_walk",
+      "kind": "strip",
+      "cells": 2,
+      "native": 48,
+      "aspect_ratio": "16:9",
+      "outputs": ["slime_elite_walk_strip.png"],
+      "identity_files": ["slime_elite.png"],
+      "prompt": "Pixel art animation sprite strip: exactly 2 frames arranged in a single horizontal row (1x2 grid), 2 equal-width columns, one monster per column, generous empty magenta space between and around the columns, no drop shadows on the background. The SAME monster appears in both frames at the same size: the purple elite slime wearing a small golden crown shown in the small reference sprite - a rounded blob with a flat-ish top and a tiny sprout antenna, NOT teardrop-shaped, no pointed drip tip on top, big cute eyes and a glossy highlight on the upper left. The 2 frames form a bouncing hop cycle: (1) squashed slightly wide and flat against the ground with the crown tilted slightly, (2) stretched slightly tall mid-hop with the crown level. Bottom of the slime on the same invisible ground line in both frames."
+    },
+    {
+      "id": "bat_walk",
+      "kind": "strip",
+      "cells": 2,
+      "native": 48,
+      "aspect_ratio": "16:9",
+      "outputs": ["monster_bat_walk_strip.png"],
+      "identity_files": ["monster_bat.png"],
+      "prompt": "Pixel art animation sprite strip: exactly 2 frames arranged in a single horizontal row (1x2 grid), 2 equal-width columns, one monster per column, generous empty magenta space between and around the columns, no drop shadows on the background. The SAME monster appears in both frames at the same size: the round purple bat with big ears and tiny fangs shown in the small reference sprite. The 2 frames form a wing-flap flying cycle: (1) wings raised up high, (2) wings swept down low. Body at the same height in both frames."
+    },
+    {
+      "id": "wasp_walk",
+      "kind": "strip",
+      "cells": 2,
+      "native": 48,
+      "aspect_ratio": "16:9",
+      "outputs": ["monster_wasp_walk_strip.png"],
+      "identity_files": ["monster_wasp.png"],
+      "prompt": "Pixel art animation sprite strip: exactly 2 frames arranged in a single horizontal row (1x2 grid), 2 equal-width columns, one monster per column, generous empty magenta space between and around the columns, no drop shadows on the background. The SAME monster appears in both frames at the same size: the chubby yellow-and-black striped wasp with round wings and a small stinger shown in the small reference sprite. The 2 frames form a hovering wing-buzz cycle: (1) wings angled upward, (2) wings angled downward with the body dipped very slightly. Body at almost the same height in both frames."
+    },
+    {
+      "id": "ghost_walk",
+      "kind": "strip",
+      "cells": 2,
+      "native": 48,
+      "aspect_ratio": "16:9",
+      "outputs": ["monster_ghost_walk_strip.png"],
+      "identity_files": ["monster_ghost.png"],
+      "prompt": "Pixel art animation sprite strip: exactly 2 frames arranged in a single horizontal row (1x2 grid), 2 equal-width columns, one monster per column, generous empty magenta space between and around the columns, no drop shadows on the background. The SAME monster appears in both frames at the same size: the pale mint-green ghost with stubby arms and a wavy hem shown in the small reference sprite - rounded flat-topped head, NOT teardrop-shaped, no pointed drip tip on top, no tongue. The 2 frames form a floating drift cycle: (1) wavy hem swaying to the left, (2) wavy hem swaying to the right. Body at the same height in both frames."
+    },
+    {
+      "id": "crow_walk",
+      "kind": "strip",
+      "cells": 2,
+      "native": 48,
+      "aspect_ratio": "16:9",
+      "outputs": ["monster_crow_walk_strip.png"],
+      "identity_files": ["monster_crow.png"],
+      "prompt": "Pixel art animation sprite strip: exactly 2 frames arranged in a single horizontal row (1x2 grid), 2 equal-width columns, one monster per column, generous empty magenta space between and around the columns, no drop shadows on the background. The SAME monster appears in both frames at the same size: the black crow with an orange beak and small angry eyes shown in the small reference sprite. The 2 frames form a flying wing-flap cycle: (1) wings spread and raised up, (2) wings swept down. Body at the same height in both frames."
+    },
+    {
+      "id": "boar_walk",
+      "kind": "strip",
+      "cells": 2,
+      "native": 48,
+      "aspect_ratio": "16:9",
+      "outputs": ["monster_boar_walk_strip.png"],
+      "identity_files": ["monster_boar.png"],
+      "prompt": "Pixel art animation sprite strip: exactly 2 frames arranged in a single horizontal row (1x2 grid), 2 equal-width columns, one monster per column, generous empty magenta space between and around the columns, no drop shadows on the background. The SAME monster appears in both frames at the same size: the stocky brown wild boar with small white tusks and a bristly mane shown in the small reference sprite, in side view facing left. The 2 frames form a four-legged trotting cycle: (1) front-left and back-right legs stepping forward, (2) front-right and back-left legs stepping forward. Feet on the same invisible ground line in both frames."
+    },
+    {
+      "id": "wolf_walk",
+      "kind": "strip",
+      "cells": 2,
+      "native": 48,
+      "aspect_ratio": "16:9",
+      "outputs": ["monster_wolf_walk_strip.png"],
+      "identity_files": ["monster_wolf.png"],
+      "prompt": "Pixel art animation sprite strip: exactly 2 frames arranged in a single horizontal row (1x2 grid), 2 equal-width columns, one monster per column, generous empty magenta space between and around the columns, no drop shadows on the background. The SAME monster appears in both frames at the same size: the grey wolf with a bushy tail and pointed ears shown in the small reference sprite, in side view facing left. The 2 frames form a four-legged running cycle: (1) legs gathered under the body, (2) legs stretched out in stride. Feet on the same invisible ground line in both frames."
+    },
+    {
+      "id": "badger_walk",
+      "kind": "strip",
+      "cells": 2,
+      "native": 48,
+      "aspect_ratio": "16:9",
+      "outputs": ["monster_badger_walk_strip.png"],
+      "identity_files": ["monster_badger.png"],
+      "prompt": "Pixel art animation sprite strip: exactly 2 frames arranged in a single horizontal row (1x2 grid), 2 equal-width columns, one monster per column, generous empty magenta space between and around the columns, no drop shadows on the background. The SAME monster appears in both frames at the same size: the black-and-white badger with a striped face and short legs shown in the small reference sprite, in side view facing left. The 2 frames form a waddling walk cycle: (1) front-left and back-right legs forward, (2) front-right and back-left legs forward. Feet on the same invisible ground line in both frames."
+    },
+    {
+      "id": "fox_walk",
+      "kind": "strip",
+      "cells": 2,
+      "native": 48,
+      "aspect_ratio": "16:9",
+      "outputs": ["monster_fox_walk_strip.png"],
+      "identity_files": ["monster_fox.png"],
+      "prompt": "Pixel art animation sprite strip: exactly 2 frames arranged in a single horizontal row (1x2 grid), 2 equal-width columns, one monster per column, generous empty magenta space between and around the columns, no drop shadows on the background. The SAME monster appears in both frames at the same size: the orange fox with a white-tipped fluffy tail and a sly smile shown in the small reference sprite, in side view facing left. The 2 frames form a light trotting cycle: (1) front-left and back-right legs stepping forward with the tail raised, (2) front-right and back-left legs stepping forward with the tail level. Feet on the same invisible ground line in both frames."
+    },
+    {
+      "id": "elite_knight_walk",
+      "kind": "strip",
+      "cells": 2,
+      "native": 48,
+      "aspect_ratio": "16:9",
+      "outputs": ["monster_elite_knight_walk_strip.png"],
+      "identity_files": ["monster_elite_knight.png"],
+      "prompt": "Pixel art animation sprite strip: exactly 2 frames arranged in a single horizontal row (1x2 grid), 2 equal-width columns, one monster per column, generous empty magenta space between and around the columns, no drop shadows on the background. The SAME monster appears in both frames at the same size: the small green goblin knight in grey steel plate armor with a horned helmet and a tiny round shield shown in the small reference sprite, facing the viewer. The 2 frames form a marching walk cycle: (1) left foot stepping forward, (2) right foot stepping forward. Feet on the same invisible ground line in both frames."
+    },
+    {
+      "id": "elite_mage_walk",
+      "kind": "strip",
+      "cells": 2,
+      "native": 48,
+      "aspect_ratio": "16:9",
+      "outputs": ["monster_elite_mage_walk_strip.png"],
+      "identity_files": ["monster_elite_mage.png"],
+      "prompt": "Pixel art animation sprite strip: exactly 2 frames arranged in a single horizontal row (1x2 grid), 2 equal-width columns, one monster per column, generous empty magenta space between and around the columns, no drop shadows on the background. The SAME monster appears in both frames at the same size: the purple imp mage in a dark hooded robe holding a wooden staff topped with a glowing teal orb shown in the small reference sprite, facing the viewer. The 2 frames form a shuffling walk cycle: (1) robe hem swaying left with the staff planted, (2) robe hem swaying right with the staff lifted slightly. Bottom of the robe on the same invisible ground line in both frames."
+    },
+    {
+      "id": "elite_crowned_walk",
+      "kind": "strip",
+      "cells": 2,
+      "native": 48,
+      "aspect_ratio": "16:9",
+      "outputs": ["monster_elite_crowned_walk_strip.png"],
+      "identity_files": ["monster_elite_crowned.png"],
+      "prompt": "Pixel art animation sprite strip: exactly 2 frames arranged in a single horizontal row (1x2 grid), 2 equal-width columns, one monster per column, generous empty magenta space between and around the columns, no drop shadows on the background. The SAME monster appears in both frames at the same size: the red demon imp wearing a small golden crown, with tiny bat wings and a pointed tail, shown in the small reference sprite, facing the viewer. The 2 frames form a strutting walk cycle: (1) left foot stepping forward with wings raised, (2) right foot stepping forward with wings lowered. Feet on the same invisible ground line in both frames."
+    }
+  ]
+}

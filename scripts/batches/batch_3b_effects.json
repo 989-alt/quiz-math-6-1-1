@@ -1,0 +1,107 @@
+{
+  "batch": "3b-effects",
+  "max_attempts": 3,
+  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png"],
+  "note": "이펙트 시트 9장 (frame native 64). qa_skip=[outline,alignment]: 이펙트는 글로우/발광 특성상 1px 다크 아웃라인 기준이 부적합하고, 발이 없어 baseline 정렬 대신 align=center 세로 중앙 정렬을 쓰므로 alignment 검사도 면제. 팔레트/투명도/밀도 검사는 유지.",
+  "jobs": [
+    {
+      "id": "fx_hit_spark_small",
+      "kind": "strip",
+      "cells": 4,
+      "native": 64,
+      "align": "center",
+      "qa_skip": ["outline", "alignment"],
+      "aspect_ratio": "16:9",
+      "outputs": ["fx_hit_spark_small_strip.png"],
+      "prompt": "Pixel art effect animation sprite strip: exactly 4 frames arranged in a single horizontal row (1x4 grid), 4 equal-width columns, one effect drawing centered in each column, generous empty magenta space between and around the columns. Everything drawn as hard-edged opaque pixel clusters, no soft glow, no blur, no gradient haze. The 4 frames animate a small white-and-yellow impact spark: (1) a tiny bright cross flash, (2) the spark expanded into a four-pointed star shape, (3) the star breaking apart into small radiating shards, (4) only a few tiny scattered dots remaining, drawn smaller and dimmer."
+    },
+    {
+      "id": "fx_hit_spark_big",
+      "kind": "strip",
+      "cells": 4,
+      "native": 64,
+      "align": "center",
+      "qa_skip": ["outline", "alignment"],
+      "aspect_ratio": "16:9",
+      "outputs": ["fx_hit_spark_big_strip.png"],
+      "prompt": "Pixel art effect animation sprite strip: exactly 4 frames arranged in a single horizontal row (1x4 grid), 4 equal-width columns, one effect drawing centered in each column, generous empty magenta space between and around the columns. Everything drawn as hard-edged opaque pixel clusters, no soft glow, no blur, no gradient haze. The 4 frames animate a big orange-and-white impact burst: (1) a bright compact starburst flash, (2) the burst expanded into a large jagged eight-pointed explosion of white and orange, (3) the burst breaking into thick radiating orange shards with a hollow center, (4) only a few small scattered embers remaining, drawn smaller and dimmer."
+    },
+    {
+      "id": "fx_death_poof",
+      "kind": "strip",
+      "cells": 6,
+      "native": 64,
+      "align": "center",
+      "qa_skip": ["outline", "alignment"],
+      "aspect_ratio": "16:9",
+      "outputs": ["fx_death_poof_strip.png"],
+      "prompt": "Pixel art effect animation sprite strip: exactly 6 frames arranged in a single horizontal row (1x6 grid), 6 equal-width columns, one effect drawing centered in each column, generous empty magenta space between and around the columns. Everything drawn as hard-edged opaque pixel clusters, no soft glow, no blur, no gradient haze. The 6 frames animate a cartoon dust poof cloud from a defeated monster: (1) a small round white puff appears, (2) the puff grows into a bigger bumpy cloud, (3) a large round white-and-grey cumulus cloud at full size, (4) the cloud splitting into several rounded cloudlets drifting outward, (5) small separated cloudlets shrinking, (6) only a few tiny grey dots remaining."
+    },
+    {
+      "id": "fx_explosion",
+      "kind": "strip",
+      "cells": 6,
+      "native": 64,
+      "align": "center",
+      "qa_skip": ["outline", "alignment"],
+      "aspect_ratio": "16:9",
+      "outputs": ["fx_explosion_strip.png"],
+      "prompt": "Pixel art effect animation sprite strip: exactly 6 frames arranged in a single horizontal row (1x6 grid), 6 equal-width columns, one effect drawing centered in each column, generous empty magenta space between and around the columns. Everything drawn as hard-edged opaque pixel clusters, no soft glow, no blur, no gradient haze. The 6 frames animate a cartoon explosion: (1) a small bright yellow-white flash, (2) a growing orange fireball with a yellow core, (3) a big round explosion at full size with red outer flames, orange middle and yellow-white core, (4) the fireball breaking into a ring of fire chunks with dark grey smoke edges, (5) scattered flame chunks and smoke puffs drifting outward, (6) only a few small dark smoke dots and embers remaining."
+    },
+    {
+      "id": "fx_splash",
+      "kind": "strip",
+      "cells": 4,
+      "native": 64,
+      "align": "center",
+      "qa_skip": ["outline", "alignment"],
+      "aspect_ratio": "16:9",
+      "outputs": ["fx_splash_strip.png"],
+      "prompt": "Pixel art effect animation sprite strip: exactly 4 frames arranged in a single horizontal row (1x4 grid), 4 equal-width columns, one effect drawing centered in each column, generous empty magenta space between and around the columns. Everything drawn as hard-edged opaque pixel clusters, no soft glow, no blur, no gradient haze. The 4 frames animate a blue water splash: (1) a small blue droplet impact dot, (2) a rising crown-shaped splash with white foam tips, (3) droplets flying outward in an arc with a hollow center, (4) small flat ripple rings and a few falling droplets."
+    },
+    {
+      "id": "fx_burn",
+      "kind": "strip",
+      "cells": 4,
+      "native": 64,
+      "align": "center",
+      "qa_skip": ["outline", "alignment"],
+      "aspect_ratio": "16:9",
+      "outputs": ["fx_burn_strip.png"],
+      "prompt": "Pixel art effect animation sprite strip: exactly 4 frames arranged in a single horizontal row (1x4 grid), 4 equal-width columns, one effect drawing centered in each column, generous empty magenta space between and around the columns. Everything drawn as hard-edged opaque pixel clusters, no soft glow, no blur, no gradient haze. The 4 frames animate a looping small campfire-like flame flicker, all four the same size: (1) a small orange flame with a yellow core leaning slightly left, (2) the flame standing upright with two tongue tips, (3) the flame leaning slightly right with one tall tip, (4) the flame upright again with a wider yellow core. Same flame in every frame, only the tongue shapes change."
+    },
+    {
+      "id": "fx_levelup",
+      "kind": "strip",
+      "cells": 8,
+      "native": 64,
+      "align": "center",
+      "qa_skip": ["outline", "alignment"],
+      "aspect_ratio": "16:9",
+      "outputs": ["fx_levelup_strip.png"],
+      "prompt": "Pixel art effect animation sprite strip: exactly 8 frames arranged in a single horizontal row (1x8 grid), 8 equal-width columns, one effect drawing centered in each column, generous empty magenta space between and around the columns. Everything drawn as hard-edged opaque pixel clusters, no soft glow, no blur, no gradient haze. The 8 frames animate a golden level-up celebration burst: (1) a single small golden sparkle, (2) two golden sparkles with a thin rising column of light drawn as solid yellow pixels, (3) the column taller with small golden stars appearing, (4) a full pillar of golden stars and sparkles at maximum height, (5) the pillar bursting outward into a fountain of small golden stars, (6) stars spreading wider and starting to fall, (7) a few falling stars and sparkles, (8) two tiny dim sparkles remaining."
+    },
+    {
+      "id": "fx_heal",
+      "kind": "strip",
+      "cells": 4,
+      "native": 64,
+      "align": "center",
+      "qa_skip": ["outline", "alignment"],
+      "aspect_ratio": "16:9",
+      "outputs": ["fx_heal_strip.png"],
+      "prompt": "Pixel art effect animation sprite strip: exactly 4 frames arranged in a single horizontal row (1x4 grid), 4 equal-width columns, one effect drawing centered in each column, generous empty magenta space between and around the columns. Everything drawn as hard-edged opaque pixel clusters, no soft glow, no blur, no gradient haze. The 4 frames animate a green healing sparkle: (1) two small green plus-shaped sparkles and a tiny leaf near the bottom, (2) more green sparkles and leaves rising higher, (3) a full swirl of bright green sparkles, leaves and one small pink heart at maximum brightness, (4) a few fading green dots drifting up."
+    },
+    {
+      "id": "fx_collect",
+      "kind": "strip",
+      "cells": 3,
+      "native": 64,
+      "align": "center",
+      "qa_skip": ["outline", "alignment"],
+      "aspect_ratio": "16:9",
+      "outputs": ["fx_collect_strip.png"],
+      "prompt": "Pixel art effect animation sprite strip: exactly 3 frames arranged in a single horizontal row (1x3 grid), 3 equal-width columns, one effect drawing centered in each column, generous empty magenta space between and around the columns. Everything drawn as hard-edged opaque pixel clusters, no soft glow, no blur, no gradient haze. The 3 frames animate a small cyan pickup twinkle: (1) a small cyan diamond-shaped twinkle, (2) a bright four-pointed cyan-and-white twinkle at full size, (3) four tiny separating cyan dots fading out."
+    }
+  ]
+}

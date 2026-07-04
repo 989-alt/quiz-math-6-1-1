@@ -1,0 +1,27 @@
+{
+  "batch": "3b-ui",
+  "max_attempts": 3,
+  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png"],
+  "note": "홈 키아트(16:9 1K 그대로, 다운스케일 없음) + 보스 경고 배너(글자 없음). keyart qa_skip 사유: 풀블리드 1K 일러스트라 §2.2 캐릭터 기준(도트밀도/아웃라인/투명도/팔레트 48색)이 전부 부적합 — 스타일 정합은 앵커 i2i + 육안 리뷰(콘택트시트)로 확인. style_clause 오버라이드: 풀 장면이라 마젠타/단일 피사체 조항 제거.",
+  "jobs": [
+    {
+      "id": "keyart_home",
+      "kind": "image",
+      "qa_skip": ["density", "palette", "outline", "transparency", "alignment"],
+      "aspect_ratio": "16:9",
+      "outputs": ["keyart_home.png"],
+      "identity_files": ["hero_walk_strip.png"],
+      "style_clause": "16-bit SNES-era pixel art, crisp pixel grid, vibrant colors matching the reference images, no letters no words no numbers.",
+      "prompt": "Pixel art key visual for a cute survival quiz game home screen, full-bleed 16:9 scene: the brave elementary school student adventurer boy hero from the small reference sprite strip (messy brown hair, small flowing red cape, white short-sleeve shirt, blue shorts, red sneakers) standing heroically on a green meadow slightly left of center, holding a giant yellow pencil like a sword. A horde of cute monsters approaches from the right: a green slime and a blue slime (rounded blobs with flat-ish tops, NOT teardrop-shaped, no pointed drip tips), a purple bat flying, an orange fox and a green goblin knight. Dramatic warm sunset sky with big clouds behind them; keep the upper third as open sky with no objects (space reserved for a game logo, but do not draw any logo or any text)."
+    },
+    {
+      "id": "boss_banner",
+      "kind": "single",
+      "cells": 1,
+      "native": 128,
+      "aspect_ratio": "16:9",
+      "outputs": ["boss_warning_banner.png"],
+      "prompt": "Single pixel art decorative UI banner frame: one wide horizontal ornate warning banner made of dark iron plates with gold trim, red ribbon accents wrapping both ends and small decorative spikes along the top edge, with a completely empty blank dark center panel (absolutely no letters, no numbers, no symbols, no icons in the panel). Just the one banner frame object and nothing else, no characters, no drop shadow on the background."
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "batch": "3b-boss",
+  "max_attempts": 3,
+  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png"],
+  "note": "보스 5종. kind=multi: 보스당 1회 생성(1x5 시트)에서 idle 2f + walk 2f + 텔레그래프 1f로 분배 — 애니메이션 간 정체성/크기 일관성 보장.",
+  "jobs": [
+    {
+      "id": "boss_slime_king",
+      "kind": "multi",
+      "cells": 5,
+      "native": 128,
+      "aspect_ratio": "16:9",
+      "parts": [
+        {"id": "idle", "cells": [0, 1], "output": "boss_slime_king_idle_strip.png"},
+        {"id": "walk", "cells": [2, 3], "output": "boss_slime_king_walk_strip.png"},
+        {"id": "telegraph", "cells": [4], "output": "boss_slime_king_telegraph.png"}
+      ],
+      "prompt": "Pixel art boss sprite sheet: exactly 5 poses of the SAME huge boss monster arranged in a single horizontal row (1x5 grid), 5 equal-width columns, one full-body pose per column, generous empty magenta space between and around the columns, no drop shadows on the background. The boss: a colossal royal green slime king wearing a large golden crown studded with red gems, a rounded massive blob with a flat-ish top, NOT teardrop-shaped, no pointed drip tip on top, a huge smug grin, big cute eyes and a glossy highlight on the upper left of its body. The 5 columns show, same size in every column: (1) idle sitting pose, (2) the same idle pose with its body slightly taller as it breathes, (3) hopping pose squashed wide against the ground, (4) hopping pose stretched tall, (5) attack windup pose puffing up with cheeks inflated, eyes glowing bright yellow and the crown tilted back. Bottom of the slime on the same invisible ground line in every column."
+    },
+    {
+      "id": "boss_orc_chief",
+      "kind": "multi",
+      "cells": 5,
+      "native": 128,
+      "aspect_ratio": "16:9",
+      "parts": [
+        {"id": "idle", "cells": [0, 1], "output": "boss_orc_chief_idle_strip.png"},
+        {"id": "walk", "cells": [2, 3], "output": "boss_orc_chief_walk_strip.png"},
+        {"id": "telegraph", "cells": [4], "output": "boss_orc_chief_telegraph.png"}
+      ],
+      "prompt": "Pixel art boss sprite sheet: exactly 5 poses of the SAME huge boss monster arranged in a single horizontal row (1x5 grid), 5 equal-width columns, one full-body pose per column, generous empty magenta space between and around the columns, no drop shadows on the background. The boss: a hulking green orc chieftain similar to the big brute in the reference lineup, wearing a brown fur pelt, iron shoulder pauldrons and a tusked jaw, carrying a giant bone club. The 5 columns show, same size in every column: (1) idle standing pose with the club resting on his shoulder, (2) the same idle pose with his chest puffed as he breathes, (3) stomping walk with left leg forward, (4) stomping walk with right leg forward, (5) attack windup pose with the bone club raised high overhead with both hands and mouth open in a roar. Feet on the same invisible ground line in every column."
+    },
+    {
+      "id": "boss_ghost_lord",
+      "kind": "multi",
+      "cells": 5,
+      "native": 128,
+      "aspect_ratio": "16:9",
+      "parts": [
+        {"id": "idle", "cells": [0, 1], "output": "boss_ghost_lord_idle_strip.png"},
+        {"id": "walk", "cells": [2, 3], "output": "boss_ghost_lord_walk_strip.png"},
+        {"id": "telegraph", "cells": [4], "output": "boss_ghost_lord_telegraph.png"}
+      ],
+      "prompt": "Pixel art boss sprite sheet: exactly 5 poses of the SAME huge boss monster arranged in a single horizontal row (1x5 grid), 5 equal-width columns, one full-body pose per column, generous empty magenta space between and around the columns, no drop shadows on the background. The boss: a huge regal ghost lord wearing tattered violet royal robes and a spectral silver crown, with a rounded flat-topped head, NOT teardrop-shaped, no pointed drip tip on top, glowing pale blue eyes, stubby arms and a wavy misty hem instead of legs. The 5 columns show, same size in every column: (1) idle floating pose with arms folded, (2) the same idle pose drifting very slightly higher, (3) gliding pose with the hem swaying left, (4) gliding pose with the hem swaying right, (5) attack windup pose with both arms spread wide and eyes flaring bright cyan. Hem bottom at the same height in every column."
+    },
+    {
+      "id": "boss_giant_bat",
+      "kind": "multi",
+      "cells": 5,
+      "native": 128,
+      "aspect_ratio": "16:9",
+      "parts": [
+        {"id": "idle", "cells": [0, 1], "output": "boss_giant_bat_idle_strip.png"},
+        {"id": "walk", "cells": [2, 3], "output": "boss_giant_bat_walk_strip.png"},
+        {"id": "telegraph", "cells": [4], "output": "boss_giant_bat_telegraph.png"}
+      ],
+      "prompt": "Pixel art boss sprite sheet: exactly 5 poses of the SAME huge boss monster arranged in a single horizontal row (1x5 grid), 5 equal-width columns, one full-body pose per column, each pose drawn NARROW and compact so it fits well inside its own column with wide empty magenta gaps between all columns, no drop shadows on the background. The boss: a giant crimson bat with a fluffy grey chest, big ears, small fangs and fierce yellow eyes, its wings always held folded close to its body or raised vertically, never stretched out sideways. The 5 columns show, same size in every column: (1) idle hovering pose with wings folded like a cloak around its body, (2) the same hovering pose with the wing tips lifted slightly as it breathes, (3) flying pose with both wings raised straight up above its head, (4) flying pose with both wings swept straight down below its body, (5) attack windup pose with wings raised high and folded forward and mouth open in a screech showing fangs. Body at the same height in every column."
+    },
+    {
+      "id": "boss_golem",
+      "kind": "multi",
+      "cells": 5,
+      "native": 128,
+      "aspect_ratio": "16:9",
+      "parts": [
+        {"id": "idle", "cells": [0, 1], "output": "boss_golem_idle_strip.png"},
+        {"id": "walk", "cells": [2, 3], "output": "boss_golem_walk_strip.png"},
+        {"id": "telegraph", "cells": [4], "output": "boss_golem_telegraph.png"}
+      ],
+      "prompt": "Pixel art boss sprite sheet: exactly 5 poses of the SAME huge boss monster arranged in a single horizontal row (1x5 grid), 5 equal-width columns, one full-body pose per column, generous empty magenta space between and around the columns, no drop shadows on the background. The boss: a massive stone golem built from grey mossy boulders, with thick rocky arms, a small head set low between huge shoulders, and a glowing amber core in the center of its chest. The 5 columns show, same size in every column: (1) idle standing pose with fists at its sides, (2) the same idle pose with the chest core pulsing brighter, (3) heavy stomping walk with left leg forward, (4) heavy stomping walk with right leg forward, (5) attack windup pose with both boulder fists raised high overhead and the chest core blazing bright orange. Feet on the same invisible ground line in every column."
+    }
+  ]
+}

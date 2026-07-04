@@ -1,0 +1,161 @@
+{
+  "batch": "3b-weapons",
+  "max_attempts": 3,
+  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png"],
+  "note": "무기 인게임 스프라이트 17종 (pencil/banana/star는 3A 완료). 단일 잡으로 유지해 재시도 격리.",
+  "jobs": [
+    {
+      "id": "weapon_acorn",
+      "kind": "single",
+      "cells": 1,
+      "native": 32,
+      "aspect_ratio": "1:1",
+      "outputs": ["weapon_acorn.png"],
+      "prompt": "Single pixel art in-game weapon sprite: one brown acorn with a darker cross-hatched cap and a tiny stem, small glossy highlight on the upper left, used as a thrown projectile. Just the one acorn object and nothing else, no hands, no character, no drop shadow on the background."
+    },
+    {
+      "id": "weapon_paper_plane",
+      "kind": "single",
+      "cells": 1,
+      "native": 40,
+      "aspect_ratio": "1:1",
+      "outputs": ["weapon_paper_plane.png"],
+      "prompt": "Single pixel art in-game weapon sprite: one folded white paper airplane with crisp grey fold lines, drawn in side view pointing to the upper right as a gliding projectile. Just the one paper plane object and nothing else, no hands, no character, no drop shadow on the background."
+    },
+    {
+      "id": "weapon_marble",
+      "kind": "single",
+      "cells": 1,
+      "native": 32,
+      "aspect_ratio": "1:1",
+      "outputs": ["weapon_marble.png"],
+      "prompt": "Single pixel art in-game weapon sprite: one round glass marble with a blue-and-teal swirl inside and a glossy highlight on the upper left, used as a bouncing projectile. Just the one marble object and nothing else, no hands, no character, no drop shadow on the background."
+    },
+    {
+      "id": "weapon_snowball",
+      "kind": "single",
+      "cells": 1,
+      "native": 32,
+      "aspect_ratio": "1:1",
+      "outputs": ["weapon_snowball.png"],
+      "prompt": "Single pixel art in-game weapon sprite: one round white snowball with pale blue shading on the lower right and a few small snow lumps on its surface, used as a thrown projectile. Just the one snowball object and nothing else, no hands, no character, no drop shadow on the background."
+    },
+    {
+      "id": "weapon_leaf",
+      "kind": "single",
+      "cells": 1,
+      "native": 32,
+      "aspect_ratio": "1:1",
+      "outputs": ["weapon_leaf.png"],
+      "prompt": "Single pixel art in-game weapon sprite: one fresh green leaf with a central vein and a short stem, slightly curved as if spinning on the wind, used as a drifting projectile. Just the one leaf object and nothing else, no hands, no character, no drop shadow on the background."
+    },
+    {
+      "id": "weapon_ruler",
+      "kind": "single",
+      "cells": 1,
+      "native": 48,
+      "aspect_ratio": "1:1",
+      "outputs": ["weapon_ruler.png"],
+      "prompt": "Single pixel art in-game weapon sprite: one yellow wooden school ruler with small plain dark tick marks along one edge (plain marks only, absolutely no digits and no letters), lying diagonally pointing to the upper right, used as a swinging melee weapon. Just the one ruler object and nothing else, no hands, no character, no drop shadow on the background."
+    },
+    {
+      "id": "weapon_eraser",
+      "kind": "single",
+      "cells": 1,
+      "native": 32,
+      "aspect_ratio": "1:1",
+      "outputs": ["weapon_eraser.png"],
+      "prompt": "Single pixel art in-game weapon sprite: one pink rectangular rubber eraser with a plain blue paper sleeve band around its middle (completely plain sleeve, no letters), drawn at a slight diagonal. Just the one eraser object and nothing else, no hands, no character, no drop shadow on the background."
+    },
+    {
+      "id": "weapon_crayon",
+      "kind": "single",
+      "cells": 1,
+      "native": 40,
+      "aspect_ratio": "1:1",
+      "outputs": ["weapon_crayon.png"],
+      "prompt": "Single pixel art in-game weapon sprite: one orange crayon with a plain darker orange paper wrapper (no letters) and a rounded waxy tip, lying diagonally pointing to the upper right, used as a drawing projectile. Just the one crayon object and nothing else, no hands, no character, no drop shadow on the background."
+    },
+    {
+      "id": "weapon_lunch_box",
+      "kind": "single",
+      "cells": 1,
+      "native": 48,
+      "aspect_ratio": "1:1",
+      "outputs": ["weapon_lunch_box.png"],
+      "prompt": "Single pixel art in-game weapon sprite: one closed rectangular lunch box with a silver metal body, a red lid and a small golden latch on the front, drawn at a slight three-quarter angle. Just the one lunch box object and nothing else, no hands, no character, no drop shadow on the background."
+    },
+    {
+      "id": "weapon_bubble",
+      "kind": "single",
+      "cells": 1,
+      "native": 32,
+      "aspect_ratio": "1:1",
+      "outputs": ["weapon_bubble.png"],
+      "prompt": "Single pixel art in-game weapon sprite: one round soap bubble drawn entirely with solid opaque pixels: a pale cyan circle with a thin lighter rim and two white glossy highlights, used as a floating projectile. Just the one bubble object and nothing else, no hands, no character, no drop shadow on the background."
+    },
+    {
+      "id": "weapon_water_balloon",
+      "kind": "single",
+      "cells": 1,
+      "native": 36,
+      "aspect_ratio": "1:1",
+      "outputs": ["weapon_water_balloon.png"],
+      "prompt": "Single pixel art in-game weapon sprite: one plump bright blue water balloon with a small tied knot at the top and a glossy highlight on the upper left, wobbling slightly, used as a thrown splash projectile. Just the one water balloon object and nothing else, no hands, no character, no drop shadow on the background."
+    },
+    {
+      "id": "weapon_hamster",
+      "kind": "single",
+      "cells": 1,
+      "native": 40,
+      "aspect_ratio": "1:1",
+      "outputs": ["weapon_hamster.png"],
+      "prompt": "Single pixel art in-game companion sprite: one chubby round golden hamster curled into a rolling ball shape with tiny ears, closed happy eyes and puffed cheeks. Just the one hamster and nothing else, no hands, no other character, no drop shadow on the background."
+    },
+    {
+      "id": "weapon_butterfly",
+      "kind": "single",
+      "cells": 1,
+      "native": 36,
+      "aspect_ratio": "1:1",
+      "outputs": ["weapon_butterfly.png"],
+      "prompt": "Single pixel art in-game companion sprite: one cute butterfly viewed from above with open pink-and-purple patterned wings, a small dark body and two tiny antennae. Just the one butterfly and nothing else, no hands, no character, no drop shadow on the background."
+    },
+    {
+      "id": "weapon_robot_toy",
+      "kind": "single",
+      "cells": 1,
+      "native": 48,
+      "aspect_ratio": "1:1",
+      "outputs": ["weapon_robot_toy.png"],
+      "prompt": "Single pixel art in-game companion sprite: one small retro wind-up toy robot with a boxy silver body, red arms, square cyan eyes, a tiny antenna on its head and a golden wind-up key on its back, standing facing the viewer. Just the one toy robot and nothing else, no hands, no other character, no drop shadow on the background."
+    },
+    {
+      "id": "weapon_rainbow",
+      "kind": "single",
+      "cells": 1,
+      "native": 48,
+      "aspect_ratio": "1:1",
+      "outputs": ["weapon_rainbow.png"],
+      "prompt": "Single pixel art in-game weapon sprite: one small arched rainbow with clean red, yellow, green and blue pixel bands and a tiny white cloud puff at each end. Just the one rainbow object and nothing else, no hands, no character, no drop shadow on the background."
+    },
+    {
+      "id": "weapon_magnet",
+      "kind": "single",
+      "cells": 1,
+      "native": 40,
+      "aspect_ratio": "1:1",
+      "outputs": ["weapon_magnet.png"],
+      "prompt": "Single pixel art in-game weapon sprite: one red U-shaped horseshoe magnet with silver-white tips, drawn upright with the open ends pointing up. Just the one magnet object and nothing else, no sparks, no hands, no character, no drop shadow on the background."
+    },
+    {
+      "id": "weapon_magnifying_glass",
+      "kind": "single",
+      "cells": 1,
+      "native": 44,
+      "aspect_ratio": "1:1",
+      "outputs": ["weapon_magnifying_glass.png"],
+      "prompt": "Single pixel art in-game weapon sprite: one magnifying glass with a golden round rim, a pale blue glass lens with a diagonal white highlight and a brown handle, lying diagonally with the handle to the lower left. Just the one magnifying glass object and nothing else, no hands, no character, no drop shadow on the background."
+    }
+  ]
+}

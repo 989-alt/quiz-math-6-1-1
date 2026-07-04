@@ -1,0 +1,48 @@
+{
+  "batch": "3b-env",
+  "max_attempts": 3,
+  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png", "B3_pixel_tile.png"],
+  "note": "배경: 심리스 바닥 타일(512, B3 앵커, 생성 후 make_seamless.py로 경계 블렌딩+자동 검증) + 데코 오브젝트 10종 + 그림자 블롭(procedural). ground_tile qa_skip 사유: 도트밀도(native=출력폭 512라 캐릭터 기준 무의미)·아웃라인(풀 텍스처에 실루엣 없음). style_clause 오버라이드: 풀블리드 텍스처라 마젠타 배경/단일 피사체 조항 제거.",
+  "jobs": [
+    {
+      "id": "ground_tile",
+      "kind": "image",
+      "resize_to": 512,
+      "quantize": true,
+      "qa_skip": ["density", "outline"],
+      "aspect_ratio": "1:1",
+      "outputs": ["ground_tile.png"],
+      "style_clause": "16-bit SNES-era pixel art texture, crisp uniform pixel grid, limited palette matching the reference images, no letters no words no numbers.",
+      "prompt": "Seamless top-down pixel art grass ground texture that tiles perfectly, in the exact style and palette of the grass tile reference image: an even meadow of short green grass with subtle darker grass patches, a few tiny wildflowers and small dirt speckles scattered evenly across the whole image. Flat uniform lighting, no landmarks, no rocks, no paths, no large objects, no borders, no vignette, no darkening at the edges; the pattern continues uniformly so the left edge matches the right edge and the top edge matches the bottom edge."
+    },
+    {
+      "id": "deco_a",
+      "kind": "family",
+      "cells": 5,
+      "native": 64,
+      "natives": [64, 48, 48, 80, 48],
+      "aspect_ratio": "16:9",
+      "outputs": ["deco_rock.png", "deco_mushrooms.png", "deco_stump.png", "deco_rune_stone.png", "deco_flower_bush.png"],
+      "prompt": "Pixel art environment decoration sheet: exactly 5 nature objects arranged in a single horizontal row, 5 equal-width columns, one object per column, generous empty magenta space between and around them, no drop shadows on the background. All drawn in identical style, sitting on an invisible ground line, as decorations for a green meadow: (1) a rounded grey boulder with green moss patches on top, (2) a cluster of three red-capped mushrooms with white spots and cream stems, (3) a brown tree stump with visible growth rings on its cut top and a little grass at its base, (4) a tall ancient mossy stone monolith with faint glowing blue abstract geometric carvings (abstract shapes only, absolutely no letters, no runic alphabet), (5) a small green bush dotted with pink flowers."
+    },
+    {
+      "id": "deco_b",
+      "kind": "family",
+      "cells": 5,
+      "native": 64,
+      "natives": [96, 64, 48, 64, 96],
+      "aspect_ratio": "16:9",
+      "outputs": ["deco_fallen_log.png", "deco_crystals.png", "deco_bush.png", "deco_signpost.png", "deco_pond.png"],
+      "prompt": "Pixel art environment decoration sheet: exactly 5 nature objects arranged in a single horizontal row, 5 equal-width columns, one object per column, generous empty magenta space between and around them, no drop shadows on the background. All drawn in identical style, sitting on an invisible ground line, as decorations for a green meadow: (1) a fallen mossy brown log lying horizontally with a hollow end, (2) a cluster of glowing purple crystals of different heights growing from a rocky base, (3) a simple round leafy green bush, (4) a wooden signpost with one completely blank plank arrow pointing right (blank wood, absolutely no letters, no symbols), (5) a small oval blue pond seen from above with lighter ripple rings and a grassy border."
+    },
+    {
+      "id": "shadow_blob",
+      "kind": "procedural",
+      "proc": "soft_shadow",
+      "native": 32,
+      "qa_skip": ["density", "palette", "outline", "transparency", "alignment"],
+      "outputs": ["shadow_blob.png"],
+      "note": "타원 소프트 섀도 — 반투명 알파 그라데이션이 본질이라 §2.2 전 항목과 양립 불가 → 전체 면제. API 미사용(코드 생성)."
+    }
+  ]
+}

@@ -172,20 +172,31 @@ def check_alignment(arr: np.ndarray, frames: int, frame_w: int) -> tuple[bool, s
 
 
 def run_checks(entry: dict, palette: np.ndarray) -> dict[str, tuple[bool, str]]:
-    """manifest 엔트리 1건 검사. {check_name: (ok, detail)}"""
+    """manifest 엔트리 1건 검사. {check_name: (ok, detail)}
+
+    entry["qa_skip"]에 나열된 체크는 면제한다 (batch config에서 지정, 파이프라인이
+    manifest에 기록). 사유: 이펙트는 글로우/발광 특성상 1px 다크 아웃라인 기준이
+    부적합하고, 홈 키아트·512 바닥 타일 같은 대형 이미지는 캐릭터용 도트밀도·
+    아웃라인 기준이 성립하지 않으며, 소프트 섀도 블롭은 반투명 그라데이션이
+    본질이라 투명도/팔레트 검사와 양립 불가. 나머지 검사는 그대로 수행.
+    """
     path = GEN_DIR / entry["file"]
     if not path.exists():
         return {"exists": (False, f"missing file {path.name}")}
+    skip = set(entry.get("qa_skip") or [])
     arr = np.asarray(Image.open(path).convert("RGBA"))
     frames = entry.get("frames", 1)
     frame_w = entry.get("frame_w", arr.shape[1])
-    results = {
-        "density": check_density(arr, entry["native"], frames, frame_w),
-        "palette": check_palette(arr, palette),
-        "outline": check_outline(arr),
-        "transparency": check_transparency(arr),
-    }
-    if frames > 1:
+    results: dict[str, tuple[bool, str]] = {}
+    if "density" not in skip:
+        results["density"] = check_density(arr, entry["native"], frames, frame_w)
+    if "palette" not in skip:
+        results["palette"] = check_palette(arr, palette)
+    if "outline" not in skip:
+        results["outline"] = check_outline(arr)
+    if "transparency" not in skip:
+        results["transparency"] = check_transparency(arr)
+    if frames > 1 and "alignment" not in skip:
         results["alignment"] = check_alignment(arr, frames, frame_w)
     return results
 

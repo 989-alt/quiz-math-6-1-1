@@ -1,0 +1,38 @@
+{
+  "batch": "3b-hero",
+  "max_attempts": 3,
+  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png"],
+  "note": "히어로 잔여 스트립. identity_files=3A hero_walk_strip을 추가 앵커로 넣어 동일 캐릭터 유지.",
+  "jobs": [
+    {
+      "id": "hero_idle",
+      "kind": "strip",
+      "cells": 2,
+      "native": 64,
+      "aspect_ratio": "16:9",
+      "outputs": ["hero_idle_strip.png"],
+      "identity_files": ["hero_walk_strip.png"],
+      "prompt": "Pixel art animation sprite strip: exactly 2 frames arranged in a single horizontal row (1x2 grid), 2 equal-width columns, one full-body character per column, generous empty magenta space between and around the columns, no drop shadows on the background. The SAME character appears in both frames at the same size: the cute brave elementary school student adventurer boy shown in the small reference sprite strip, with messy brown hair, small flowing red cape, white short-sleeve shirt, blue shorts and red sneakers. The 2 frames form an idle breathing animation facing the viewer: (1) standing relaxed with arms at his sides, (2) the exact same pose with shoulders and chest raised very slightly as he inhales. Feet planted on the same invisible ground line in both frames."
+    },
+    {
+      "id": "hero_hurt",
+      "kind": "single",
+      "cells": 1,
+      "native": 64,
+      "aspect_ratio": "1:1",
+      "outputs": ["hero_hurt.png"],
+      "identity_files": ["hero_walk_strip.png"],
+      "prompt": "Single pixel art full-body character sprite: the cute brave elementary school student adventurer boy shown in the small reference sprite strip (messy brown hair, small flowing red cape, white short-sleeve shirt, blue shorts, red sneakers) flinching in pain, leaning back slightly with eyes squeezed shut in a cartoon grimace and one arm raised defensively. Just the one character and nothing else, feet on an invisible ground line, no blood."
+    },
+    {
+      "id": "hero_death",
+      "kind": "strip",
+      "cells": 4,
+      "native": 64,
+      "aspect_ratio": "16:9",
+      "outputs": ["hero_death_strip.png"],
+      "identity_files": ["hero_walk_strip.png"],
+      "prompt": "Pixel art animation sprite strip: exactly 4 frames arranged in a single horizontal row (1x4 grid), 4 equal-width columns, one full-body character per column, generous empty magenta space between and around the columns, no drop shadows on the background. The SAME character appears in all 4 frames at the same size: the cute brave elementary school student adventurer boy shown in the small reference sprite strip, with messy brown hair, small flowing red cape, white short-sleeve shirt, blue shorts and red sneakers. The 4 frames form a cartoon defeat animation facing the viewer, no blood: (1) staggering backward with dizzy swirl eyes, (2) knees buckling as he sinks down, (3) sitting on the ground slumped forward, (4) lying flat on his back with a tiny ghost puff floating just above his chest. Each pose grounded on the same invisible ground line."
+    }
+  ]
+}

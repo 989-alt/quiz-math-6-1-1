@@ -1,0 +1,53 @@
+{
+  "batch": "3b-weapon-cards",
+  "max_attempts": 3,
+  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png"],
+  "note": "무기 카드 아이콘 20종 (native 96, 정면 데코형). 4개씩 5장의 패밀리 시트로 생성해 카드 간 스타일 통일.",
+  "jobs": [
+    {
+      "id": "cards_a",
+      "kind": "family",
+      "cells": 4,
+      "native": 96,
+      "aspect_ratio": "16:9",
+      "outputs": ["card_pencil.png", "card_banana.png", "card_star.png", "card_acorn.png"],
+      "prompt": "Pixel art item icon sheet: exactly 4 decorative item icons arranged in a single horizontal row, 4 equal-width columns, one icon per column, generous empty magenta space between and around them, no drop shadows on the background. Each icon is a single object drawn front-facing, centered, large and bold like a collectible card illustration, all in identical style and size: (1) a yellow wooden pencil with a pink eraser end and sharp graphite tip, standing diagonally, (2) a ripe yellow banana crescent with small brown tips, (3) a shiny golden five-pointed star with a glossy highlight, (4) a brown acorn with a cross-hatched cap and tiny stem."
+    },
+    {
+      "id": "cards_b",
+      "kind": "family",
+      "cells": 4,
+      "native": 96,
+      "aspect_ratio": "16:9",
+      "outputs": ["card_paper_plane.png", "card_marble.png", "card_snowball.png", "card_leaf.png"],
+      "prompt": "Pixel art item icon sheet: exactly 4 decorative item icons arranged in a single horizontal row, 4 equal-width columns, one icon per column, generous empty magenta space between and around them, no drop shadows on the background. Each icon is a single object drawn front-facing, centered, large and bold like a collectible card illustration, all in identical style and size: (1) a folded white paper airplane with crisp grey fold lines pointing to the upper right, (2) a round glass marble with a blue-and-teal swirl inside and a glossy highlight, (3) a round white snowball with pale blue shading and small snow lumps, (4) a fresh green leaf with a central vein and short stem."
+    },
+    {
+      "id": "cards_c",
+      "kind": "family",
+      "cells": 4,
+      "native": 96,
+      "aspect_ratio": "16:9",
+      "outputs": ["card_ruler.png", "card_eraser.png", "card_crayon.png", "card_lunch_box.png"],
+      "prompt": "Pixel art item icon sheet: exactly 4 decorative item icons arranged in a single horizontal row, 4 equal-width columns, one icon per column, generous empty magenta space between and around them, no drop shadows on the background. Each icon is a single object drawn front-facing, centered, large and bold like a collectible card illustration, all in identical style and size: (1) a yellow wooden school ruler standing diagonally with plain dark tick marks along one edge (plain marks only, absolutely no digits and no letters), (2) a pink rectangular rubber eraser with a plain blue paper sleeve band (no letters), (3) an orange crayon with a plain darker orange wrapper (no letters) and rounded waxy tip standing diagonally, (4) a closed rectangular lunch box with a silver body, red lid and small golden latch."
+    },
+    {
+      "id": "cards_d",
+      "kind": "family",
+      "cells": 4,
+      "native": 96,
+      "aspect_ratio": "16:9",
+      "outputs": ["card_bubble.png", "card_water_balloon.png", "card_hamster.png", "card_butterfly.png"],
+      "prompt": "Pixel art item icon sheet: exactly 4 decorative item icons arranged in a single horizontal row, 4 equal-width columns, one icon per column, generous empty magenta space between and around them, no drop shadows on the background. Each icon is a single object drawn front-facing, centered, large and bold like a collectible card illustration, all in identical style and size: (1) a round soap bubble drawn with solid opaque pixels, pale cyan with a thin lighter rim and two white glossy highlights, (2) a plump bright blue water balloon with a tied knot on top and a glossy highlight, (3) a chubby round golden hamster curled into a ball with tiny ears and closed happy eyes, (4) a cute butterfly with open pink-and-purple patterned wings and tiny antennae viewed from above."
+    },
+    {
+      "id": "cards_e",
+      "kind": "family",
+      "cells": 4,
+      "native": 96,
+      "aspect_ratio": "16:9",
+      "outputs": ["card_robot_toy.png", "card_rainbow.png", "card_magnet.png", "card_magnifying_glass.png"],
+      "prompt": "Pixel art item icon sheet: exactly 4 decorative item icons arranged in a single horizontal row, 4 equal-width columns, one icon per column, generous empty magenta space between and around them, no drop shadows on the background. Each icon is a single object drawn front-facing, centered, large and bold like a collectible card illustration, all in identical style and size: (1) a small retro wind-up toy robot with a boxy silver body, red arms, square cyan eyes and a golden wind-up key, (2) a small arched rainbow with clean red, yellow, green and blue bands and a tiny white cloud at each end, (3) a red U-shaped horseshoe magnet with silver-white tips pointing up, (4) a magnifying glass with a golden rim, pale blue lens with a diagonal highlight and a brown handle."
+    }
+  ]
+}
