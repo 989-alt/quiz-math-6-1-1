@@ -408,12 +408,28 @@ def postprocess(job: dict, raw_path: Path, palette: np.ndarray) -> list[dict]:
         # 그대로 사용. 도트밀도/아웃라인 등 캐릭터용 §2.2 기준이 부적합하므로
         # batch config의 qa_skip으로 항목별 면제하고 필요한 검사만 남긴다.
         img = Image.open(raw_path).convert("RGBA")
-        if job.get("resize_to"):
-            s = job["resize_to"]
-            img = img.resize((s, s), Image.NEAREST)
-        arr = np.asarray(img)
-        if job.get("quantize"):
-            arr = quantize_to_palette(arr, palette)
+        # coarse_to: 바닥 타일의 픽셀 그레인을 캐릭터 아트와 맞추기 위해 면적평균
+        # (BOX)으로 저해상 블록화 → quantize → NEAREST 업스케일(resize_to). 이러면
+        # 최종 파일은 크지만 그레인은 굵어져(1024→coarse→512면 그레인 512/coarse배)
+        # 캐릭터의 청키 픽셀과 응집. coarse_to 없으면 기존 동작(단순 리사이즈).
+        if job.get("coarse_to"):
+            c = job["coarse_to"]
+            img = img.resize((c, c), Image.BOX)  # 면적평균 = 미세 잔디 뭉갬
+            arr = np.asarray(img)
+            if job.get("quantize"):
+                arr = quantize_to_palette(arr, palette)  # 저해상에서 팔레트 고정
+            img = Image.fromarray(arr)
+            if job.get("resize_to"):
+                s = job["resize_to"]
+                img = img.resize((s, s), Image.NEAREST)  # 블록 유지 업스케일
+            arr = np.asarray(img)
+        else:
+            if job.get("resize_to"):
+                s = job["resize_to"]
+                img = img.resize((s, s), Image.NEAREST)
+            arr = np.asarray(img)
+            if job.get("quantize"):
+                arr = quantize_to_palette(arr, palette)
         out = job["outputs"][0]
         Image.fromarray(arr).save(GEN_DIR / out)
         return finish([{"id": job["id"], "file": out, "kind": "image",

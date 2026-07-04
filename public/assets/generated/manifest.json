@@ -1,5 +1,5 @@
 {
- "batch": "3b-boss-slime-fix",
+ "batch": "3b-env",
  "batches": [
   "3a",
   "3b-hero",
@@ -15,7 +15,7 @@
   "3b-hero-walk-fix",
   "3b-boss-slime-fix"
  ],
- "generated_at": "2026-07-04T01:52:22+00:00",
+ "generated_at": "2026-07-04T02:26:08+00:00",
  "style_anchors": [
   "B1_pixel_keyvisual.png",
   "B2_pixel_lineup.png"
@@ -1292,6 +1292,76 @@
    "qa": "pass"
   },
   {
+   "id": "keyart_home",
+   "file": "keyart_home.png",
+   "kind": "image",
+   "native": 1672,
+   "frames": 1,
+   "frame_w": 1672,
+   "frame_h": 941,
+   "qa_skip": [
+    "density",
+    "palette",
+    "outline",
+    "transparency",
+    "alignment"
+   ],
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "boss_banner",
+   "group": "boss_banner",
+   "file": "boss_warning_banner.png",
+   "kind": "single",
+   "native": 128,
+   "frames": 1,
+   "frame_w": 132,
+   "frame_h": 44,
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "hero_walk",
+   "file": "hero_walk_strip.png",
+   "kind": "strip",
+   "native": 64,
+   "frames": 6,
+   "frame_w": 48,
+   "frame_h": 68,
+   "baseline_y": 66,
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "boss_slime_king_walk",
+   "file": "boss_slime_king_walk_strip.png",
+   "kind": "strip",
+   "native": 128,
+   "frames": 6,
+   "frame_w": 95,
+   "frame_h": 132,
+   "baseline_y": 130,
+   "group": "boss_slime_king",
+   "attempts": 2,
+   "qa": "pass"
+  },
+  {
+   "id": "ground_tile",
+   "file": "ground_tile.png",
+   "kind": "image",
+   "native": 512,
+   "frames": 1,
+   "frame_w": 512,
+   "frame_h": 512,
+   "qa_skip": [
+    "density",
+    "outline"
+   ],
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
    "id": "deco_a_0",
    "group": "deco_a",
    "file": "deco_rock.png",
@@ -1427,76 +1497,6 @@
     "alignment"
    ],
    "attempts": 1,
-   "qa": "pass"
-  },
-  {
-   "id": "keyart_home",
-   "file": "keyart_home.png",
-   "kind": "image",
-   "native": 1672,
-   "frames": 1,
-   "frame_w": 1672,
-   "frame_h": 941,
-   "qa_skip": [
-    "density",
-    "palette",
-    "outline",
-    "transparency",
-    "alignment"
-   ],
-   "attempts": 1,
-   "qa": "pass"
-  },
-  {
-   "id": "boss_banner",
-   "group": "boss_banner",
-   "file": "boss_warning_banner.png",
-   "kind": "single",
-   "native": 128,
-   "frames": 1,
-   "frame_w": 132,
-   "frame_h": 44,
-   "attempts": 1,
-   "qa": "pass"
-  },
-  {
-   "id": "ground_tile",
-   "file": "ground_tile.png",
-   "kind": "image",
-   "native": 512,
-   "frames": 1,
-   "frame_w": 512,
-   "frame_h": 512,
-   "qa_skip": [
-    "density",
-    "outline"
-   ],
-   "attempts": 1,
-   "qa": "pass"
-  },
-  {
-   "id": "hero_walk",
-   "file": "hero_walk_strip.png",
-   "kind": "strip",
-   "native": 64,
-   "frames": 6,
-   "frame_w": 48,
-   "frame_h": 68,
-   "baseline_y": 66,
-   "attempts": 1,
-   "qa": "pass"
-  },
-  {
-   "id": "boss_slime_king_walk",
-   "file": "boss_slime_king_walk_strip.png",
-   "kind": "strip",
-   "native": 128,
-   "frames": 6,
-   "frame_w": 95,
-   "frame_h": 132,
-   "baseline_y": 130,
-   "group": "boss_slime_king",
-   "attempts": 2,
    "qa": "pass"
   }
  ]

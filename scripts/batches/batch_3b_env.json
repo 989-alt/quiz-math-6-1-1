@@ -1,19 +1,20 @@
 {
   "batch": "3b-env",
   "max_attempts": 3,
-  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png", "B3_pixel_tile.png"],
-  "note": "배경: 심리스 바닥 타일(512, B3 앵커, 생성 후 make_seamless.py로 경계 블렌딩+자동 검증) + 데코 오브젝트 10종 + 그림자 블롭(procedural). ground_tile qa_skip 사유: 도트밀도(native=출력폭 512라 캐릭터 기준 무의미)·아웃라인(풀 텍스처에 실루엣 없음). style_clause 오버라이드: 풀블리드 텍스처라 마젠타 배경/단일 피사체 조항 제거.",
+  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png"],
+  "note": "배경: 심리스 바닥 타일(청키 그레인, B1/B2 캐릭터 앵커, coarse_to=128로 굵게, 생성 후 make_seamless.py) + 데코 오브젝트 10종 + 그림자 블롭(procedural). ground_tile qa_skip 사유: 도트밀도(파일폭 512라 캐릭터 기준 무의미)·아웃라인(풀 텍스처에 실루엣 없음). style_clause 오버라이드: 풀블리드 텍스처라 마젠타 배경/단일 피사체 조항 제거. B3 미세타일은 앵커에서 제외(그게 과도하게 미세한 텍스처 원인).",
   "jobs": [
     {
       "id": "ground_tile",
       "kind": "image",
+      "coarse_to": 128,
       "resize_to": 512,
       "quantize": true,
       "qa_skip": ["density", "outline"],
       "aspect_ratio": "1:1",
       "outputs": ["ground_tile.png"],
-      "style_clause": "16-bit SNES-era pixel art texture, crisp uniform pixel grid, limited palette matching the reference images, no letters no words no numbers.",
-      "prompt": "Seamless top-down pixel art grass ground texture that tiles perfectly, in the exact style and palette of the grass tile reference image: an even meadow of short green grass with subtle darker grass patches, a few tiny wildflowers and small dirt speckles scattered evenly across the whole image. Flat uniform lighting, no landmarks, no rocks, no paths, no large objects, no borders, no vignette, no darkening at the edges; the pattern continues uniformly so the left edge matches the right edge and the top edge matches the bottom edge."
+      "style_clause": "chunky 16-bit SNES-era pixel art, coarse pixel blocks, flat shading, bold simple shapes, limited palette matching the reference character art, no letters no words no numbers.",
+      "prompt": "Seamless top-down chunky pixel-art grass ground texture that tiles perfectly, drawn in the SAME coarse, blocky low-detail 16-bit style and color palette as the reference character sprites (not a fine photorealistic texture). The grass is made of LARGE simple grass clumps and big flat color blocks of muted DARK green, with only a few slightly lighter and slightly darker green patches for gentle variation - deliberately low detail and low contrast. Use a DARK, DESATURATED, muted forest-green and earthy tone overall so that bright outlined character sprites stand out clearly on top of it; the ground must be calm and not busy. Absolutely NO tiny individual grass blades, NO fine high-frequency noise, NO bright saturated greens, no flowers, no dirt speckles, no landmarks, no rocks, no paths, no large objects, no borders, no vignette, no darkening at the edges. Flat uniform lighting; the pattern continues uniformly so the left edge matches the right edge and the top edge matches the bottom edge."
     },
     {
       "id": "deco_a",
