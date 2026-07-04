@@ -6,7 +6,7 @@ import { WeaponManager, WeaponInfoList, BonusInfoList } from '../weapons/WeaponM
 import { PassiveInfoList } from '../weapons/PassiveManager';
 import { EventBus, GameEvents } from '../utils/EventBus';
 import { GAME_CONFIG } from '../config';
-import { DECO_KEYS, GROUND_TILE_KEY } from '../assetKeys';
+import { GROUND_TILE_KEY } from '../assetKeys';
 
 // 청크 좌표 → 결정적 시드 해시 (같은 월드 위치엔 항상 같은 장식)
 function hashChunk(cx: number, cy: number): number {
@@ -224,23 +224,80 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  // 작은 잡초·바위·버섯: 흔함(자연 산개). 종류별 가중치.
+  private static readonly DECO_TABLE: ReadonlyArray<{ key: string; w: number }> = [
+    { key: 'deco_rock', w: 10 },
+    { key: 'deco_mushrooms', w: 9 },
+    { key: 'deco_flower_bush', w: 9 },
+    { key: 'deco_bush', w: 8 },
+    { key: 'deco_crystals', w: 4 },
+    { key: 'deco_stump', w: 4 },
+    { key: 'deco_fallen_log', w: 3 },
+  ];
+  // 큰 랜드마크: 희소(매 화면 반복 방지) — 룬석·연못·이정표
+  private static readonly DECO_LANDMARKS: readonly string[] = [
+    'deco_rune_stone', 'deco_pond', 'deco_signpost',
+  ];
+
+  private pickWeightedDeco(rand: () => number): string {
+    const table = GameScene.DECO_TABLE;
+    const total = table.reduce((s, d) => s + d.w, 0);
+    let roll = rand() * total;
+    for (const d of table) {
+      roll -= d.w;
+      if (roll <= 0) return d.key;
+    }
+    return table[0].key;
+  }
+
+  private placeDeco(
+    decoKey: string,
+    px: number,
+    py: number,
+    rand: () => number,
+    imgs: Phaser.GameObjects.Image[]
+  ): void {
+    if (!this.textures.exists(decoKey)) return;
+    const img = this.add.image(px, py, decoKey);
+    img.setScale(0.85 + rand() * 0.4);
+    img.setAlpha(0.95);
+    if (rand() < 0.5) img.setFlipX(true); // 좌우 뒤집기로 반복감 감소
+    // y가 클수록(아래=가까움) 위에 그려 겹침을 자연스럽게. 엔티티(depth≥2) 아래 유지.
+    img.setDepth(1 + (((py % 100000) + 100000) % 100000) / 1e8);
+    imgs.push(img);
+  }
+
+  /**
+   * 자연스러운 장식 배치 (설계 §4): 균일 산포 대신
+   * ① 큰 랜드마크는 청크당 ~8% 확률로 최대 1개(희소),
+   * ② 작은 잡초·바위는 밀도 가변(빈터 25% / 1군집 45% / 2군집 30%)으로
+   *    군집 중심 주변에 모아 배치. 같은 월드 위치엔 항상 같은 결과(결정적).
+   */
   private spawnChunkDecorations(cx: number, cy: number, key: string): void {
     const CHUNK = GameScene.CHUNK_SIZE;
     const rand = mulberry32(hashChunk(cx, cy));
-    const count = 1 + Math.floor(rand() * 2); // 청크당 1–2개
+    const baseX = cx * CHUNK;
+    const baseY = cy * CHUNK;
     const imgs: Phaser.GameObjects.Image[] = [];
 
-    for (let i = 0; i < count; i++) {
-      const decoKey = DECO_KEYS[Math.floor(rand() * DECO_KEYS.length)];
-      const px = cx * CHUNK + rand() * CHUNK;
-      const py = cy * CHUNK + rand() * CHUNK;
-      const scale = 0.9 + rand() * 0.5;
-      if (!this.textures.exists(decoKey)) continue;
-      const img = this.add.image(px, py, decoKey);
-      img.setScale(scale);
-      img.setAlpha(0.95);
-      img.setDepth(1); // 바닥(-10) 위, 수정(2)·몬스터(5)·플레이어(10) 아래
-      imgs.push(img);
+    // ① 희소 랜드마크
+    if (rand() < 0.08) {
+      const lm = GameScene.DECO_LANDMARKS[Math.floor(rand() * GameScene.DECO_LANDMARKS.length)];
+      this.placeDeco(lm, baseX + (0.2 + rand() * 0.6) * CHUNK, baseY + (0.2 + rand() * 0.6) * CHUNK, rand, imgs);
+    }
+
+    // ② 작은 잡초·바위 군집
+    const densityRoll = rand();
+    const clusters = densityRoll < 0.25 ? 0 : densityRoll < 0.7 ? 1 : 2;
+    for (let c = 0; c < clusters; c++) {
+      const ccx = baseX + rand() * CHUNK;
+      const ccy = baseY + rand() * CHUNK;
+      const n = 1 + Math.floor(rand() * 3); // 군집당 1–3개
+      for (let i = 0; i < n; i++) {
+        const ox = (rand() - 0.5) * 140;
+        const oy = (rand() - 0.5) * 140;
+        this.placeDeco(this.pickWeightedDeco(rand), ccx + ox, ccy + oy, rand, imgs);
+      }
     }
 
     this.decoChunks.set(key, imgs);
