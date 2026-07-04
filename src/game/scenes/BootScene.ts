@@ -1,4 +1,26 @@
 import Phaser from 'phaser';
+import { HERO_IDLE_KEY, MONSTER_WALK_KEYS, BOSS_WALK_KEYS, GEM_KEYS } from '../assetKeys';
+
+interface ManifestAsset {
+  id: string;
+  file: string;
+  kind: 'family' | 'single' | 'strip' | 'image';
+  frames: number;
+  frame_w: number;
+  frame_h: number;
+}
+
+interface AssetManifest {
+  assets: ManifestAsset[];
+}
+
+const MANIFEST_KEY = 'asset_manifest';
+const ASSET_DIR = 'assets/generated';
+
+// Deterministic key from a manifest entry (see assetKeys.ts).
+function keyForAsset(a: ManifestAsset): string {
+  return a.kind === 'strip' ? a.id : a.file.replace(/\.[^.]+$/, '');
+}
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -43,24 +65,42 @@ export class BootScene extends Phaser.Scene {
       percentText.destroy();
     });
 
-    // Best-effort loader: 파일 없으면 콘솔 워닝만, 게임은 정상 작동
+    // Best-effort loader: 파일 없으면 콘솔 워닝만, 게임은 procedural fallback으로 정상 작동
     this.load.on('loaderror', (file: Phaser.Loader.File) => {
       if (file.type === 'audio') {
         console.warn(`[Audio 미설치] ${file.src} — public/assets/audio/README.md 참고`);
-      } else if (file.key === 'bg_fantasy_pixel') {
-        console.info(`[배경 이미지 미설치] procedural 픽셀 배경 사용 중. 교체하려면 public/assets/background/README.md 참고`);
+      } else {
+        console.warn(`[에셋 로드 실패] ${file.key} (${file.src}) — procedural fallback 사용`);
       }
     });
 
-    // Load actual image assets
-    this.loadActualAssets();
+    // 매니페스트를 먼저 로드하고, 완료되면 그 안의 에셋들을 동적으로 큐잉한다.
+    this.load.json(MANIFEST_KEY, `${ASSET_DIR}/manifest.json`);
+    this.load.once(`filecomplete-json-${MANIFEST_KEY}`, () => {
+      const manifest = this.cache.json.get(MANIFEST_KEY) as AssetManifest | undefined;
+      if (manifest?.assets) {
+        this.queueManifestAssets(manifest);
+      } else {
+        console.warn('[매니페스트 없음] 생성 에셋 없이 procedural fallback으로 진행');
+      }
+    });
+
     this.loadAudioAssets();
-    this.loadBackgroundAssets();
   }
 
-  private loadBackgroundAssets(): void {
-    // 외부 픽셀 아트 배경 이미지 (선택). 없으면 procedural fallback 자동 사용
-    this.load.image('bg_fantasy_pixel', 'assets/background/fantasy_pixel.png');
+  private queueManifestAssets(manifest: AssetManifest): void {
+    for (const asset of manifest.assets) {
+      const key = keyForAsset(asset);
+      const path = `${ASSET_DIR}/${asset.file}`;
+      if (asset.kind === 'strip') {
+        this.load.spritesheet(key, path, {
+          frameWidth: asset.frame_w,
+          frameHeight: asset.frame_h,
+        });
+      } else {
+        this.load.image(key, path);
+      }
+    }
   }
 
   private loadAudioAssets(): void {
@@ -76,53 +116,62 @@ export class BootScene extends Phaser.Scene {
     this.load.audio('sfx_quiz_wrong', 'assets/audio/quiz_wrong.wav');
   }
 
-  private loadActualAssets(): void {
-    // Character assets
-    this.load.image('player_idle', 'assets/character/player_idle.png');
-    this.load.image('player_walk', 'assets/character/player_walk_1.png');
-    this.load.image('player_dead', 'assets/character/player_dead.png');
-
-    // Monster assets (15 regular monsters)
-    for (let i = 1; i <= 15; i++) {
-      this.load.image(`monster_${i}`, `assets/monster/monster_${i}.png`);
-    }
-
-    // Boss assets (5 bosses)
-    for (let i = 1; i <= 5; i++) {
-      this.load.image(`boss_${i}`, `assets/monster/boss_${i}.png`);
-    }
-
-    // Weapon assets
-    const weapons = [
-      'banana', 'acorn', 'pencil', 'paper_plane', 'marble', 'snowball', 'leaf',
-      'ruler', 'eraser', 'crayon', 'lunch_box', 'bubble', 'hamster', 'butterfly',
-      'rainbow', 'star', 'magnet', 'magnifying_glass'
-    ];
-    weapons.forEach(weapon => {
-      this.load.image(`weapon_${weapon}`, `assets/weapon/weapon_${weapon}.png`);
-    });
-    // Special cases with different naming
-    this.load.image('weapon_robot_toy', 'assets/weapon/weapon_robot.png');
-    this.load.image('weapon_water_balloon', 'assets/weapon/water_balloon.png');
-
-    // Gem assets
-    this.load.image('gem_small', 'assets/gem/gem_small.png');
-    this.load.image('gem_middle', 'assets/gem/gem_middle.png');
-    this.load.image('gem_large', 'assets/gem/gem_large.png');
-    this.load.image('gem_health', 'assets/gem/gem_health.png');
-    this.load.image('gem_magnet', 'assets/gem/gem_magnet.png');
-  }
-
   create(): void {
-    // Create placeholder sprites for fallback (in case images fail to load)
-    this.createPlaceholderSprites();
-    console.log('Assets loaded, starting game...');
+    // Register animation clips for every strip in the manifest.
+    this.registerStripAnimations();
 
+    // Safety-net placeholders for critical entity keys + legacy projectile/area sprites.
+    this.createCriticalFallbacks();
+    this.createPlaceholderSprites();
+
+    console.log('Assets loaded, starting game...');
     this.scene.start('GameScene');
   }
 
+  // strip 에셋마다 프레임 수 기반 anim clip 등록 (Phase 4 상태머신이 재생).
+  private registerStripAnimations(): void {
+    const manifest = this.cache.json.get(MANIFEST_KEY) as AssetManifest | undefined;
+    if (!manifest?.assets) return;
+
+    for (const asset of manifest.assets) {
+      if (asset.kind !== 'strip') continue;
+      const key = asset.id;
+      if (!this.textures.exists(key) || this.anims.exists(key)) continue;
+
+      const isOneShot = key.includes('death');
+      const frameRate = key.startsWith('fx_') ? 12 : 8;
+      this.anims.create({
+        key,
+        frames: this.anims.generateFrameNumbers(key, { start: 0, end: asset.frames - 1 }),
+        frameRate,
+        repeat: isOneShot ? 0 : -1,
+      });
+    }
+  }
+
+  // 실제 에셋 로드 실패 시에도 게임이 깨지지 않도록 핵심 키에 placeholder 박스를 만든다.
+  private createCriticalFallbacks(): void {
+    this.ensureBox(HERO_IDLE_KEY, 0x4ade80, 40, 56);
+    MONSTER_WALK_KEYS.forEach((k, i) => this.ensureBox(k, 0xc84b31 + i * 0x030201, 44, 40));
+    BOSS_WALK_KEYS.forEach((k) => this.ensureBox(k, 0xdc2626, 96, 110));
+    this.ensureBox(GEM_KEYS.small, 0x3b82f6, 16, 18);
+    this.ensureBox(GEM_KEYS.medium, 0x22d3ee, 20, 22);
+    this.ensureBox(GEM_KEYS.large, 0xa855f7, 24, 26);
+    this.ensureBox(GEM_KEYS.health, 0xef4444, 24, 22);
+    this.ensureBox(GEM_KEYS.magnet, 0xf59e0b, 24, 24);
+  }
+
+  private ensureBox(key: string, color: number, w: number, h: number): void {
+    if (this.textures.exists(key)) return;
+    const g = this.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(color & 0xffffff, 1);
+    g.fillRect(0, 0, w, h);
+    g.generateTexture(key, w, h);
+    g.destroy();
+  }
+
   private createPlaceholderSprites(): void {
-    // Player sprite (fallback - 32x32, green square with eyes)
+    // Player sprite (legacy fallback key, still referenced by GameScene texture check)
     if (!this.textures.exists('player')) {
       const playerGraphics = this.make.graphics({ x: 0, y: 0 });
       playerGraphics.fillStyle(0x4ade80);
@@ -143,7 +192,7 @@ export class BootScene extends Phaser.Scene {
     this.createMonsterSprite('monster_tank', 0x6b21a8, 32);
     this.createMonsterSprite('monster_boss', 0xdc2626, 48);
 
-    // XP Gem (fallback)
+    // XP Gem (legacy fallback)
     if (!this.textures.exists('xp_gem')) {
       const gemGraphics = this.make.graphics({ x: 0, y: 0 });
       gemGraphics.fillStyle(0x3b82f6);
@@ -156,7 +205,7 @@ export class BootScene extends Phaser.Scene {
       gemGraphics.destroy();
     }
 
-    // Weapon projectiles (fallback)
+    // Weapon projectiles (fallback for legacy/unused weapons that lack dedicated art)
     this.createProjectileSprite('projectile_knife', 0xc0c0c0, 16, 4);
     this.createProjectileSprite('projectile_axe', 0x8b4513, 20, 20);
     this.createProjectileSprite('projectile_cross', 0xffd700, 24, 24);

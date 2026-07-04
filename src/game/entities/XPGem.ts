@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_CONFIG } from '../config';
+import { GEM_KEYS } from '../assetKeys';
 
 export type GemType = 'xp_small' | 'xp_medium' | 'xp_large' | 'health' | 'magnet';
 export type GemSize = 'small' | 'medium' | 'large';
@@ -44,22 +45,22 @@ function getGemConfigBySize(size: GemSize): GemConfig {
     return {
       type: 'xp_large',
       value: xpValue,
-      spriteKey: 'gem_large',
-      scale: 0.08,
+      spriteKey: GEM_KEYS.large,
+      scale: 1.4,
     };
   } else if (size === 'medium') {
     return {
       type: 'xp_medium',
       value: xpValue,
-      spriteKey: 'gem_middle',
-      scale: 0.06,
+      spriteKey: GEM_KEYS.medium,
+      scale: 1.3,
     };
   } else {
     return {
       type: 'xp_small',
       value: xpValue,
-      spriteKey: 'gem_small',
-      scale: 0.05,
+      spriteKey: GEM_KEYS.small,
+      scale: 1.2,
     };
   }
 }
@@ -70,22 +71,22 @@ function getGemConfig(xpValue: number): GemConfig {
     return {
       type: 'xp_large',
       value: xpValue,
-      spriteKey: 'gem_large',
-      scale: 0.08,
+      spriteKey: GEM_KEYS.large,
+      scale: 1.4,
     };
   } else if (xpValue >= GAME_CONFIG.gems.medium) {
     return {
       type: 'xp_medium',
       value: xpValue,
-      spriteKey: 'gem_middle',
-      scale: 0.06,
+      spriteKey: GEM_KEYS.medium,
+      scale: 1.3,
     };
   } else {
     return {
       type: 'xp_small',
       value: xpValue,
-      spriteKey: 'gem_small',
-      scale: 0.05,
+      spriteKey: GEM_KEYS.small,
+      scale: 1.2,
     };
   }
 }
@@ -198,13 +199,13 @@ export class HealthGem extends Phaser.Physics.Arcade.Sprite {
   private collectTarget: Phaser.Physics.Arcade.Sprite | null = null;
 
   constructor(scene: Phaser.Scene, x: number, y: number, healValue: number = 10) {
-    super(scene, x, y, 'gem_health');
+    super(scene, x, y, GEM_KEYS.health);
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
     this.healValue = healValue;
-    this.setScale(0.06);
+    this.setScale(1.3);
     this.setDepth(2);
 
     const body = this.body as Phaser.Physics.Arcade.Body;
@@ -214,7 +215,7 @@ export class HealthGem extends Phaser.Physics.Arcade.Sprite {
     this.setScale(0);
     scene.tweens.add({
       targets: this,
-      scale: 0.06,
+      scale: 1.3,
       duration: 200,
       ease: 'Back.easeOut',
     });
@@ -266,12 +267,12 @@ export class MagnetGem extends Phaser.Physics.Arcade.Sprite {
   private collectTarget: Phaser.Physics.Arcade.Sprite | null = null;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, 'gem_magnet');
+    super(scene, x, y, GEM_KEYS.magnet);
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
-    this.setScale(0.06);
+    this.setScale(1.3);
     this.setDepth(2);
 
     const body = this.body as Phaser.Physics.Arcade.Body;
@@ -281,7 +282,7 @@ export class MagnetGem extends Phaser.Physics.Arcade.Sprite {
     this.setScale(0);
     scene.tweens.add({
       targets: this,
-      scale: 0.06,
+      scale: 1.3,
       duration: 200,
       ease: 'Back.easeOut',
     });

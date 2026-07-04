@@ -49,7 +49,7 @@ export class Hamster extends WeaponBase {
         this.player.y,
         'weapon_hamster'
       );
-      hamster.setScale(0.06 * area);
+      hamster.setScale(1.0 * area);
       hamster.setDepth(9);
 
       this.scene.physics.add.existing(hamster);

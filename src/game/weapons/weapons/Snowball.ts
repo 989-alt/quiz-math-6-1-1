@@ -52,7 +52,7 @@ export class Snowball extends WeaponBase {
       this.player.y,
       'weapon_snowball'
     );
-    snowball.setScale(0.05 * area);
+    snowball.setScale(1.2 * area);
     snowball.setDepth(9);
 
     this.scene.physics.add.existing(snowball);

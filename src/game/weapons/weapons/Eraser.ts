@@ -52,7 +52,7 @@ export class Eraser extends WeaponBase {
 
     // Use actual sprite
     const eraser = this.scene.add.sprite(x, y, 'weapon_eraser');
-    eraser.setScale(0.07 * area);
+    eraser.setScale(1.3 * area);
     eraser.setDepth(9);
 
     this.scene.physics.add.existing(eraser);
@@ -67,7 +67,7 @@ export class Eraser extends WeaponBase {
     // Erasing animation with physics body update
     let elapsed = 0;
     const startScale = 0;
-    const endScale = 0.09 * area;
+    const endScale = 1.6 * area;
 
     const updateEraser = () => {
       if (!eraser.active) return;

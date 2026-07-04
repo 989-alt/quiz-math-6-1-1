@@ -6,6 +6,25 @@ import { WeaponManager, WeaponInfoList, BonusInfoList } from '../weapons/WeaponM
 import { PassiveInfoList } from '../weapons/PassiveManager';
 import { EventBus, GameEvents } from '../utils/EventBus';
 import { GAME_CONFIG } from '../config';
+import { DECO_KEYS, GROUND_TILE_KEY } from '../assetKeys';
+
+// 청크 좌표 → 결정적 시드 해시 (같은 월드 위치엔 항상 같은 장식)
+function hashChunk(cx: number, cy: number): number {
+  let h = (cx * 374761393 + cy * 668265263) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
+// mulberry32 시드 PRNG
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 export class GameScene extends Phaser.Scene {
   private player!: Player;
@@ -32,7 +51,9 @@ export class GameScene extends Phaser.Scene {
   private bgm: Phaser.Sound.BaseSound | null = null;
 
   private background!: Phaser.GameObjects.TileSprite;
-  private mistLayer: Phaser.GameObjects.Image[] = [];
+  // 결정적 청크 장식: "cx,cy" → 그 청크에 배치된 deco 이미지들
+  private decoChunks: Map<string, Phaser.GameObjects.Image[]> = new Map();
+  private static readonly CHUNK_SIZE = 512;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -119,10 +140,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createBackground(): void {
-    // 외부 픽셀 아트 이미지가 로드되어 있으면 우선 사용, 없으면 procedural
-    const tileKey = this.textures.exists('bg_fantasy_pixel')
-      ? 'bg_fantasy_pixel'
-      : this.generateFantasyPixelTexture();
+    // 바닥: 이음매 없는 512px ground_tile을 카메라 고정 TileSprite로 스크롤 (안개 불필요)
+    const tileKey = this.textures.exists(GROUND_TILE_KEY)
+      ? GROUND_TILE_KEY
+      : this.generateFallbackGround();
 
     this.background = this.add.tileSprite(
       0, 0,
@@ -134,189 +155,95 @@ export class GameScene extends Phaser.Scene {
     this.background.setScrollFactor(0); // Fix to camera
     this.background.setDepth(-10);
 
-    // 이음매 가림용 안개 오버레이 (천천히 부유)
-    this.createMistOverlay();
-
     // Resize background on window resize
     this.scale.on('resize', (gameSize: Phaser.Structs.Size) => {
       this.background.setSize(gameSize.width, gameSize.height);
     });
   }
 
-  private createMistOverlay(): void {
-    // 부드러운 cloud 텍스처 생성 (다중 fillCircle alpha 누적으로 가장자리 페이드)
-    if (!this.textures.exists('mist_cloud')) {
-      const size = 256;
-      const g = this.make.graphics({ x: 0, y: 0 }, false);
-      const cx = size / 2;
-      const cy = size / 2;
-      const maxR = size / 2;
-      // 외곽 → 중심으로 갈수록 alpha 누적되어 진해짐
-      for (let r = maxR; r > 0; r -= 2) {
-        const t = r / maxR;
-        const alpha = (1 - t) * 0.06;
-        g.fillStyle(0xffffff, alpha);
-        g.fillCircle(cx, cy, r);
-      }
-      g.generateTexture('mist_cloud', size, size);
-      g.destroy();
-    }
-
-    // 기존 안개 정리 (resetGame 시)
-    this.mistLayer.forEach((m) => m.destroy());
-    this.mistLayer = [];
-
-    // 화면을 덮는 안개 구름 8개 (보라/시안 톤)
-    const mistColors = [0x4c1d95, 0x6366f1, 0x22d3ee, 0x8b5cf6, 0x312e81];
-    const w = this.scale.width;
-    const h = this.scale.height;
-    for (let i = 0; i < 8; i++) {
-      const x = Math.random() * w;
-      const y = Math.random() * h;
-      const mist = this.add.image(x, y, 'mist_cloud');
-      mist.setScale(2.5 + Math.random() * 2.0);
-      mist.setAlpha(0.35);
-      mist.setTint(mistColors[i % mistColors.length]);
-      mist.setBlendMode(Phaser.BlendModes.SCREEN); // 더 자연스러운 글로우
-      mist.setScrollFactor(0); // 카메라에 고정 — 이음매가 카메라 밖으로 안 흘러감
-      mist.setDepth(-5); // 배경 위, 게임 객체 아래
-      this.mistLayer.push(mist);
-
-      // 천천히 부유 (오랜 주기)
-      const driftX = (Math.random() - 0.5) * 200;
-      const driftY = (Math.random() - 0.5) * 150;
-      this.tweens.add({
-        targets: mist,
-        x: x + driftX,
-        y: y + driftY,
-        duration: 14000 + Math.random() * 10000,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-      // 알파 펄스
-      this.tweens.add({
-        targets: mist,
-        alpha: 0.2 + Math.random() * 0.25,
-        duration: 6000 + Math.random() * 4000,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-    }
-  }
-
-  private generateFantasyPixelTexture(): string {
-    const tileKey = 'fantasy-pixel-bg';
+  /** ground_tile 로드 실패 시 안전망: 밋밋한 풀밭 타일 (512px seamless) */
+  private generateFallbackGround(): string {
+    const tileKey = 'fallback-ground';
     if (this.textures.exists(tileKey)) return tileKey;
 
-    const tileSize = 512;
+    const size = 512;
     const g = this.make.graphics({ x: 0, y: 0 }, false);
+    g.fillStyle(0x2f5d3a, 1);
+    g.fillRect(0, 0, size, size);
 
-    // 1) 어두운 보라→네이비 수직 그라데이션 (4px 단위로 줄 그어 grad 흉내)
-    for (let y = 0; y < tileSize; y += 4) {
-      const t = y / tileSize;
-      const r = Math.floor(13 + t * 6);
-      const gC = Math.floor(10 + t * 4);
-      const b = Math.floor(28 + t * 22);
-      const color = (r << 16) | (gC << 8) | b;
-      g.fillStyle(color, 1);
-      g.fillRect(0, y, tileSize, 4);
-    }
-
-    // 2) 작은 픽셀 격자 도트 (옅은 보라)
-    for (let x = 8; x < tileSize; x += 16) {
-      for (let y = 8; y < tileSize; y += 16) {
-        g.fillStyle(0x4c1d95, 0.22);
-        g.fillRect(x, y, 1, 1);
-      }
-    }
-
-    // 결정적 의사난수 (렌더 안정성)
-    let seed = 1337;
+    // 결정적 도트 노이즈 (렌더 안정성)
+    let seed = 20260704;
     const rand = () => {
       seed = (seed * 9301 + 49297) % 233280;
       return seed / 233280;
     };
-
-    // 3) 픽셀 별 ~120개 (다양한 크기, 색)
-    const starColors = [0xffffff, 0xc4b5fd, 0x67e8f9, 0xfde68a, 0xfca5a5];
-    for (let i = 0; i < 120; i++) {
-      const x = Math.floor(rand() * tileSize);
-      const y = Math.floor(rand() * tileSize);
-      const r = rand();
-      const size = r < 0.65 ? 1 : (r < 0.92 ? 2 : 3);
-      const alpha = 0.45 + rand() * 0.5;
-      const color = starColors[Math.floor(rand() * starColors.length)];
-      g.fillStyle(color, alpha);
-      g.fillRect(x, y, size, size);
+    const shades = [0x274d31, 0x376b44, 0x2a5537];
+    for (let i = 0; i < 900; i++) {
+      const x = Math.floor(rand() * size);
+      const y = Math.floor(rand() * size);
+      const s = rand() < 0.85 ? 2 : 3;
+      g.fillStyle(shades[Math.floor(rand() * shades.length)], 0.6);
+      g.fillRect(x, y, s, s);
     }
 
-    // 4) 십자 모양 빛나는 큰 별 (8개)
-    for (let i = 0; i < 8; i++) {
-      const x = Math.floor(rand() * (tileSize - 8)) + 4;
-      const y = Math.floor(rand() * (tileSize - 8)) + 4;
-      // 중심
-      g.fillStyle(0xffffff, 0.95);
-      g.fillRect(x, y, 1, 1);
-      // 십자 1px
-      g.fillStyle(0xffffff, 0.7);
-      g.fillRect(x - 1, y, 1, 1);
-      g.fillRect(x + 1, y, 1, 1);
-      g.fillRect(x, y - 1, 1, 1);
-      g.fillRect(x, y + 1, 1, 1);
-      // 외곽 페이드
-      g.fillStyle(0xc4b5fd, 0.35);
-      g.fillRect(x - 2, y, 1, 1);
-      g.fillRect(x + 2, y, 1, 1);
-      g.fillRect(x, y - 2, 1, 1);
-      g.fillRect(x, y + 2, 1, 1);
-    }
-
-    // 5) 글로우 (보라/시안 부드러운 원, 안개 효과)
-    const glowColors = [0x6366f1, 0x8b5cf6, 0x22d3ee, 0xa78bfa];
-    for (let i = 0; i < 7; i++) {
-      const cx = Math.floor(rand() * tileSize);
-      const cy = Math.floor(rand() * tileSize);
-      const baseR = 16 + Math.floor(rand() * 24);
-      const color = glowColors[Math.floor(rand() * glowColors.length)];
-      // 다중 원으로 부드러운 그라데이션 흉내
-      g.fillStyle(color, 0.04);
-      g.fillCircle(cx, cy, baseR);
-      g.fillStyle(color, 0.06);
-      g.fillCircle(cx, cy, baseR * 0.7);
-      g.fillStyle(color, 0.09);
-      g.fillCircle(cx, cy, baseR * 0.4);
-    }
-
-    // 6) 픽셀 마법 룬 — 다이아몬드 형태 4개 (코너 분산)
-    const drawDiamondRune = (cx: number, cy: number, scale: number, color: number) => {
-      g.fillStyle(color, 0.3);
-      // 다이아몬드(◆) 모양 픽셀
-      const offsets = [
-        [0, -3],
-        [-1, -2], [0, -2], [1, -2],
-        [-2, -1], [-1, -1], [0, -1], [1, -1], [2, -1],
-        [-3, 0], [-2, 0], [-1, 0], [1, 0], [2, 0], [3, 0],
-        [-2, 1], [-1, 1], [0, 1], [1, 1], [2, 1],
-        [-1, 2], [0, 2], [1, 2],
-        [0, 3],
-      ];
-      for (const [dx, dy] of offsets) {
-        g.fillRect(cx + dx * scale, cy + dy * scale, scale, scale);
-      }
-      // 중심 강조
-      g.fillStyle(0xffffff, 0.6);
-      g.fillRect(cx, cy, scale, scale);
-    };
-    drawDiamondRune(72, 80, 1, 0xa78bfa);
-    drawDiamondRune(tileSize - 88, 96, 1, 0x67e8f9);
-    drawDiamondRune(96, tileSize - 104, 1, 0xfde68a);
-    drawDiamondRune(tileSize - 72, tileSize - 80, 1, 0xa78bfa);
-
-    g.generateTexture(tileKey, tileSize, tileSize);
+    g.generateTexture(tileKey, size, size);
     g.destroy();
     return tileKey;
+  }
+
+  /**
+   * 배경 장식 (설계 §4): 월드를 512px 청크로 나누고, 각 가시 청크마다 청크 좌표
+   * 시드 PRNG로 deco 종류·위치·개수를 결정적으로 배치. 같은 월드 위치엔 항상 같은
+   * 장식이 나오고, 화면 밖 청크는 컬링. depth 1 → 바닥 위, 엔티티 아래.
+   */
+  private updateDecorations(): void {
+    const CHUNK = GameScene.CHUNK_SIZE;
+    const view = this.cameras.main.worldView;
+    const minCx = Math.floor(view.x / CHUNK) - 1;
+    const maxCx = Math.floor(view.right / CHUNK) + 1;
+    const minCy = Math.floor(view.y / CHUNK) - 1;
+    const maxCy = Math.floor(view.bottom / CHUNK) + 1;
+
+    const needed = new Set<string>();
+    for (let cx = minCx; cx <= maxCx; cx++) {
+      for (let cy = minCy; cy <= maxCy; cy++) {
+        const key = `${cx},${cy}`;
+        needed.add(key);
+        if (!this.decoChunks.has(key)) {
+          this.spawnChunkDecorations(cx, cy, key);
+        }
+      }
+    }
+
+    // 범위 밖 청크 컬링
+    for (const [key, imgs] of this.decoChunks) {
+      if (!needed.has(key)) {
+        imgs.forEach((im) => im.destroy());
+        this.decoChunks.delete(key);
+      }
+    }
+  }
+
+  private spawnChunkDecorations(cx: number, cy: number, key: string): void {
+    const CHUNK = GameScene.CHUNK_SIZE;
+    const rand = mulberry32(hashChunk(cx, cy));
+    const count = 1 + Math.floor(rand() * 2); // 청크당 1–2개
+    const imgs: Phaser.GameObjects.Image[] = [];
+
+    for (let i = 0; i < count; i++) {
+      const decoKey = DECO_KEYS[Math.floor(rand() * DECO_KEYS.length)];
+      const px = cx * CHUNK + rand() * CHUNK;
+      const py = cy * CHUNK + rand() * CHUNK;
+      const scale = 0.9 + rand() * 0.5;
+      if (!this.textures.exists(decoKey)) continue;
+      const img = this.add.image(px, py, decoKey);
+      img.setScale(scale);
+      img.setAlpha(0.95);
+      img.setDepth(1); // 바닥(-10) 위, 수정(2)·몬스터(5)·플레이어(10) 아래
+      imgs.push(img);
+    }
+
+    this.decoChunks.set(key, imgs);
   }
 
   // ... (setupCollisions, handlePlayerMonsterCollision, etc. remain the same) ...
@@ -624,6 +551,9 @@ export class GameScene extends Phaser.Scene {
 
     // Update background scroll position based on camera
     this.background.setTilePosition(this.cameras.main.scrollX, this.cameras.main.scrollY);
+
+    // 결정적 청크 장식 배치/컬링
+    this.updateDecorations();
 
     // Update player
     this.player.update();

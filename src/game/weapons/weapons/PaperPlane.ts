@@ -57,7 +57,7 @@ export class PaperPlane extends WeaponBase {
       this.player.y,
       'weapon_paper_plane'
     );
-    plane.setScale(0.05 * area);
+    plane.setScale(1.0 * area);
     plane.setDepth(9);
 
     this.scene.physics.add.existing(plane);

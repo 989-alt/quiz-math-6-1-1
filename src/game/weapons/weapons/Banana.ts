@@ -52,7 +52,7 @@ export class Banana extends WeaponBase {
       this.player.y,
       'weapon_banana'
     );
-    banana.setScale(0.06 * area);
+    banana.setScale(1.2 * area);
     banana.setDepth(9);
 
     this.scene.physics.add.existing(banana);

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_CONFIG } from '../config';
 import { EventBus, GameEvents } from '../utils/EventBus';
+import { HERO_IDLE_KEY } from '../assetKeys';
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -31,14 +32,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private joystickVector: Phaser.Math.Vector2 = new Phaser.Math.Vector2(0, 0);
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    // Use actual player sprite
-    super(scene, x, y, 'player_idle');
+    // Native-size pixel-art hero (Phase 3C); no more 1024px 0.1-scale hack.
+    super(scene, x, y, HERO_IDLE_KEY);
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
-    // Scale down the sprite to fit game
-    this.setScale(0.1);
+    // 히어로가 화면에서 잘 읽히도록 native(≈48×68px) 대비 약간 확대
+    this.setScale(1.3);
+
+    // idle 루프 재생 (Phase 4에서 상태머신으로 확장)
+    if (scene.anims.exists(HERO_IDLE_KEY)) {
+      this.play(HERO_IDLE_KEY);
+    }
 
     // Hitbox를 sprite 시각 영역의 40%로 축소하고 중앙 정렬 (투명 padding 충돌 방지)
     const body = this.body as Phaser.Physics.Arcade.Body;

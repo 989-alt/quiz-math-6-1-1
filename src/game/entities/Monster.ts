@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { MONSTER_WALK_KEYS, BOSS_WALK_KEYS } from '../assetKeys';
 
 export interface MonsterConfig {
   hp: number;
@@ -35,6 +36,11 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
 
     if (config.scale) {
       this.setScale(config.scale);
+    }
+
+    // walk 루프 재생 (Phase 4에서 상태머신으로 확장). anim 키 == 텍스처 키.
+    if (config.spriteKey && this.scene.anims.exists(config.spriteKey)) {
+      this.play(config.spriteKey);
     }
 
     // Hitbox를 sprite 시각 영역의 50%로 축소하고 중앙 정렬 (투명 padding 충돌 방지)
@@ -224,9 +230,9 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
 
 // Get monster config based on wave number
 export function getMonsterConfigForWave(wave: number): MonsterConfig {
-  // Select monster sprite based on wave (cycles through 15 monsters)
-  const monsterIndex = ((wave - 1) % 15) + 1;
-  const spriteKey = `monster_${monsterIndex}`;
+  // Select monster sprite based on wave (cycles through 15 monster walk sheets)
+  const monsterIndex = (wave - 1) % MONSTER_WALK_KEYS.length;
+  const spriteKey = MONSTER_WALK_KEYS[monsterIndex];
 
   // Base stats — 가파른 스케일링 (선형 + 2차)
   const baseHp = Math.floor(15 + wave * 6 + wave * wave * 0.4);
@@ -245,7 +251,7 @@ export function getMonsterConfigForWave(wave: number): MonsterConfig {
       speed: baseSpeed * 0.55,
       xpValue: baseXp * 3,
       spriteKey,
-      scale: 0.14,
+      scale: 1.3,
     };
   } else if (wavePhase === 2) {
     // 보스 직전: 빠른 약한 (HP 0.4배, 빠름)
@@ -255,7 +261,7 @@ export function getMonsterConfigForWave(wave: number): MonsterConfig {
       speed: baseSpeed * 1.5,
       xpValue: baseXp,
       spriteKey,
-      scale: 0.07,
+      scale: 0.8,
     };
   } else {
     // 일반 웨이브: 균형형
@@ -265,16 +271,16 @@ export function getMonsterConfigForWave(wave: number): MonsterConfig {
       speed: baseSpeed,
       xpValue: baseXp,
       spriteKey,
-      scale: 0.1,
+      scale: 1.0,
     };
   }
 }
 
 // Get boss config based on wave number
 export function getBossConfigForWave(wave: number): MonsterConfig {
-  // Boss appears every 3 waves, select boss sprite (cycles through 5 bosses)
-  const bossIndex = (Math.floor(wave / 3) % 5) + 1;
-  const spriteKey = `boss_${bossIndex}`;
+  // Boss appears every 3 waves, select boss sprite (cycles through 5 boss walk sheets)
+  const bossIndex = Math.floor(wave / 3) % BOSS_WALK_KEYS.length;
+  const spriteKey = BOSS_WALK_KEYS[bossIndex];
 
   // Boss stats — 가파른 스케일링
   const bossLevel = Math.floor(wave / 3);
@@ -289,7 +295,7 @@ export function getBossConfigForWave(wave: number): MonsterConfig {
     speed: baseSpeed,
     xpValue: baseXp,
     spriteKey,
-    scale: 0.2, // Bosses are larger
+    scale: 1.4, // Bosses are larger (native ≈100–128px)
     isBoss: true,
   };
 }
@@ -306,32 +312,32 @@ export const MonsterTypes: Record<string, MonsterConfig> = {
     damage: 5,
     speed: 60,
     xpValue: 1,
-    spriteKey: 'monster_1',
-    scale: 0.1,
+    spriteKey: MONSTER_WALK_KEYS[0],
+    scale: 1.0,
   },
   fast: {
     hp: 5,
     damage: 3,
     speed: 100,
     xpValue: 1,
-    spriteKey: 'monster_2',
-    scale: 0.08,
+    spriteKey: MONSTER_WALK_KEYS[4],
+    scale: 0.8,
   },
   tank: {
     hp: 30,
     damage: 10,
     speed: 40,
     xpValue: 3,
-    spriteKey: 'monster_3',
-    scale: 0.12,
+    spriteKey: MONSTER_WALK_KEYS[8],
+    scale: 1.3,
   },
   boss: {
     hp: 200,
     damage: 20,
     speed: 50,
     xpValue: 20,
-    spriteKey: 'boss_1',
-    scale: 0.2,
+    spriteKey: BOSS_WALK_KEYS[0],
+    scale: 1.4,
     isBoss: true,
   },
 };

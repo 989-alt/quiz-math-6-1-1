@@ -60,7 +60,7 @@ export class Pencil extends WeaponBase {
         this.player.y,
         'weapon_pencil'
       );
-      pencil.setScale(0.05 * area);
+      pencil.setScale(1.0 * area);
       pencil.setRotation(angle);
       pencil.setDepth(9);
 

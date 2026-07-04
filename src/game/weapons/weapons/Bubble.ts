@@ -50,7 +50,7 @@ export class Bubble extends WeaponBase {
         this.player.y,
         'weapon_bubble'
       );
-      bubble.setScale(0.06 * area);
+      bubble.setScale(1.1 * area);
       bubble.setDepth(9);
       bubble.setAlpha(0.8);
 
@@ -80,7 +80,7 @@ export class Bubble extends WeaponBase {
       (bubble as any).damage = damage;
 
       // Floating effect
-      bubble.setScale((0.06 * area) * (1 + Math.sin(Date.now() / 300 + i) * 0.1));
+      bubble.setScale((1.1 * area) * (1 + Math.sin(Date.now() / 300 + i) * 0.1));
 
       // Update physics body position
       const body = bubble.body as Phaser.Physics.Arcade.Body;

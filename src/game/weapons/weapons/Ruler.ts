@@ -82,7 +82,7 @@ export class Ruler extends WeaponBase {
       this.player.y,
       'weapon_banana'
     );
-    banana.setScale(0.08 * area); // Larger banana
+    banana.setScale(1.6 * area); // Larger banana
     banana.setDepth(9);
     banana.setRotation(angle);
 

@@ -54,7 +54,7 @@ export class Acorn extends WeaponBase {
       this.player.y,
       'weapon_acorn'
     );
-    acorn.setScale(0.05 * area);
+    acorn.setScale(1.2 * area);
     acorn.setDepth(9);
 
     this.scene.physics.add.existing(acorn);
