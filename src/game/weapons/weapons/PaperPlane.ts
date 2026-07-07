@@ -43,7 +43,8 @@ export class PaperPlane extends WeaponBase {
   }
 
   private createPaperPlane(): void {
-    const target = this.findClosestEnemy();
+    // 컨셉: 장거리 활공 유도 — 가장 먼 적을 노려 근접 무기들과 역할을 분담
+    const target = this.findFarthestEnemy() ?? this.findClosestEnemy();
     if (!target) return;
 
     const speed = this.getSpeed();

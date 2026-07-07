@@ -281,6 +281,49 @@ export abstract class WeaponBase {
     return inRange[Math.floor(Math.random() * inRange.length)];
   }
 
+  // Helper: 사거리 내 현재 HP가 가장 높은 몬스터 (돋보기 등 "강한 적 우선" 무기용)
+  protected findToughestEnemy(maxRange?: number): Phaser.Physics.Arcade.Sprite | null {
+    const monsters = this.scene.getMonsters();
+    const range = maxRange ?? GAME_CONFIG.combat.autoAimRange;
+    let toughest: Phaser.Physics.Arcade.Sprite | null = null;
+    let highestHp = -1;
+
+    monsters.getChildren().forEach((monster) => {
+      const m = monster as Phaser.Physics.Arcade.Sprite;
+      if (!m.active) return;
+
+      const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, m.x, m.y);
+      const hp = (m as unknown as { hp?: number }).hp ?? 0;
+      if (dist <= range && hp > highestHp) {
+        highestHp = hp;
+        toughest = m;
+      }
+    });
+
+    return toughest;
+  }
+
+  // Helper: 사거리 내 가장 먼 몬스터 (종이비행기 등 장거리 특화 무기용)
+  protected findFarthestEnemy(maxRange?: number): Phaser.Physics.Arcade.Sprite | null {
+    const monsters = this.scene.getMonsters();
+    const range = maxRange ?? GAME_CONFIG.combat.autoAimRange;
+    let farthest: Phaser.Physics.Arcade.Sprite | null = null;
+    let farthestDist = -1;
+
+    monsters.getChildren().forEach((monster) => {
+      const m = monster as Phaser.Physics.Arcade.Sprite;
+      if (!m.active) return;
+
+      const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, m.x, m.y);
+      if (dist <= range && dist > farthestDist) {
+        farthestDist = dist;
+        farthest = m;
+      }
+    });
+
+    return farthest;
+  }
+
   getInfo(): { id: string; name: string; nameKo: string; description: string; descriptionKo: string; level: number; maxLevel: number; evolutionPair?: string } {
     return {
       id: this.id,

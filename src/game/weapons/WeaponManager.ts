@@ -21,7 +21,6 @@ import { Butterfly } from './weapons/Butterfly';
 import { RobotToy } from './weapons/RobotToy';
 import { Rainbow } from './weapons/Rainbow';
 import { Star } from './weapons/Star';
-import { Magnet } from './weapons/Magnet';
 import { MagnifyingGlass } from './weapons/MagnifyingGlass';
 
 import { PassiveManager } from './PassiveManager';
@@ -31,7 +30,7 @@ export type WeaponId =
   | 'banana' | 'acorn' | 'pencil' | 'paper_plane' | 'marble'
   | 'snowball' | 'leaf' | 'ruler' | 'eraser' | 'crayon'
   | 'lunch_box' | 'bubble' | 'water_balloon' | 'hamster' | 'butterfly'
-  | 'robot_toy' | 'rainbow' | 'star' | 'magnet' | 'magnifying_glass';
+  | 'robot_toy' | 'rainbow' | 'star' | 'magnifying_glass';
 
 export type WeaponCategory = 'ranged' | 'melee' | 'companion' | 'special';
 
@@ -71,7 +70,6 @@ const WeaponRegistry: Record<WeaponId, new (scene: GameScene, player: Player) =>
   robot_toy: RobotToy,
   rainbow: Rainbow,
   star: Star,
-  magnet: Magnet,
   magnifying_glass: MagnifyingGlass,
 };
 
@@ -98,7 +96,6 @@ export const WeaponInfoList: WeaponInfo[] = [
   // 특수 무기 (Special)
   { id: 'rainbow', name: 'Rainbow', nameKo: '무지개', description: 'Rainbow wave attack', descriptionKo: '무지개 파동 공격', maxLevel: 8, category: 'special' },
   { id: 'star', name: 'Star', nameKo: '별', description: 'Random lightning strikes', descriptionKo: '무작위 별똥별 공격', maxLevel: 8, category: 'special' },
-  { id: 'magnet', name: 'Magnet', nameKo: '자석', description: 'Pulls and damages enemies', descriptionKo: '적을 끌어당겨 공격', maxLevel: 8, category: 'special' },
   { id: 'magnifying_glass', name: 'Magnifying Glass', nameKo: '돋보기', description: 'Focus sunlight to burn enemies', descriptionKo: '햇빛을 모아 적을 태우는 공격', maxLevel: 8, category: 'special' },
 ];
 

@@ -13,7 +13,7 @@ export class MagnifyingGlass extends WeaponBase {
   constructor(scene: GameScene, player: Player) {
     super(scene, player);
     this.baseStats = {
-      damage: 35,
+      damage: 45, // 단일 대상 고데미지 역할(강한 적 우선 타격)에 맞춰 35 → 45 상향
       cooldown: 2200,
       area: 1,
       speed: 0,
@@ -43,16 +43,21 @@ export class MagnifyingGlass extends WeaponBase {
   }
 
   private createLightBeam(): void {
-    const target = this.findRandomEnemyInRange(350);
+    // 체력이 가장 많은 몬스터 우선(보스/엘리트 킬러), 없으면 가까운 적 폴백
+    const target = this.findToughestEnemy(350) ?? this.findClosestEnemy(350);
     if (!target) return;
 
     const damage = this.getDamage();
     const area = this.getArea();
     const duration = this.getDuration();
 
+    // 텔레그래프 중 타겟이 죽어도(destroy) 그 위치에 그대로 번 — 좌표를 미리 캡처
+    const targetX = target.x;
+    const targetY = target.y;
+
     // Create magnifying glass above target
-    const glassX = target.x;
-    const glassY = target.y - 80;
+    const glassX = targetX;
+    const glassY = targetY - 80;
 
     // 렌즈+손잡이 (weapon_magnifying_glass 픽셀아트, 기존 도형 렌즈 지름 40*area → native 48px 기준 스케일 환산)
     const glass = this.scene.add.sprite(glassX, glassY, 'weapon_magnifying_glass');
@@ -60,7 +65,7 @@ export class MagnifyingGlass extends WeaponBase {
     glass.setDepth(11);
 
     // Telegraph ring shrinking over 0.5s to warn the burn is coming
-    const telegraph = this.scene.add.circle(target.x, target.y, 45 * area, 0xff4500, 0);
+    const telegraph = this.scene.add.circle(targetX, targetY, 45 * area, 0xff4500, 0);
     telegraph.setStrokeStyle(3, 0xffa500, 0.9);
     telegraph.setDepth(10);
     this.scene.tweens.add({
@@ -93,26 +98,26 @@ export class MagnifyingGlass extends WeaponBase {
           beamGraphics.lineBetween(
             glassX + offsetX,
             glassY + 15 * area,
-            target.x,
-            target.y
+            targetX,
+            targetY
           );
         }
 
         // Central bright beam
         beamGraphics.lineStyle(4, 0xffa500, alpha);
-        beamGraphics.lineBetween(glassX, glassY + 15 * area, target.x, target.y);
+        beamGraphics.lineBetween(glassX, glassY + 15 * area, targetX, targetY);
       },
       loop: true,
     });
 
     // Create burn zone at focus point once the telegraph finishes closing
     this.scene.time.delayedCall(500, () => {
-      this.playImpact(target.x, target.y, 'burn');
+      this.playImpact(targetX, targetY, 'burn');
 
       // Burn circle at target location
       const burnZone = this.scene.add.circle(
-        target.x,
-        target.y,
+        targetX,
+        targetY,
         25 * area,
         0xff4500,
         0.6
@@ -129,8 +134,8 @@ export class MagnifyingGlass extends WeaponBase {
       for (let i = 0; i < 8; i++) {
         const angle = (i / 8) * Math.PI * 2;
         const spark = this.scene.add.circle(
-          target.x + Math.cos(angle) * 10 * area,
-          target.y + Math.sin(angle) * 10 * area,
+          targetX + Math.cos(angle) * 10 * area,
+          targetY + Math.sin(angle) * 10 * area,
           4 * area,
           0xffff00,
           0.9
@@ -139,8 +144,8 @@ export class MagnifyingGlass extends WeaponBase {
 
         this.scene.tweens.add({
           targets: spark,
-          x: target.x + Math.cos(angle) * 35 * area,
-          y: target.y + Math.sin(angle) * 35 * area - 20,
+          x: targetX + Math.cos(angle) * 35 * area,
+          y: targetY + Math.sin(angle) * 35 * area - 20,
           alpha: 0,
           scale: 0.3,
           duration: 400,
@@ -149,11 +154,11 @@ export class MagnifyingGlass extends WeaponBase {
       }
 
       // Smoke effect
-      const smoke = this.scene.add.circle(target.x, target.y - 10, 15 * area, 0x808080, 0.4);
+      const smoke = this.scene.add.circle(targetX, targetY - 10, 15 * area, 0x808080, 0.4);
       smoke.setDepth(10);
       this.scene.tweens.add({
         targets: smoke,
-        y: target.y - 50,
+        y: targetY - 50,
         alpha: 0,
         scale: 2,
         duration: 600,
@@ -161,7 +166,7 @@ export class MagnifyingGlass extends WeaponBase {
       });
 
       // Ground scorch decal lingering after the burn fades
-      const scorch = this.scene.add.ellipse(target.x, target.y + 6 * area, 36 * area, 12 * area, 0x1a1208, 0.55);
+      const scorch = this.scene.add.ellipse(targetX, targetY + 6 * area, 36 * area, 12 * area, 0x1a1208, 0.55);
       scorch.setDepth(5);
       this.scene.tweens.add({
         targets: scorch,

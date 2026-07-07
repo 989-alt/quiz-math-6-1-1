@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
 import { Monster, MonsterTypes, getMonsterConfigForWave, getBossConfigForWave, isBossWave } from '../entities/Monster';
-import { XPGem } from '../entities/XPGem';
+import { XPGem, MagnetGem } from '../entities/XPGem';
 import { WeaponManager, WeaponInfoList, BonusInfoList } from '../weapons/WeaponManager';
 import { PassiveInfoList } from '../weapons/PassiveManager';
 import { EventBus, GameEvents } from '../utils/EventBus';
@@ -31,6 +31,7 @@ export class GameScene extends Phaser.Scene {
   private player!: Player;
   private monsters!: Phaser.Physics.Arcade.Group;
   private xpGems!: Phaser.Physics.Arcade.Group;
+  private pickups!: Phaser.Physics.Arcade.Group; // 필드 드랍 아이템 (자석 등)
   private projectiles!: Phaser.Physics.Arcade.Group;
   private weaponManager!: WeaponManager;
   public fx!: EffectManager;
@@ -73,6 +74,7 @@ export class GameScene extends Phaser.Scene {
     // Create groups
     this.monsters = this.physics.add.group({ classType: Monster });
     this.xpGems = this.physics.add.group({ classType: XPGem });
+    this.pickups = this.physics.add.group();
     this.projectiles = this.physics.add.group();
     // solid deco 정적 장애물 그룹 (청크 라이프사이클로 멤버가 생성/파괴됨)
     this.obstacles = this.physics.add.staticGroup();
@@ -445,6 +447,15 @@ export class GameScene extends Phaser.Scene {
       this
     );
 
+    // Player vs 필드 드랍 아이템 (자석: 화면의 모든 수정 흡인)
+    this.physics.add.overlap(
+      this.player,
+      this.pickups,
+      this.handlePlayerPickupCollision as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+      undefined,
+      this
+    );
+
     // Projectiles vs Monsters
     this.physics.add.overlap(
       this.projectiles,
@@ -479,6 +490,23 @@ export class GameScene extends Phaser.Scene {
     this.playSfx('sfx_pickup', 0.18);
     // Immediately emit state update so HUD reflects XP gain
     this.emitPlayerState();
+  }
+
+  // 자석 아이템 획득: 화면의 모든 수정을 플레이어에게 흡인 (magnet_pulse 보상 카드와 동일 효과)
+  private handlePlayerPickupCollision(
+    _player: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile,
+    pickup: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile
+  ): void {
+    const item = pickup as MagnetGem;
+    if (!item.active) return;
+
+    item.collect();
+    this.xpGems.getChildren().forEach((gem) => {
+      const g = gem as XPGem;
+      if (g.active && !g.isCollecting()) g.startCollection(this.player);
+    });
+    this.fx.burst('collect', this.player.x, this.player.y);
+    this.playSfx('sfx_pickup', 0.4);
   }
 
   private handleProjectileMonsterCollision(
@@ -524,6 +552,11 @@ export class GameScene extends Phaser.Scene {
     const gem = XPGem.createForWave(this, monster.x, monster.y, this.currentWave);
     this.xpGems.add(gem);
 
+    // 자석 아이템 드랍 (2.5%, 필드에 1개만) — 획득 시 화면의 모든 수정 흡인
+    if (Math.random() < 0.025 && this.pickups.countActive(true) === 0) {
+      this.pickups.add(new MagnetGem(this, monster.x, monster.y));
+    }
+
     EventBus.emit(GameEvents.MONSTER_KILLED, { total: this.monstersKilled });
   }
 
@@ -543,6 +576,7 @@ export class GameScene extends Phaser.Scene {
     // Clear all entities
     this.monsters.clear(true, true);
     this.xpGems.clear(true, true);
+    this.pickups.clear(true, true);
     this.projectiles.clear(true, true);
 
     // 이전 판의 배경 장식·정적 장애물 바디 제거 (다음 판으로 남지 않게). decoChunks가
