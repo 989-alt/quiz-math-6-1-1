@@ -60,7 +60,7 @@ export class Eraser extends WeaponBase {
     const body = eraser.body as Phaser.Physics.Arcade.Body;
     body.setAllowGravity(false);
     body.enable = false;
-    body.setSize(eraser.width * 0.9, eraser.height * 0.9);
+    body.setSize(eraser.width * 1.35, eraser.height * 1.35); // 타격 판정 +50% (0.9 → 1.35, 너무 국소적이라는 피드백 반영)
 
     (eraser as any).damage = damage;
     (eraser as any).pierce = 999;

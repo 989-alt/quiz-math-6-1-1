@@ -114,15 +114,25 @@ export class MagnifyingGlass extends WeaponBase {
     this.scene.time.delayedCall(500, () => {
       this.playImpact(targetX, targetY, 'burn');
 
-      // Burn circle at target location
+      // Burn circle at target location (타격 반경 +40%: 25 → 35)
       const burnZone = this.scene.add.circle(
         targetX,
         targetY,
-        25 * area,
+        35 * area,
         0xff4500,
         0.6
       );
       burnZone.setDepth(9);
+
+      // 잔존 화재 존 — 번 지점에 3초간 남아 밟은 적에게 도트 데미지 (즉발 번존과 별개)
+      this.spawnHazard(targetX, targetY, {
+        radius: 55 * area,
+        duration: 3000,
+        dps: damage * 0.4,
+        tint: 0xff5522,
+        alpha: 0.25,
+        fxKind: 'burn',
+      });
 
       this.scene.physics.add.existing(burnZone);
       (burnZone as any).damage = damage;

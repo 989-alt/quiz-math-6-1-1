@@ -1,6 +1,7 @@
 import { WeaponBase } from '../WeaponBase';
 import type { GameScene } from '../../scenes/GameScene';
 import type { Player } from '../../entities/Player';
+import type { Monster } from '../../entities/Monster';
 
 export class Snowball extends WeaponBase {
   id = 'snowball';
@@ -27,7 +28,7 @@ export class Snowball extends WeaponBase {
       { damage: 3 },
       { area: 0.1 },
       { amount: 1 },
-      { damage: 4 },
+      { area: 0.15 },
       { amount: 1 },
       { damage: 6 },
     ];
@@ -66,7 +67,7 @@ export class Snowball extends WeaponBase {
       delay: 80,
     });
 
-    // Slow debuff on hit (설명대로 실제 이동속도 저하 적용, 1.5초간 50%)
+    // Slow debuff on hit (설명대로 실제 이동속도 저하 적용, 2초간 50%)
     const hitMonsters = new Set<Phaser.Physics.Arcade.Sprite>();
     const overlap = this.scene.physics.add.overlap(
       snowball,
@@ -78,15 +79,17 @@ export class Snowball extends WeaponBase {
 
         this.playImpact(m.x, m.y, 'splash');
 
-        if (!m.__snowSlowed) {
-          m.__snowSlowed = true;
-          const originalSpeed = m.speed;
-          m.speed = originalSpeed * 0.5;
-          this.scene.time.delayedCall(1500, () => {
-            if (m.active) m.speed = originalSpeed;
-            m.__snowSlowed = false;
-          });
-        }
+        // 공용 슬로우 API로 감속 — 만료 자동 복원, 중첩 레이스 없음
+        (m as Monster).applySlow(0.5, 2000);
+
+        // 명중 지점에 소형 빙판 잔존 — 밟은 적 추가 둔화
+        this.spawnHazard(m.x, m.y, {
+          radius: 40 * area,
+          duration: 2000,
+          slowFactor: 0.6,
+          tint: 0xbfeaff,
+          alpha: 0.3,
+        });
 
         const flake = this.scene.add.sprite(m.x, m.y - 10, 'weapon_snowball');
         flake.setScale(0.5);

@@ -6,7 +6,7 @@ import { WeaponManager, WeaponInfoList, BonusInfoList } from '../weapons/WeaponM
 import { PassiveInfoList } from '../weapons/PassiveManager';
 import { EventBus, GameEvents } from '../utils/EventBus';
 import { GAME_CONFIG } from '../config';
-import { GROUND_TILE_KEY } from '../assetKeys';
+import { GROUND_TILE_KEY, MONSTER_WALK_KEYS } from '../assetKeys';
 import { EffectManager } from '../effects/EffectManager';
 
 // 청크 좌표 → 결정적 시드 해시 (같은 월드 위치엔 항상 같은 장식)
@@ -115,7 +115,13 @@ export class GameScene extends Phaser.Scene {
 
     // 몬스터 vs solid 장애물 충돌은 그룹끼리라 단 한 번만 등록 (몬스터 그룹은 리셋 시
     // 파괴되지 않고 clear만 되므로 재등록 불필요 — 중복 등록하면 분리가 두 번 적용됨)
-    this.physics.add.collider(this.monsters, this.obstacles);
+    // processCallback: 유령처럼 passesObstacles인 몬스터는 장애물과 분리하지 않고 통과시킴
+    this.physics.add.collider(
+      this.monsters,
+      this.obstacles,
+      undefined,
+      (m, _o) => !(m as Monster).passesObstacles
+    );
 
     // Setup event listeners
     this.setupEventListeners();
@@ -557,6 +563,11 @@ export class GameScene extends Phaser.Scene {
       this.pickups.add(new MagnetGem(this, monster.x, monster.y));
     }
 
+    // 보스 처치 보상: 무조건 1레벨업 (남은 필요 XP를 즉시 충전 → 퀴즈/업그레이드 흐름 진입)
+    if (monster.isBoss) {
+      this.addXp(Math.max(1, this.xpToNextLevel - this.playerXp));
+    }
+
     EventBus.emit(GameEvents.MONSTER_KILLED, { total: this.monstersKilled });
   }
 
@@ -789,9 +800,9 @@ export class GameScene extends Phaser.Scene {
     // Update player
     this.player.update();
 
-    // Update monsters
+    // Update monsters (특성 타이머는 delta 누적 방식 — 일시정지 중 자동 동결)
     this.monsters.getChildren().forEach((monster) => {
-      (monster as Monster).update();
+      (monster as Monster).update(delta);
     });
 
     // Update weapons
@@ -872,6 +883,27 @@ export class GameScene extends Phaser.Scene {
     const monster = new Monster(this, x, y, config);
     monster.setTarget(this.player);
     this.monsters.add(monster);
+  }
+
+  // 왕관 슬라임 등 소환형 몬스터가 씬 경유로 호출하는 하수인 스폰.
+  // 화면 내 몬스터 40기 이상이면 스킵 (물량 폭주 방지)
+  public spawnMinion(x: number, y: number): void {
+    if (this.isPaused || !this.player.active) return;
+    if (this.monsters.countActive(true) >= 40) return;
+
+    const base = getMonsterConfigForWave(this.currentWave);
+    const minion = new Monster(this, x, y, {
+      ...base,
+      spriteKey: MONSTER_WALK_KEYS[0], // 일반 초록 슬라임
+      hp: Math.max(1, Math.floor(base.hp * 0.6)),
+      xpValue: 1,
+      scale: 0.9,
+    });
+    minion.setTarget(this.player);
+    this.monsters.add(minion);
+
+    // 소환 연출: 스폰 팝(스케일 트윈)은 Monster 생성자에 내장 — 여기선 poof만 추가
+    this.fx?.poof(x, y);
   }
 
   private cleanupEntities(): void {

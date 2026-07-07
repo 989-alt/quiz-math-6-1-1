@@ -1,7 +1,10 @@
 import type { UpgradeOption } from '../../types/game';
 
+/** LEVEL_UP 이벤트가 함께 싣는 효과 설명 필드 (WeaponManager.UpgradeChoice.effectKo) */
+type UpgradeCardOption = UpgradeOption & { effectKo?: string };
+
 interface UpgradeSelectProps {
-  upgrades: UpgradeOption[];
+  upgrades: UpgradeCardOption[];
   onSelect: (type: string, id: string) => void;
 }
 
@@ -182,6 +185,19 @@ export function UpgradeSelect({ upgrades, onSelect }: UpgradeSelectProps) {
                 }}>
                   {upgrade.description}
                 </p>
+
+                {/* Effect (이번 레벨업이 올려주는 것) */}
+                {upgrade.effectKo && (
+                  <p style={{
+                    fontSize: 'clamp(11px, 1vw, 13px)',
+                    fontWeight: 600,
+                    color: config.color,
+                    lineHeight: 1.5,
+                    marginTop: 8,
+                  }}>
+                    {`▲ ${upgrade.effectKo}`}
+                  </p>
+                )}
 
                 {/* Level Dots */}
                 {upgrade.type !== 'bonus' && upgrade.currentLevel !== undefined && (

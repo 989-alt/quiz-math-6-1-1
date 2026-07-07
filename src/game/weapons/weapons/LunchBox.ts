@@ -75,10 +75,11 @@ export class LunchBox extends WeaponBase {
         // Explosion effect
         this.playImpact(targetX, targetY, 'explosion');
 
+        // 폭발 데미지 반경 +30% (48 → 62)
         const explosion = this.scene.add.circle(
           targetX,
           targetY,
-          48 * area,
+          62 * area,
           0xffa500,
           0.7
         );

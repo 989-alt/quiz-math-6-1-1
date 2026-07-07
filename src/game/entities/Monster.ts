@@ -11,7 +11,11 @@ export interface MonsterConfig {
   spriteKey: string;
   scale?: number;
   isBoss?: boolean;
+  passesObstacles?: boolean; // 지형지물(장애물) 통과 여부 — 유령 등. 미지정 시 종별 기본값
 }
+
+// 몬스터별 특성 종류 (spriteKey 접두어로 파생)
+type MonsterTrait = 'none' | 'wasp' | 'ghost' | 'boar' | 'bat' | 'crowned';
 
 export class Monster extends Phaser.Physics.Arcade.Sprite {
   public hp: number;
@@ -23,6 +27,9 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   // 스폰 목표 스케일 — 스트레치류 이펙트(Magnet 등)의 복원 기준.
   // 런타임 scaleX는 스폰 팝/이펙트 트윈과 레이스가 있어 캡처하면 안 됨.
   public baseScale: number;
+  // 슬로우 디버프 기준 속도 — 런타임 speed 캡처(중첩 레이스) 대신 이 값 기준으로 감속/복원
+  private baseSpeed: number;
+  private slowUntil: number = 0;
   private target: Phaser.Physics.Arcade.Sprite | null = null;
   private hpBar: Phaser.GameObjects.Graphics | null = null;
   private shadow: Phaser.GameObjects.Sprite | null = null;
@@ -30,6 +37,18 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   private telegraphRing: Phaser.GameObjects.Arc | null = null;
   private static readonly TELEGRAPH_INTERVAL = 3500;
   private static readonly TELEGRAPH_DURATION = 500;
+
+  // === 몬스터별 특성(trait) 상태 ===
+  // 퀴즈 일시정지 중엔 GameScene.update가 return하여 monster.update도 안 불리므로,
+  // scene.time.now(절대시각) 비교 대신 update delta 누적으로 타이머를 관리한다
+  // (절대시각 기준이면 일시정지 동안 시간이 흘러 복귀 직후 일제 발동하는 문제).
+  public passesObstacles: boolean = false;
+  private trait: MonsterTrait = 'none';
+  private traitTimer: number = 0; // 특성 사이클 누적 시간(ms)
+  private traitPhase: number = 0; // 0=대기 1=텔레그래프(윈드업) 2=발동
+  private traitSpeedMul: number = 1; // 이번 프레임 이동 속도 배율
+  private traitDir: Phaser.Math.Vector2 | null = null; // 이동 방향 오버라이드 (돌진 고정·움찔 후퇴)
+  private zigzagTime: number = 0; // 박쥐 사인파 누적 시간(ms)
 
   constructor(scene: Phaser.Scene, x: number, y: number, config: MonsterConfig) {
     super(scene, x, y, config.spriteKey);
@@ -41,8 +60,17 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.hp = config.hp;
     this.damage = config.damage;
     this.speed = config.speed;
+    this.baseSpeed = config.speed;
     this.xpValue = config.xpValue;
     this.isBoss = config.isBoss || false;
+
+    // 몬스터별 특성 파생 (spriteKey 접두어로 종 판별)
+    this.trait = Monster.deriveTrait(config.spriteKey);
+    // 유령은 기본적으로 지형지물 통과 (config로 명시 오버라이드 가능)
+    this.passesObstacles = config.passesObstacles ?? this.trait === 'ghost';
+    if (this.trait === 'ghost') {
+      this.setAlpha(0.65); // 반투명으로 통과 능력을 시각적으로 표시
+    }
 
     const finalScale = config.scale || 1;
     this.baseScale = finalScale;
@@ -129,20 +157,50 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.target = target;
   }
 
-  update(): void {
+  // 슬로우 디버프 (눈덩이·늪 존 등): baseSpeed 기준 감속, 만료 시 update()에서 자동 복원.
+  // 중첩 적용 시 더 강한 감속과 더 긴 지속을 유지한다.
+  applySlow(factor: number, durationMs: number): void {
+    if (!this.active) return;
+    this.speed = Math.min(this.speed, this.baseSpeed * factor);
+    this.slowUntil = Math.max(this.slowUntil, this.scene.time.now + durationMs);
+  }
+
+  update(delta: number = 16.7): void {
     if (!this.target || !this.active) return;
 
-    // Move towards target
+    // 슬로우 만료 복원
+    if (this.slowUntil > 0 && this.scene.time.now > this.slowUntil) {
+      this.speed = this.baseSpeed;
+      this.slowUntil = 0;
+    }
+
+    // 몬스터별 특성 갱신 (traitSpeedMul / traitDir 결정)
+    this.updateTrait(delta);
+
+    // Move towards target (특성이 방향을 고정/오버라이드하면 그 방향 사용)
     const angle = Phaser.Math.Angle.Between(this.x, this.y, this.target.x, this.target.y);
-    const velocity = new Phaser.Math.Vector2(Math.cos(angle), Math.sin(angle));
-    velocity.scale(this.speed);
+    const velocity = this.traitDir
+      ? this.traitDir.clone()
+      : new Phaser.Math.Vector2(Math.cos(angle), Math.sin(angle));
+    velocity.scale(this.speed * this.traitSpeedMul);
+
+    // 박쥐: 진행 방향에 수직인 사인파 오프셋으로 지그재그 비행
+    if (this.trait === 'bat') {
+      this.zigzagTime += delta;
+      const sway = Math.sin(this.zigzagTime * 0.006) * this.speed * 0.7;
+      velocity.x += -Math.sin(angle) * sway;
+      velocity.y += Math.cos(angle) * sway;
+    }
 
     this.setVelocity(velocity.x, velocity.y);
 
     // 스프라이트는 정면(카메라) 기준 아트. 보스는 뒤집으면 거울처럼 보여 어색하므로
     // 항상 정면(플레이어를 바라봄) 유지. 일반 몬스터만 이동 방향으로 좌우 반전 + wobble.
     if (!this.isBoss) {
-      this.setFlipX(velocity.x < 0);
+      // 정지 상태(멧돼지 발구르기 등)에선 특성 연출의 flip을 덮어쓰지 않음
+      if (Math.abs(velocity.x) > 0.5) {
+        this.setFlipX(velocity.x < 0);
+      }
       this.updateWobble();
     }
 
@@ -158,6 +216,111 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     // 보스 공격 전 텔레그래프 펄스 (설계 §3.2)
     if (this.isBoss && this.telegraphRing) {
       this.updateTelegraph();
+    }
+  }
+
+  // spriteKey 접두어로 몬스터 종 판별 (보스 키는 'boss_' 접두라 매칭되지 않음)
+  private static deriveTrait(spriteKey: string): MonsterTrait {
+    if (!spriteKey) return 'none';
+    if (spriteKey.startsWith('wasp')) return 'wasp';
+    if (spriteKey.startsWith('ghost')) return 'ghost';
+    if (spriteKey.startsWith('boar')) return 'boar';
+    if (spriteKey.startsWith('bat')) return 'bat';
+    if (spriteKey.startsWith('elite_crowned')) return 'crowned';
+    return 'none';
+  }
+
+  // 몬스터별 특성 상태머신 — delta 누적 타이머라 퀴즈 일시정지 중엔 자동 동결됨
+  private updateTrait(delta: number): void {
+    if (this.trait === 'ghost') {
+      // 유령: 상시 저속(×0.6) + 장애물 통과(콜라이더 processCallback에서 처리)
+      this.traitSpeedMul = 0.6;
+      return;
+    }
+    if (this.trait === 'none' || this.trait === 'bat') {
+      // 박쥐의 사인파는 update()의 이동 블록에서 처리 (여기선 배율만 기본값)
+      this.traitSpeedMul = 1;
+      return;
+    }
+
+    this.traitTimer += delta;
+
+    if (this.trait === 'wasp') {
+      // 벌: 상시 고속(×1.45) + 2.5s마다 [0.25s 뒤로 움찔(윈드업) → 0.8s간 ×1.7 대시]
+      const BASE = 1.45;
+      const WAIT = 2500;
+      const WINDUP = 250;
+      const DASH = 800;
+      if (this.traitTimer < WAIT) {
+        this.traitSpeedMul = BASE;
+        this.traitDir = null;
+      } else if (this.traitTimer < WAIT + WINDUP) {
+        // 윈드업 텔레그래프: 플레이어 반대쪽으로 살짝 물러남
+        if (this.target) {
+          const back = Phaser.Math.Angle.Between(this.target.x, this.target.y, this.x, this.y);
+          this.traitDir = new Phaser.Math.Vector2(Math.cos(back), Math.sin(back));
+        }
+        this.traitSpeedMul = 0.5;
+      } else if (this.traitTimer < WAIT + WINDUP + DASH) {
+        // 대시: 플레이어 방향 유도 유지 + 순간 가속
+        this.traitDir = null;
+        this.traitSpeedMul = BASE * 1.7;
+      } else {
+        this.traitTimer = 0;
+      }
+      return;
+    }
+
+    if (this.trait === 'boar') {
+      // 멧돼지: 3.5s마다 [0.4s 제자리 발구르기 텔레그래프 → 1s간 ×2.2 직선 돌진(방향 고정, 유도 없음)]
+      const WAIT = 3500;
+      const STOMP = 400;
+      const CHARGE = 1000;
+      if (this.traitTimer < WAIT) {
+        if (this.traitPhase !== 0) {
+          this.traitPhase = 0;
+          this.traitDir = null;
+        }
+        this.traitSpeedMul = 1;
+      } else if (this.traitTimer < WAIT + STOMP) {
+        if (this.traitPhase !== 1) {
+          this.traitPhase = 1;
+          this.setTint(0xffb0b0); // 발구르기 텔레그래프 (붉은 기)
+        }
+        this.traitSpeedMul = 0;
+        // 제자리 발구르기: 좌우로 빠르게 흔들리는 연출
+        this.setFlipX(Math.floor(this.traitTimer / 100) % 2 === 0);
+      } else if (this.traitTimer < WAIT + STOMP + CHARGE) {
+        if (this.traitPhase !== 2) {
+          this.traitPhase = 2;
+          this.clearTint();
+          if (this.target) {
+            // 돌진 시작 시점의 플레이어 방향으로 고정 (돌진 중 유도 안 함)
+            const a = Phaser.Math.Angle.Between(this.x, this.y, this.target.x, this.target.y);
+            this.traitDir = new Phaser.Math.Vector2(Math.cos(a), Math.sin(a));
+          }
+        }
+        this.traitSpeedMul = 2.2;
+      } else {
+        this.traitTimer = 0;
+        this.traitPhase = 0;
+        this.traitDir = null;
+        this.traitSpeedMul = 1;
+      }
+      return;
+    }
+
+    if (this.trait === 'crowned') {
+      // 왕관 슬라임: 7s마다 주변에 일반 슬라임 1기 소환 (씬 경유 — 40기 상한은 씬에서 체크)
+      const SUMMON_INTERVAL = 7000;
+      this.traitSpeedMul = 1;
+      if (this.traitTimer >= SUMMON_INTERVAL) {
+        this.traitTimer = 0;
+        const ox = (Math.random() - 0.5) * 120;
+        const oy = (Math.random() - 0.5) * 120;
+        (this.scene as any).spawnMinion?.(this.x + ox, this.y + oy);
+      }
+      return;
     }
   }
 

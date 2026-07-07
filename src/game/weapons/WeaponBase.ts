@@ -324,6 +324,98 @@ export abstract class WeaponBase {
     return farthest;
   }
 
+  // 환경 해저드 존 (설계: 무기 사용 스팟에 잔존하는 지형 효과 — 화재=도트, 늪/빙판=둔화).
+  // 도트는 addProjectile 경로(damage/pierce)를 쓰되 500ms마다 히트 기록을 초기화해
+  // "위에 있는 동안" 재타격되게 하고, 둔화는 overlap마다 Monster.applySlow를 짧게 갱신한다.
+  protected spawnHazard(
+    x: number,
+    y: number,
+    opts: {
+      radius: number;
+      duration: number;
+      dps?: number; // 초당 도트 데미지
+      slowFactor?: number; // 0.5 = 50% 감속
+      tint: number;
+      alpha?: number;
+      fxKind?: string; // 주기적으로 존 안에 재생할 임팩트 이펙트
+    }
+  ): void {
+    const scene = this.scene;
+    const zone = scene.add.circle(x, y, opts.radius, opts.tint, opts.alpha ?? 0.22);
+    zone.setDepth(3);
+    scene.physics.add.existing(zone);
+    const body = (zone as unknown as { body: Phaser.Physics.Arcade.Body }).body;
+    body.setCircle(opts.radius);
+
+    const timers: Phaser.Time.TimerEvent[] = [];
+
+    if (opts.dps) {
+      // 500ms 틱 재타격 → 초당 dps 유지
+      (zone as any).damage = opts.dps / 2;
+      (zone as any).pierce = 999;
+      scene.addProjectile(zone as any);
+      timers.push(
+        scene.time.addEvent({
+          delay: 500,
+          loop: true,
+          callback: () => {
+            (zone as any).__hitMonsters?.clear();
+          },
+        })
+      );
+    }
+
+    if (opts.slowFactor !== undefined) {
+      const overlap = scene.physics.add.overlap(zone as any, scene.getMonsters(), (_z, monster) => {
+        (monster as any).applySlow?.(opts.slowFactor, 350);
+      });
+      (zone as any).once?.('destroy', () => overlap.destroy());
+    }
+
+    if (opts.fxKind) {
+      timers.push(
+        scene.time.addEvent({
+          delay: 400,
+          loop: true,
+          callback: () => {
+            const a = Math.random() * Math.PI * 2;
+            const r = Math.random() * opts.radius * 0.8;
+            this.playImpact(x + Math.cos(a) * r, y + Math.sin(a) * r, opts.fxKind!);
+          },
+        })
+      );
+    }
+
+    // 종료: 페이드 아웃 후 정리 (허공 소멸 금지 규칙)
+    scene.time.delayedCall(opts.duration, () => {
+      timers.forEach((t) => t.destroy());
+      scene.tweens.add({
+        targets: zone,
+        alpha: 0,
+        duration: 300,
+        onComplete: () => zone.destroy(),
+      });
+    });
+  }
+
+  // 다음 레벨업 효과를 한국어로 설명 (업그레이드 카드 UI 표기용). 만렙이면 null.
+  getNextUpgradeDescKo(): string | null {
+    if (this.isMaxLevel()) return null;
+    const up = this.levelUpgrades[this.level - 1];
+    if (!up) return null;
+
+    const parts: string[] = [];
+    if (up.damage) parts.push(`공격력 +${up.damage}`);
+    if (up.amount) parts.push(`개수 +${up.amount}`);
+    if (up.cooldown) parts.push(`발사 주기 ${up.cooldown > 0 ? '+' : ''}${(up.cooldown / 1000).toFixed(1)}초`);
+    if (up.speed) parts.push(`탄속 +${up.speed}`);
+    if (up.area) parts.push(`범위 +${Math.round(up.area * 100)}%`);
+    if (up.pierce) parts.push(`관통 +${up.pierce}`);
+    if (up.duration) parts.push(`지속시간 +${(up.duration / 1000).toFixed(1)}초`);
+    if (up.knockback) parts.push(`넉백 +${up.knockback}`);
+    return parts.join(' · ') || null;
+  }
+
   getInfo(): { id: string; name: string; nameKo: string; description: string; descriptionKo: string; level: number; maxLevel: number; evolutionPair?: string } {
     return {
       id: this.id,

@@ -22,7 +22,7 @@ export class Pencil extends WeaponBase {
     super(scene, player);
     this.baseStats = {
       damage: 12,
-      cooldown: 400,
+      cooldown: 750, // 400은 너무 잦음 (사용자 피드백 2회) — 발사 주기 완화
       area: 1,
       speed: 300, // 사출 속도 — 500은 너무 빨라 눈에 안 읽힘 (사용자 피드백)
       duration: 1200, // 발사체 수명(ms) — 속도 하향분만큼 사거리 보전

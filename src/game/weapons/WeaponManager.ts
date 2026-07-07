@@ -23,7 +23,7 @@ import { Rainbow } from './weapons/Rainbow';
 import { Star } from './weapons/Star';
 import { MagnifyingGlass } from './weapons/MagnifyingGlass';
 
-import { PassiveManager } from './PassiveManager';
+import { PassiveManager, PassiveInfoList } from './PassiveManager';
 import type { PassiveId } from './PassiveManager';
 
 export type WeaponId =
@@ -49,6 +49,8 @@ export interface UpgradeChoice {
   type: 'weapon' | 'passive' | 'bonus';
   id: string;
   isNew: boolean;
+  /** 이번 선택이 주는 효과 설명 (카드 UI 보조 라인 표기용) */
+  effectKo: string;
 }
 
 const WeaponRegistry: Record<WeaponId, new (scene: GameScene, player: Player) => WeaponBase> = {
@@ -210,12 +212,17 @@ export class WeaponManager {
   getAvailableUpgrades(count: number = 3): UpgradeChoice[] {
     const luck = this.player.luck;
 
+    // 패시브는 descriptionKo가 이미 레벨당 효과 형식("공격력 +10%")이라 그대로 재사용
+    const passiveEffectKo = (id: PassiveId): string =>
+      PassiveInfoList.find((p) => p.id === id)?.descriptionKo ?? '';
+
     const owned: UpgradeChoice[] = [];
     this.weapons.forEach((weapon, id) => {
-      if (!weapon.isMaxLevel()) owned.push({ type: 'weapon', id, isNew: false });
+      if (!weapon.isMaxLevel())
+        owned.push({ type: 'weapon', id, isNew: false, effectKo: weapon.getNextUpgradeDescKo() ?? '' });
     });
     this.passiveManager.getActivePassives().forEach(({ id, level, maxLevel }) => {
-      if (level < maxLevel) owned.push({ type: 'passive', id, isNew: false });
+      if (level < maxLevel) owned.push({ type: 'passive', id, isNew: false, effectKo: passiveEffectKo(id) });
     });
 
     const newWeapons: UpgradeChoice[] =
@@ -224,6 +231,7 @@ export class WeaponManager {
             type: 'weapon' as const,
             id: w.id,
             isNew: true,
+            effectKo: '새 무기 획득!',
           }))
         : [];
 
@@ -233,6 +241,7 @@ export class WeaponManager {
             type: 'passive' as const,
             id: p,
             isNew: true,
+            effectKo: passiveEffectKo(p),
           }))
         : [];
 
@@ -266,7 +275,7 @@ export class WeaponManager {
     // 전부 만렙·만슬롯: 대체 보상 카드로 채움
     let bi = 0;
     while (result.length < count && bi < BonusInfoList.length) {
-      result.push({ type: 'bonus', id: BonusInfoList[bi].id, isNew: false });
+      result.push({ type: 'bonus', id: BonusInfoList[bi].id, isNew: false, effectKo: BonusInfoList[bi].descriptionKo });
       bi++;
     }
 

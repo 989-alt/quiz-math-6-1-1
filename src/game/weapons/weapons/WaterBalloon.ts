@@ -93,6 +93,15 @@ export class WaterBalloon extends WeaponBase {
       onComplete: () => {
         this.playImpact(targetX, targetY, 'splash');
 
+        // 늪 존 — 착탄 지점에 3초간 잔존, 위에 있는 적 50% 감속
+        this.spawnHazard(targetX, targetY, {
+          radius: 75 * area,
+          duration: 3000,
+          slowFactor: 0.5,
+          tint: 0x3366cc,
+          alpha: 0.28,
+        });
+
         // Slow ring (visual only, marks the splash's slow zone)
         const slowRing = this.scene.add.circle(targetX, targetY, 30 * area, 0x000000, 0);
         slowRing.setStrokeStyle(3, 0xffffff, 0.8);
@@ -133,11 +142,11 @@ export class WaterBalloon extends WeaponBase {
           });
         }
 
-        // Main splash zone
+        // Main splash zone (스플래시 데미지 반경 +40%: 40 → 56)
         const splashZone = this.scene.add.circle(
           targetX,
           targetY,
-          40 * area,
+          56 * area,
           0x00bfff,
           0.5
         );

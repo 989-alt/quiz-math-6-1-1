@@ -37,9 +37,10 @@ export class Bubble extends WeaponBase {
     ];
   }
 
+  // 궤도 위치는 update()에서 매 프레임 갱신 (attack 쿨다운 틱으로 옮기면 위치가
+  // 뚝뚝 끊겨 난잡해 보이고 이동 시 플레이어에게서 뒤처진다 — 사용자 피드백)
   attack(): void {
-    // Create/update orbiting bubbles — 캐릭터 중심 원형 궤도에 균일 간격으로
-    // 상시 유지되는 방울들 (사용자 확정 컨셉: 수명 팝 없이 계속 회전하며 접촉 공격)
+    // 생성/스탯 갱신만 담당 — 캐릭터 중심 원형 궤도에 균일 간격으로 상시 유지
     const amount = this.getAmount();
     const damage = this.getDamage();
     const area = this.getArea();
@@ -68,16 +69,8 @@ export class Bubble extends WeaponBase {
       this.bubbles.push(bubble);
     }
 
-    // Update bubble positions
-    const orbitRadius = 60 * area;
-    this.orbitAngle += this.getSpeed() * 0.02;
-
-    this.bubbles.forEach((bubble, i) => {
+    this.bubbles.forEach((bubble) => {
       if (!bubble.active) return;
-
-      const angle = this.orbitAngle + (i / this.bubbles.length) * Math.PI * 2;
-      bubble.x = this.player.x + Math.cos(angle) * orbitRadius;
-      bubble.y = this.player.y + Math.sin(angle) * orbitRadius;
 
       // Update damage
       (bubble as any).damage = damage;
@@ -89,17 +82,33 @@ export class Bubble extends WeaponBase {
         (bubble as any).__hitMonsters?.clear();
         (bubble as any).__lastHitReset = this.scene.time.now;
       }
-
-      // Floating effect
-      bubble.setScale((1.1 * area) * (1 + Math.sin(Date.now() / 300 + i) * 0.08));
-
-      // Update physics body position
-      const body = bubble.body as Phaser.Physics.Arcade.Body;
-      body.updateFromGameObject();
     });
 
     // Clean up destroyed bubbles
     this.bubbles = this.bubbles.filter(b => b.active);
   }
 
+  // 태양 주위 행성처럼: 매 프레임 플레이어 현재 위치 기준으로 균일 간격 원형 공전.
+  // 플레이어가 이동하면 궤도 중심도 즉시 따라간다.
+  update(delta: number): void {
+    super.update(delta); // 쿨다운 → attack() (생성/스탯 관리)
+
+    const area = this.getArea();
+    const orbitRadius = 60 * area;
+    this.orbitAngle += this.getSpeed() * 0.0007 * delta; // speed 3 ≈ 초당 2.1rad
+
+    this.bubbles.forEach((bubble, i) => {
+      if (!bubble.active) return;
+
+      const angle = this.orbitAngle + (i / this.bubbles.length) * Math.PI * 2;
+      bubble.x = this.player.x + Math.cos(angle) * orbitRadius;
+      bubble.y = this.player.y + Math.sin(angle) * orbitRadius;
+
+      // Floating effect (크기 숨쉬기 ±8%)
+      bubble.setScale((1.1 * area) * (1 + Math.sin(this.scene.time.now / 300 + i) * 0.08));
+
+      const body = bubble.body as Phaser.Physics.Arcade.Body;
+      body.updateFromGameObject();
+    });
+  }
 }
