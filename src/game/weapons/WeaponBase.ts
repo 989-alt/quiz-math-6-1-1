@@ -80,6 +80,10 @@ export abstract class WeaponBase {
     this.isEvolved = true;
   }
 
+  // 무기가 그룹 밖에서 직접 들고 있는 리소스(예: RobotToy의 로봇 스프라이트) 정리 훅.
+  // 게임 리셋 시 WeaponManager.destroyAll()에서 호출. 필요한 무기만 override.
+  destroy(): void {}
+
   getLevel(): number {
     return this.level;
   }
@@ -191,11 +195,14 @@ export abstract class WeaponBase {
     projectile.setVelocity(velocityX, velocityY);
     projectile.setDepth(8);
 
-    if (options.scale) {
-      projectile.setScale(options.scale * this.getArea());
-    } else {
-      projectile.setScale(this.getArea());
-    }
+    const targetScale = options.scale ? options.scale * this.getArea() : this.getArea();
+    projectile.setScale(targetScale * 0.7);
+    this.scene.tweens.add({
+      targets: projectile,
+      scale: targetScale,
+      duration: 80,
+      ease: 'Sine.easeOut',
+    });
 
     if (options.rotation !== undefined) {
       projectile.setRotation(options.rotation);
@@ -219,6 +226,19 @@ export abstract class WeaponBase {
     this.scene.addProjectile(projectile);
 
     return projectile;
+  }
+
+  // Helper to play impact effect on hit (kind: 'hit_small' | 'hit_large' | 'poof' | 'explosion' | 'splash' | 'burn' | 'levelup' | 'heal' | 'collect')
+  protected playImpact(x: number, y: number, kind: string): void {
+    if (kind === 'hit_small') {
+      this.scene.fx.hit(x, y, 'small');
+    } else if (kind === 'hit_large') {
+      this.scene.fx.hit(x, y, 'large');
+    } else if (kind === 'poof') {
+      this.scene.fx.poof(x, y);
+    } else {
+      this.scene.fx.burst(kind, x, y);
+    }
   }
 
   // Helper to find closest enemy within auto-aim range (off-screen monsters ignored)

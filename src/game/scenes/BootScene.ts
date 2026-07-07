@@ -138,7 +138,7 @@ export class BootScene extends Phaser.Scene {
       const key = asset.id;
       if (!this.textures.exists(key) || this.anims.exists(key)) continue;
 
-      const isOneShot = key.includes('death');
+      const isOneShot = key.includes('death') || key.includes('attack') || key.startsWith('fx_');
       const frameRate = key.startsWith('fx_') ? 12 : 8;
       this.anims.create({
         key,

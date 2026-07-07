@@ -92,7 +92,62 @@ export interface ScoreEntryWithMeta extends ScoreEntry {
   createdAt: number;
 }
 
-export async function submitScore(entry: ScoreEntry): Promise<string> {
+export interface ScoreListResult {
+  scores: ScoreEntryWithMeta[];
+  offline: boolean;
+}
+
+export interface ScoreResult {
+  entry: ScoreEntryWithMeta | null;
+  offline: boolean;
+}
+
+const RANKING_TIMEOUT_MS = 3000;
+const LOCAL_SCORE_KEY_PREFIX = 'sqb:scores:';
+
+function withTimeout<T>(promise: Promise<T>, ms = RANKING_TIMEOUT_MS): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error('랭킹 서버 응답이 지연되고 있습니다.')), ms);
+    }),
+  ]);
+}
+
+function getLocalScores(unitId: string): ScoreEntryWithMeta[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_SCORE_KEY_PREFIX + unitId);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as ScoreEntryWithMeta[];
+    return parsed.sort((a, b) => b.weightedScore - a.weightedScore);
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalScore(entry: ScoreEntry): ScoreEntryWithMeta {
+  const saved: ScoreEntryWithMeta = {
+    ...entry,
+    docId: `local:${Date.now()}`,
+    authUid: 'local',
+    createdAt: Date.now(),
+  };
+  const existing = getLocalScores(entry.unitId);
+  existing.push(saved);
+  localStorage.setItem(LOCAL_SCORE_KEY_PREFIX + entry.unitId, JSON.stringify(existing));
+  return saved;
+}
+
+function removeLocalScore(unitId: string, docId: string): void {
+  try {
+    const remaining = getLocalScores(unitId).filter((s) => s.docId !== docId);
+    localStorage.setItem(LOCAL_SCORE_KEY_PREFIX + unitId, JSON.stringify(remaining));
+  } catch {
+    // localStorage 접근 실패 시 무시 (사본이 남는 것뿐)
+  }
+}
+
+async function submitScoreToFirestore(entry: ScoreEntry): Promise<string> {
   const { db } = ensureApp();
   const user = await ensureAnonymousAuth();
 
@@ -115,6 +170,19 @@ export async function submitScore(entry: ScoreEntry): Promise<string> {
   return doc.id;
 }
 
+export async function submitScore(entry: ScoreEntry): Promise<string> {
+  const remote = submitScoreToFirestore(entry);
+  try {
+    return await withTimeout(remote);
+  } catch (err) {
+    const saved = saveLocalScore(entry);
+    // 타임아웃이어도 진행 중인 addDoc은 취소되지 않는다 — 뒤늦게 성공하면
+    // 서버/로컬 이중 기록이 되므로 로컬 사본을 제거한다.
+    remote.then(() => removeLocalScore(entry.unitId, saved.docId)).catch(() => {});
+    throw err;
+  }
+}
+
 function timestampToMs(t: unknown): number {
   if (t instanceof Timestamp) return t.toMillis();
   if (typeof t === 'object' && t !== null && 'seconds' in t) {
@@ -124,7 +192,7 @@ function timestampToMs(t: unknown): number {
   return Date.now();
 }
 
-export async function fetchTopScores(unitId: string, top = 100): Promise<ScoreEntryWithMeta[]> {
+async function fetchTopScoresFromFirestore(unitId: string, top: number): Promise<ScoreEntryWithMeta[]> {
   const { db } = ensureApp();
   const ref = collection(db, 'leaderboards', unitId, 'scores');
   const q = query(ref, orderBy('weightedScore', 'desc'), fsLimit(top));
@@ -148,7 +216,16 @@ export async function fetchTopScores(unitId: string, top = 100): Promise<ScoreEn
   });
 }
 
-export async function fetchMyBest(unitId: string): Promise<ScoreEntryWithMeta | null> {
+export async function fetchTopScores(unitId: string, top = 100): Promise<ScoreListResult> {
+  try {
+    const scores = await withTimeout(fetchTopScoresFromFirestore(unitId, top));
+    return { scores, offline: false };
+  } catch {
+    return { scores: getLocalScores(unitId).slice(0, top), offline: true };
+  }
+}
+
+async function fetchMyBestFromFirestore(unitId: string): Promise<ScoreEntryWithMeta | null> {
   const { db } = ensureApp();
   const user = await ensureAnonymousAuth();
   const ref = collection(db, 'leaderboards', unitId, 'scores');
@@ -176,4 +253,14 @@ export async function fetchMyBest(unitId: string): Promise<ScoreEntryWithMeta | 
     authUid: data.authUid,
     createdAt: timestampToMs(data.createdAt),
   };
+}
+
+export async function fetchMyBest(unitId: string): Promise<ScoreResult> {
+  try {
+    const entry = await withTimeout(fetchMyBestFromFirestore(unitId));
+    return { entry, offline: false };
+  } catch {
+    const local = getLocalScores(unitId);
+    return { entry: local[0] ?? null, offline: true };
+  }
 }

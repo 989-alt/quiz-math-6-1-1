@@ -25,6 +25,7 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
   const [myUid, setMyUid] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [offline, setOffline] = useState(false);
 
   useEffect(() => {
     if (!isFirebaseConfigured()) {
@@ -46,8 +47,9 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
 
         const [top, mine] = await Promise.all([fetchTopScores(unitId, 100), fetchMyBest(unitId)]);
         if (cancelled) return;
-        setScores(top);
-        setMyBest(mine);
+        setScores(top.scores);
+        setMyBest(mine.entry);
+        setOffline(top.offline || mine.offline);
       } catch (err) {
         if (cancelled) return;
         const msg = err instanceof Error ? err.message : '랭킹을 불러오지 못했습니다.';
@@ -106,6 +108,23 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
               }}
             >
               <span className="gradient-text">랭킹</span>
+              {offline && (
+                <span
+                  style={{
+                    marginLeft: 10,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: '#fbbf24',
+                    background: 'rgba(251,191,36,0.12)',
+                    border: '1px solid rgba(251,191,36,0.3)',
+                    borderRadius: 999,
+                    padding: '3px 10px',
+                    verticalAlign: 'middle',
+                  }}
+                >
+                  오프라인 기록
+                </span>
+              )}
             </h1>
             <p style={{ fontSize: 13, color: '#71717a', marginTop: 4 }}>
               상위 100명 (가중점수 기준)

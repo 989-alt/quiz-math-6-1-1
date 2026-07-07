@@ -68,6 +68,17 @@ export class WaterBalloon extends WeaponBase {
     const midX = (this.player.x + targetX) / 2;
     const midY = Math.min(this.player.y, targetY) - 50;
 
+    // Wobble scale while airborne
+    this.scene.tweens.add({
+      targets: balloon,
+      scaleX: 1.15,
+      scaleY: 0.85,
+      duration: 100,
+      yoyo: true,
+      repeat: 3,
+      ease: 'Sine.easeInOut',
+    });
+
     this.scene.tweens.add({
       targets: balloon,
       x: targetX,
@@ -75,6 +86,20 @@ export class WaterBalloon extends WeaponBase {
       duration: 400,
       ease: 'Sine.easeIn',
       onComplete: () => {
+        this.playImpact(targetX, targetY, 'splash');
+
+        // Slow ring (visual only, marks the splash's slow zone)
+        const slowRing = this.scene.add.circle(targetX, targetY, 30 * area, 0x000000, 0);
+        slowRing.setStrokeStyle(3, 0xffffff, 0.8);
+        slowRing.setDepth(8);
+        this.scene.tweens.add({
+          targets: slowRing,
+          scale: 2,
+          alpha: 0,
+          duration: 500,
+          onComplete: () => slowRing.destroy(),
+        });
+
         // Splash effect
         for (let i = 0; i < 8; i++) {
           const angle = (i / 8) * Math.PI * 2;

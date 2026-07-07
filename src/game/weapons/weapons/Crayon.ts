@@ -19,7 +19,7 @@ export class Crayon extends WeaponBase {
       cooldown: 1500,
       area: 1,
       speed: 300,
-      duration: 800,
+      duration: 2000,
       amount: 1,
       pierce: 999,
       knockback: 0,
@@ -76,6 +76,16 @@ export class Crayon extends WeaponBase {
         (segment as any).pierce = 999;
 
         this.scene.addProjectile(segment as any);
+
+        // Rainbow decal persists on the trajectory, sparking color shards on contact
+        const hitMonsters = new Set<Phaser.Physics.Arcade.Sprite>();
+        const fxCollider = this.scene.physics.add.overlap(segment, this.scene.getMonsters(), (_s, monster) => {
+          const m = monster as Phaser.Physics.Arcade.Sprite;
+          if (hitMonsters.has(m)) return;
+          hitMonsters.add(m);
+          this.playImpact(m.x, m.y, 'collect');
+        });
+        segment.once('destroy', () => fxCollider.destroy());
 
         this.scene.tweens.add({
           targets: segment,

@@ -70,6 +70,19 @@ export class MagnifyingGlass extends WeaponBase {
     handle.setRotation(-Math.PI / 4);
     handle.setDepth(11);
 
+    // Telegraph ring shrinking over 0.5s to warn the burn is coming
+    const telegraph = this.scene.add.circle(target.x, target.y, 45 * area, 0xff4500, 0);
+    telegraph.setStrokeStyle(3, 0xffa500, 0.9);
+    telegraph.setDepth(10);
+    this.scene.tweens.add({
+      targets: telegraph,
+      scale: 0.1,
+      alpha: 0.4,
+      duration: 500,
+      ease: 'Sine.easeIn',
+      onComplete: () => telegraph.destroy(),
+    });
+
     // Light beam from lens to ground
     const beamGraphics = this.scene.add.graphics();
     beamGraphics.setDepth(10);
@@ -103,8 +116,10 @@ export class MagnifyingGlass extends WeaponBase {
       loop: true,
     });
 
-    // Create burn zone at focus point after delay
-    this.scene.time.delayedCall(300, () => {
+    // Create burn zone at focus point once the telegraph finishes closing
+    this.scene.time.delayedCall(500, () => {
+      this.playImpact(target.x, target.y, 'burn');
+
       // Burn circle at target location
       const burnZone = this.scene.add.circle(
         target.x,
@@ -154,6 +169,17 @@ export class MagnifyingGlass extends WeaponBase {
         scale: 2,
         duration: 600,
         onComplete: () => smoke.destroy(),
+      });
+
+      // Ground scorch decal lingering after the burn fades
+      const scorch = this.scene.add.ellipse(target.x, target.y + 6 * area, 36 * area, 12 * area, 0x1a1208, 0.55);
+      scorch.setDepth(5);
+      this.scene.tweens.add({
+        targets: scorch,
+        alpha: 0,
+        duration: 1200,
+        delay: 500,
+        onComplete: () => scorch.destroy(),
       });
 
       // Pulsing burn animation

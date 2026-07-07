@@ -43,31 +43,63 @@ export class Snowball extends WeaponBase {
 
   private createSnowball(angle: number): void {
     const speed = this.getSpeed();
-    const damage = this.getDamage();
     const area = this.getArea();
+    const lifespan = this.getDuration();
 
-    // Use actual sprite
-    const snowball = this.scene.add.sprite(
+    const snowball = this.createProjectile(
       this.player.x,
       this.player.y,
-      'weapon_snowball'
+      'weapon_snowball',
+      Math.cos(angle) * speed,
+      Math.sin(angle) * speed,
+      { scale: 1.2, lifespan }
     );
-    snowball.setScale(1.2 * area);
-    snowball.setDepth(9);
 
-    this.scene.physics.add.existing(snowball);
     const body = snowball.body as Phaser.Physics.Arcade.Body;
-    body.setSize(snowball.displayWidth * 0.8, snowball.displayHeight * 0.8);
-    body.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+    body.setSize(snowball.width * 0.8, snowball.height * 0.8);
 
-    (snowball as any).damage = damage;
-    (snowball as any).pierce = 1;
-
-    this.scene.addProjectile(snowball as any);
-
-    // Auto destroy after duration
-    this.scene.time.delayedCall(this.getDuration(), () => {
-      if (snowball.active) snowball.destroy();
+    // Grows in flight
+    this.scene.tweens.add({
+      targets: snowball,
+      scale: 1.2 * area * 1.3,
+      duration: lifespan,
+      delay: 80,
     });
+
+    // Slow debuff on hit (설명대로 실제 이동속도 저하 적용, 1.5초간 50%)
+    const hitMonsters = new Set<Phaser.Physics.Arcade.Sprite>();
+    const overlap = this.scene.physics.add.overlap(
+      snowball,
+      this.scene.getMonsters(),
+      (_snowball, monster) => {
+        const m = monster as any;
+        if (!m.active || hitMonsters.has(m)) return;
+        hitMonsters.add(m);
+
+        this.playImpact(m.x, m.y, 'splash');
+
+        if (!m.__snowSlowed) {
+          m.__snowSlowed = true;
+          const originalSpeed = m.speed;
+          m.speed = originalSpeed * 0.5;
+          this.scene.time.delayedCall(1500, () => {
+            if (m.active) m.speed = originalSpeed;
+            m.__snowSlowed = false;
+          });
+        }
+
+        const flake = this.scene.add.sprite(m.x, m.y - 10, 'weapon_snowball');
+        flake.setScale(0.5);
+        flake.setDepth(11);
+        this.scene.tweens.add({
+          targets: flake,
+          alpha: 0,
+          y: flake.y - 15,
+          duration: 1000,
+          onComplete: () => flake.destroy(),
+        });
+      }
+    );
+    this.scene.time.delayedCall(lifespan, () => overlap.destroy());
   }
 }

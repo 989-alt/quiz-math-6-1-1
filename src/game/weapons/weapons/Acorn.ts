@@ -59,7 +59,7 @@ export class Acorn extends WeaponBase {
 
     this.scene.physics.add.existing(acorn);
     const body = acorn.body as Phaser.Physics.Arcade.Body;
-    body.setSize(acorn.displayWidth * 0.8, acorn.displayHeight * 0.8);
+    body.setSize(acorn.width * 0.8, acorn.height * 0.8);
     body.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
     body.setBounce(1, 1);
 
@@ -67,6 +67,7 @@ export class Acorn extends WeaponBase {
     (acorn as any).pierce = pierce;
 
     this.scene.addProjectile(acorn as any);
+    this.wireImpactFx(acorn, 'poof');
 
     // Rotation animation
     this.scene.tweens.add({
@@ -76,9 +77,27 @@ export class Acorn extends WeaponBase {
       repeat: -1,
     });
 
+    // 낙하-튕김: 화면 가장자리에 튕길 때마다 squash(y 0.8) 후 최대 3회까지만 반사
+    const baseScale = acorn.scaleX;
+    let bounceCount = 0;
+    const maxBounces = 3;
+
+    const squash = () => {
+      this.scene.tweens.add({
+        targets: acorn,
+        scaleY: baseScale * 0.8,
+        scaleX: baseScale * 1.15,
+        duration: 90,
+        yoyo: true,
+        ease: 'Quad.easeOut',
+      });
+    };
+
     // Bounce off screen edges
     const checkBounds = () => {
       if (!acorn.active) return;
+      if (bounceCount >= maxBounces) return;
+
       const cam = this.scene.cameras.main;
       const bounds = {
         left: cam.scrollX,
@@ -87,11 +106,19 @@ export class Acorn extends WeaponBase {
         bottom: cam.scrollY + cam.height,
       };
 
+      let bounced = false;
       if (acorn.x <= bounds.left || acorn.x >= bounds.right) {
         body.setVelocityX(-body.velocity.x);
+        bounced = true;
       }
       if (acorn.y <= bounds.top || acorn.y >= bounds.bottom) {
         body.setVelocityY(-body.velocity.y);
+        bounced = true;
+      }
+
+      if (bounced) {
+        bounceCount++;
+        squash();
       }
     };
 
@@ -105,5 +132,18 @@ export class Acorn extends WeaponBase {
       bounceTimer.destroy();
       if (acorn.active) acorn.destroy();
     });
+  }
+
+  // 명중 시 먼지 퍼프 이펙트 재생
+  private wireImpactFx(projectile: any, kind: string): void {
+    const hitSet = new Set<any>();
+    const overlap = this.scene.physics.add.overlap(projectile, this.scene.getMonsters(), (_p, monster) => {
+      if (hitSet.has(monster)) return;
+      hitSet.add(monster);
+      const m = monster as Phaser.Physics.Arcade.Sprite;
+      this.playImpact(m.x, m.y, kind);
+    });
+
+    projectile.once('destroy', () => overlap.destroy());
   }
 }

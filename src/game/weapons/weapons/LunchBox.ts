@@ -73,6 +73,8 @@ export class LunchBox extends WeaponBase {
       ease: 'Sine.easeOut',
       onComplete: () => {
         // Explosion effect
+        this.playImpact(targetX, targetY, 'explosion');
+
         const explosion = this.scene.add.circle(
           targetX,
           targetY,
@@ -102,10 +104,20 @@ export class LunchBox extends WeaponBase {
       },
     });
 
-    // Rotation during flight
+    // Parabola scale pop (up during rise, down as it lands)
     this.scene.tweens.add({
       targets: lunchBox,
-      rotation: Math.PI * 2,
+      scaleX: 1.3,
+      scaleY: 1.3,
+      duration: 250,
+      yoyo: true,
+      ease: 'Sine.easeInOut',
+    });
+
+    // Tumbling rotation during flight
+    this.scene.tweens.add({
+      targets: lunchBox,
+      rotation: Math.PI * 4,
       duration: 500,
     });
   }

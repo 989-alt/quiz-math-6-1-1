@@ -128,14 +128,34 @@ export class XPGem extends Phaser.Physics.Arcade.Sprite {
       ease: 'Back.easeOut',
     });
 
-    // Floating animation
+    // 사망 지점에서 살짝 튕겨 나가는 포물선 낙하 (설계 §3.2) — 안착 후 기존 부유 애니메이션 시작
+    const tossX = x + (Math.random() - 0.5) * 50;
+    const tossPeakY = y - 24 - Math.random() * 16;
     scene.tweens.add({
       targets: this,
-      y: y - 5,
-      duration: 1000,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
+      x: tossX,
+      y: tossPeakY,
+      duration: 160,
+      ease: 'Sine.easeOut',
+      onComplete: () => {
+        scene.tweens.add({
+          targets: this,
+          y,
+          duration: 160,
+          ease: 'Sine.easeIn',
+          onComplete: () => {
+            // Floating animation
+            scene.tweens.add({
+              targets: this,
+              y: y - 5,
+              duration: 1000,
+              yoyo: true,
+              repeat: -1,
+              ease: 'Sine.easeInOut',
+            });
+          },
+        });
+      },
     });
   }
 

@@ -62,14 +62,34 @@ export class PaperPlane extends WeaponBase {
 
     this.scene.physics.add.existing(plane);
     const body = plane.body as Phaser.Physics.Arcade.Body;
-    body.setSize(plane.displayWidth * 0.8, plane.displayHeight * 0.8);
+    body.setSize(plane.width * 0.8, plane.height * 0.8);
+
+    // Spawn scale pop (0.7 -> 1.0)
+    plane.setScale(1.0 * area * 0.7);
+    this.scene.tweens.add({
+      targets: plane,
+      scale: 1.0 * area,
+      duration: 80,
+      ease: 'Sine.easeOut',
+    });
 
     (plane as any).damage = damage;
     (plane as any).pierce = pierce;
 
     this.scene.addProjectile(plane as any);
 
-    // Homing behavior
+    // Impact effect on first contact with each monster
+    const hitMonsters = new Set<Phaser.Physics.Arcade.Sprite>();
+    const fxCollider = this.scene.physics.add.overlap(plane, this.scene.getMonsters(), (_p, monster) => {
+      const m = monster as Phaser.Physics.Arcade.Sprite;
+      if (hitMonsters.has(m)) return;
+      hitMonsters.add(m);
+      this.playImpact(m.x, m.y, 'hit_small');
+    });
+    plane.once('destroy', () => fxCollider.destroy());
+
+    // Homing glide: sine-wave steering + banking roll
+    const startTime = this.scene.time.now;
     const homingEvent = this.scene.time.addEvent({
       delay: 50,
       callback: () => {
@@ -77,16 +97,27 @@ export class PaperPlane extends WeaponBase {
           homingEvent.destroy();
           return;
         }
-        const angle = Phaser.Math.Angle.Between(plane.x, plane.y, target.x, target.y);
-        body.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
-        plane.setRotation(angle);
+        const elapsed = this.scene.time.now - startTime;
+        const baseAngle = Phaser.Math.Angle.Between(plane.x, plane.y, target.x, target.y);
+        const sway = Math.sin(elapsed / 180) * 0.5;
+        const moveAngle = baseAngle + sway;
+        body.setVelocity(Math.cos(moveAngle) * speed, Math.sin(moveAngle) * speed);
+        const bank = Math.sin(elapsed / 120) * 0.35;
+        plane.setRotation(moveAngle + bank);
       },
       loop: true,
     });
 
     this.scene.time.delayedCall(this.getDuration(), () => {
       homingEvent.destroy();
-      if (plane.active) plane.destroy();
+      if (plane.active) {
+        this.scene.tweens.add({
+          targets: plane,
+          alpha: 0,
+          duration: 200,
+          onComplete: () => plane.destroy(),
+        });
+      }
     });
   }
 }

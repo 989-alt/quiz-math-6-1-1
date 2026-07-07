@@ -76,8 +76,9 @@ const WeaponRegistry: Record<WeaponId, new (scene: GameScene, player: Player) =>
 };
 
 export const WeaponInfoList: WeaponInfo[] = [
+  // 근접/범위 무기 (Melee/Area)
+  { id: 'pencil', name: 'Pencil', nameKo: '연필', description: 'Quick melee jab', descriptionKo: '품에 쥐고 빠르게 찌르는 근접 공격', maxLevel: 8, category: 'melee' },
   // 원거리 무기 (Ranged)
-  { id: 'pencil', name: 'Pencil', nameKo: '연필', description: 'Fast straight shots', descriptionKo: '빠른 직선 공격', maxLevel: 8, category: 'ranged' },
   { id: 'banana', name: 'Banana', nameKo: '바나나', description: 'Boomerang banana that returns', descriptionKo: '돌아오는 바나나 부메랑', maxLevel: 8, category: 'ranged' },
   { id: 'acorn', name: 'Acorn', nameKo: '도토리', description: 'Bouncing acorns', descriptionKo: '튕기는 도토리', maxLevel: 8, category: 'ranged' },
   { id: 'paper_plane', name: 'Paper Plane', nameKo: '종이비행기', description: 'Homing paper planes', descriptionKo: '유도하는 종이비행기', maxLevel: 8, category: 'ranged' },
@@ -126,6 +127,11 @@ export class WeaponManager {
     this.weapons.forEach((weapon) => {
       weapon.update(delta);
     });
+  }
+
+  // 게임 리셋 시 모든 무기의 자체 리소스 정리 훅 호출
+  destroyAll(): void {
+    this.weapons.forEach((weapon) => weapon.destroy());
   }
 
   addWeapon(id: WeaponId): boolean {

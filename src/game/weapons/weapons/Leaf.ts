@@ -44,51 +44,53 @@ export class Leaf extends WeaponBase {
 
   private createLeaf(): void {
     const speed = this.getSpeed();
-    const damage = this.getDamage();
-    const pierce = this.getPierce();
-    const area = this.getArea();
-
+    const duration = this.getDuration();
     const angle = Math.random() * Math.PI * 2;
 
-    const leaf = this.scene.add.ellipse(
+    const leaf = this.createProjectile(
       this.player.x,
       this.player.y,
-      16 * area,
-      8 * area,
-      0x228b22 // Forest green
+      'weapon_leaf',
+      Math.cos(angle) * speed,
+      Math.sin(angle) * speed,
+      { rotation: angle, lifespan: duration }
     );
-    leaf.setDepth(9);
 
-    this.scene.physics.add.existing(leaf);
-    const body = leaf.body as Phaser.Physics.Arcade.Body;
-    body.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+    this.attachImpactEffect(leaf, 'heal');
 
-    (leaf as any).damage = damage;
-    (leaf as any).pierce = pierce;
-
-    this.scene.addProjectile(leaf as any);
-
-    // Drifting/floating motion
+    // Gentle tumble: rock ±30° instead of spinning freely
     this.scene.tweens.add({
       targets: leaf,
-      rotation: Math.PI * 4,
-      duration: this.getDuration(),
+      rotation: angle + Phaser.Math.DegToRad(30),
+      duration: 400,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
     });
 
-    // Wave motion
-    const startY = leaf.y;
-    const waveTimer = this.scene.time.addEvent({
+    // Sine-wave drift + gentle homing toward the nearest enemy
+    const body = leaf.body as Phaser.Physics.Arcade.Body;
+    const driftTimer = this.scene.time.addEvent({
       delay: 50,
       callback: () => {
         if (!leaf.active) return;
+
+        const target = this.findClosestEnemy();
+        if (target) {
+          const toTarget = Phaser.Math.Angle.Between(leaf.x, leaf.y, target.x, target.y);
+          const current = Math.atan2(body.velocity.y, body.velocity.x);
+          const steered = Phaser.Math.Angle.RotateTo(current, toTarget, 0.05);
+          body.setVelocity(Math.cos(steered) * speed, Math.sin(steered) * speed);
+        }
+
         const wave = Math.sin(Date.now() / 200) * 20;
         body.setVelocityY(body.velocity.y + wave * 0.1);
       },
       loop: true,
     });
 
-    this.scene.time.delayedCall(this.getDuration(), () => {
-      waveTimer.destroy();
+    this.scene.time.delayedCall(duration, () => {
+      driftTimer.destroy();
       if (leaf.active) {
         this.scene.tweens.add({
           targets: leaf,
@@ -98,5 +100,16 @@ export class Leaf extends WeaponBase {
         });
       }
     });
+  }
+
+  private attachImpactEffect(sprite: Phaser.Physics.Arcade.Sprite, kind: string): void {
+    const hit = new Set<Phaser.Physics.Arcade.Sprite>();
+    const overlap = this.scene.physics.add.overlap(sprite, this.scene.getMonsters(), (_s, monster) => {
+      const m = monster as Phaser.Physics.Arcade.Sprite;
+      if (hit.has(m)) return;
+      hit.add(m);
+      this.playImpact(m.x, m.y, kind);
+    });
+    sprite.once('destroy', () => overlap.destroy());
   }
 }

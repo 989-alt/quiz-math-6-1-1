@@ -62,27 +62,55 @@ export class Rainbow extends WeaponBase {
           const x = this.player.x + Math.cos(segAngle) * arcRadius;
           const y = this.player.y + Math.sin(segAngle) * arcRadius;
 
-          const segment = this.scene.add.circle(x, y, 8 * area, color, 0.8);
-          segment.setDepth(9);
-
-          this.scene.physics.add.existing(segment);
+          const segment = this.createProjectile(x, y, 'weapon_rainbow', 0, 0, {
+            scale: 0.35,
+            rotation: segAngle,
+            lifespan: duration,
+          });
+          segment.setTint(color);
+          segment.setAlpha(0.85);
           (segment as any).damage = damage / 3;
-          (segment as any).pierce = 999;
+          this.attachImpactEffect(segment, 'collect');
 
-          this.scene.addProjectile(segment as any);
+          // Color shift (tint cycle) while the wave travels outward
+          let colorIdx = i;
+          const tintTimer = this.scene.time.addEvent({
+            delay: Math.max(60, duration / this.colors.length),
+            callback: () => {
+              colorIdx = (colorIdx + 1) % this.colors.length;
+              if (segment.active) segment.setTint(this.colors[colorIdx]);
+            },
+            repeat: this.colors.length - 1,
+          });
 
-          // Expand outward
+          // Expand outward + fade (alpha decay). scale는 createProjectile의 스폰 팝(0~80ms)과
+          // 겹치지 않도록 팝이 끝난 뒤 시작 (Snowball의 grow 트윈과 동일한 패턴)
           this.scene.tweens.add({
             targets: segment,
             x: this.player.x + Math.cos(segAngle) * (arcRadius + 100 * area),
             y: this.player.y + Math.sin(segAngle) * (arcRadius + 100 * area),
             alpha: 0,
-            scale: 0.5,
+            scale: 0.15 * area,
             duration: duration,
-            onComplete: () => segment.destroy(),
+            delay: 80,
+            onComplete: () => {
+              tintTimer.destroy();
+              if (segment.active) segment.destroy();
+            },
           });
         }
       });
     });
+  }
+
+  private attachImpactEffect(sprite: Phaser.Physics.Arcade.Sprite, kind: string): void {
+    const hit = new Set<Phaser.Physics.Arcade.Sprite>();
+    const overlap = this.scene.physics.add.overlap(sprite, this.scene.getMonsters(), (_s, monster) => {
+      const m = monster as Phaser.Physics.Arcade.Sprite;
+      if (hit.has(m)) return;
+      hit.add(m);
+      this.playImpact(m.x, m.y, kind);
+    });
+    sprite.once('destroy', () => overlap.destroy());
   }
 }

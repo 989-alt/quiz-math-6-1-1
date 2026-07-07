@@ -52,17 +52,27 @@ export class Banana extends WeaponBase {
       this.player.y,
       'weapon_banana'
     );
-    banana.setScale(1.2 * area);
     banana.setDepth(9);
+
+    // 공통 규칙: 스폰 스케일 팝(0.7 → 1.0)
+    const targetScale = 1.2 * area;
+    banana.setScale(targetScale * 0.7);
+    this.scene.tweens.add({
+      targets: banana,
+      scale: targetScale,
+      duration: 80,
+      ease: 'Sine.easeOut',
+    });
 
     this.scene.physics.add.existing(banana);
     const body = banana.body as Phaser.Physics.Arcade.Body;
-    body.setSize(banana.displayWidth * 0.8, banana.displayHeight * 0.8);
+    body.setSize(banana.width * 0.8, banana.height * 0.8);
 
     (banana as any).damage = damage;
     (banana as any).pierce = 999;
 
     this.scene.addProjectile(banana as any);
+    this.wireImpactFx(banana, 'hit_small');
 
     // Boomerang motion using velocity, not tweens
     const distance = 200 * area;
@@ -81,8 +91,8 @@ export class Banana extends WeaponBase {
       elapsed += this.scene.game.loop.delta;
       const t = elapsed / totalDuration;
 
-      // Rotation
-      banana.rotation += 0.3;
+      // Rotation (0.15rad/frame)
+      banana.rotation += 0.15;
 
       if (t < 0.5) {
         // Going out
@@ -113,5 +123,18 @@ export class Banana extends WeaponBase {
     };
 
     updateBoomerang();
+  }
+
+  // 명중 시 hit_spark(소) 이펙트 재생
+  private wireImpactFx(projectile: any, kind: string): void {
+    const hitSet = new Set<any>();
+    const overlap = this.scene.physics.add.overlap(projectile, this.scene.getMonsters(), (_p, monster) => {
+      if (hitSet.has(monster)) return;
+      hitSet.add(monster);
+      const m = monster as Phaser.Physics.Arcade.Sprite;
+      this.playImpact(m.x, m.y, kind);
+    });
+
+    projectile.once('destroy', () => overlap.destroy());
   }
 }

@@ -1,121 +1,135 @@
 import Phaser from 'phaser';
 import { WeaponBase } from '../WeaponBase';
-import { GAME_CONFIG } from '../../config';
 import type { GameScene } from '../../scenes/GameScene';
 import type { Player } from '../../entities/Player';
 
 export class Ruler extends WeaponBase {
   id = 'ruler';
-  name = 'Banana Shooter';
-  nameKo = '바나나 발사기';
-  description = 'Shoots bananas at nearby enemies';
-  descriptionKo = '주변 적에게 바나나를 발사합니다';
+  name = 'Ruler';
+  nameKo = '자';
+  description = 'Melee arc swing that hits nearby enemies';
+  descriptionKo = '90도 부채꼴로 자를 휘둘러 주변 적을 공격';
   maxLevel = 8;
 
   constructor(scene: GameScene, player: Player) {
     super(scene, player);
     this.baseStats = {
-      damage: 10,
-      cooldown: 800,
+      damage: 16,
+      cooldown: 750,
       area: 1,
       speed: 400,
-      duration: 2000,
+      duration: 220,
       amount: 1,
-      pierce: 3,
+      pierce: 20,
       knockback: 0,
     };
     this.levelUpgrades = [
-      { damage: 3 },
-      { amount: 1 },
-      { damage: 3 },
-      { speed: 50 },
       { damage: 4 },
-      { amount: 1 },
+      { area: 0.15 },
+      { cooldown: -80 },
       { damage: 5 },
+      { amount: 1 },
+      { damage: 6 },
+      { pierce: 10 },
     ];
   }
 
   attack(): void {
     const amount = this.getAmount();
-    const damage = this.getDamage();
-    const speed = this.getSpeed();
-    const area = this.getArea();
-
-    // 화면 안(autoAimRange)에 있는 적만 자동조준
-    const enemies = this.findNearestEnemies(amount, GAME_CONFIG.combat.autoAimRange);
-
-    // 적이 한 명도 없으면 발사 안 함 (탄약 낭비 방지)
-    if (enemies.length === 0) return;
-
     for (let i = 0; i < amount; i++) {
-      const target = enemies[i % enemies.length];
-      const angle = Phaser.Math.Angle.Between(
-        this.player.x, this.player.y,
-        target.x, target.y
-      ) + (Math.random() - 0.5) * 0.2; // 약간의 산탄
-
-      this.createBananaProjectile(angle, damage, speed, area);
+      this.scene.time.delayedCall(i * 180, () => {
+        this.performSwing();
+      });
     }
   }
 
-  private findNearestEnemies(count: number, range: number): Phaser.Physics.Arcade.Sprite[] {
-    const monsters = this.scene.getMonsters().getChildren() as Phaser.Physics.Arcade.Sprite[];
-    const playerX = this.player.x;
-    const playerY = this.player.y;
+  private performSwing(): void {
+    // 지연 실행이라 player가 이미 파괴/리셋됐을 수 있음
+    if (!this.player.active) return;
 
-    return monsters
-      .filter(m => m.active)
-      .map(m => ({
-        monster: m,
-        dist: Phaser.Math.Distance.Between(playerX, playerY, m.x, m.y)
-      }))
-      .filter(m => m.dist <= range)
-      .sort((a, b) => a.dist - b.dist)
-      .slice(0, count)
-      .map(m => m.monster);
+    const target = this.findClosestEnemy();
+    let baseAngle: number;
+    if (target) {
+      baseAngle = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y);
+    } else {
+      const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
+      baseAngle = playerBody.velocity.lengthSq() > 0 ? playerBody.velocity.angle() : 0;
+    }
+    this.createRulerSwing(baseAngle);
   }
 
-  private createBananaProjectile(angle: number, damage: number, speed: number, area: number): void {
-    // Use banana sprite
-    const banana = this.scene.add.sprite(
-      this.player.x,
-      this.player.y,
-      'weapon_banana'
+  private createRulerSwing(baseAngle: number): void {
+    const damage = this.getDamage();
+    const pierce = this.getPierce();
+    const area = this.getArea();
+    const reach = 70 * area;
+    const swingArc = Math.PI / 2;
+    const swingDuration = this.getDuration();
+
+    const startAngle = baseAngle - swingArc / 2;
+    const ruler = this.scene.add.sprite(
+      this.player.x + Math.cos(startAngle) * reach,
+      this.player.y + Math.sin(startAngle) * reach,
+      'weapon_ruler'
     );
-    banana.setScale(1.6 * area); // Larger banana
-    banana.setDepth(9);
-    banana.setRotation(angle);
+    ruler.setScale(1.1 * area);
+    ruler.setDepth(9);
+    ruler.setRotation(startAngle + Math.PI / 2);
 
-    this.scene.physics.add.existing(banana);
-    const body = banana.body as Phaser.Physics.Arcade.Body;
-    // Use full sprite size for hitbox
-    body.setSize(banana.width, banana.height);
-    body.setOffset(0, 0);
+    this.scene.physics.add.existing(ruler);
+    const body = ruler.body as Phaser.Physics.Arcade.Body;
+    body.setSize(ruler.width * 0.6, ruler.height * 0.6);
 
-    (banana as any).damage = damage;
-    (banana as any).pierce = this.getPierce();
+    (ruler as any).damage = damage;
+    (ruler as any).pierce = pierce;
 
-    this.scene.addProjectile(banana as any);
+    this.scene.addProjectile(ruler as any);
 
-    // Set velocity for straight line movement
-    const velocityX = Math.cos(angle) * speed;
-    const velocityY = Math.sin(angle) * speed;
-    body.setVelocity(velocityX, velocityY);
+    // Impact sparks chained along the swing
+    const hitMonsters = new Set<Phaser.Physics.Arcade.Sprite>();
+    const fxCollider = this.scene.physics.add.overlap(ruler, this.scene.getMonsters(), (_r, monster) => {
+      const m = monster as Phaser.Physics.Arcade.Sprite;
+      if (hitMonsters.has(m)) return;
+      hitMonsters.add(m);
+      this.playImpact(m.x, m.y, 'hit_small');
+    });
+    ruler.once('destroy', () => fxCollider.destroy());
 
-    // Rotate while flying
-    const rotationSpeed = 0.15;
-    const updateRotation = () => {
-      if (!banana.active) return;
-      banana.rotation += rotationSpeed;
-      this.scene.time.delayedCall(16, updateRotation);
+    // Afterimage ghosts (alpha decay)
+    const spawnGhost = () => {
+      if (!ruler.active) return;
+      const ghost = this.scene.add.sprite(ruler.x, ruler.y, 'weapon_ruler');
+      ghost.setScale(ruler.scaleX);
+      ghost.setRotation(ruler.rotation);
+      ghost.setAlpha(0.35);
+      ghost.setDepth(8);
+      this.scene.tweens.add({
+        targets: ghost,
+        alpha: 0,
+        duration: 180,
+        onComplete: () => ghost.destroy(),
+      });
     };
-    updateRotation();
+    this.scene.time.delayedCall(swingDuration * 0.33, spawnGhost);
+    this.scene.time.delayedCall(swingDuration * 0.66, spawnGhost);
 
-    // Destroy after duration
-    this.scene.time.delayedCall(this.getDuration(), () => {
-      if (banana.active) {
-        banana.destroy();
-      }
+    // 90-degree swing arc, pivoting around the player
+    const swingState = { t: 0 };
+    this.scene.tweens.add({
+      targets: swingState,
+      t: 1,
+      duration: swingDuration,
+      ease: 'Sine.easeInOut',
+      onUpdate: () => {
+        if (!ruler.active) return;
+        const currentAngle = startAngle + swingArc * swingState.t;
+        ruler.x = this.player.x + Math.cos(currentAngle) * reach;
+        ruler.y = this.player.y + Math.sin(currentAngle) * reach;
+        ruler.setRotation(currentAngle + Math.PI / 2);
+      },
+      onComplete: () => {
+        if (ruler.active) ruler.destroy();
+      },
     });
   }
 }

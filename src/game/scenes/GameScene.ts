@@ -7,6 +7,7 @@ import { PassiveInfoList } from '../weapons/PassiveManager';
 import { EventBus, GameEvents } from '../utils/EventBus';
 import { GAME_CONFIG } from '../config';
 import { GROUND_TILE_KEY } from '../assetKeys';
+import { EffectManager } from '../effects/EffectManager';
 
 // 청크 좌표 → 결정적 시드 해시 (같은 월드 위치엔 항상 같은 장식)
 function hashChunk(cx: number, cy: number): number {
@@ -32,6 +33,7 @@ export class GameScene extends Phaser.Scene {
   private xpGems!: Phaser.Physics.Arcade.Group;
   private projectiles!: Phaser.Physics.Arcade.Group;
   private weaponManager!: WeaponManager;
+  public fx!: EffectManager;
 
   private survivalTime: number = 0;
   private currentWave: number = 1;
@@ -74,6 +76,8 @@ export class GameScene extends Phaser.Scene {
     this.projectiles = this.physics.add.group();
     // solid deco 정적 장애물 그룹 (청크 라이프사이클로 멤버가 생성/파괴됨)
     this.obstacles = this.physics.add.staticGroup();
+
+    this.fx = new EffectManager(this);
 
     // Check for textures and create fallbacks if needed
     if (!this.textures.exists('player')) {
@@ -528,6 +532,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private resetGame(): void {
+    // 이전 판 무기의 자체 관리 리소스 정리 (예: RobotToy가 그룹 밖에서 직접 들고 있는 로봇 스프라이트)
+    this.weaponManager?.destroyAll();
+
     // Clear all entities
     this.monsters.clear(true, true);
     this.xpGems.clear(true, true);
@@ -583,6 +590,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleGameOver(): void {
+    // isPaused를 함께 세워 보스 히트스톱 해제 콜백(isGamePaused 가드)이
+    // 게임오버 정지를 30ms 뒤 풀어버리지 않게 한다. resetGame()이 false로 복구.
+    this.isPaused = true;
     this.physics.pause();
     this.stopBgm();
     EventBus.emit(GameEvents.GAME_FINISHED, {
@@ -601,6 +611,11 @@ export class GameScene extends Phaser.Scene {
   private resumeGame(): void {
     this.isPaused = false;
     this.physics.resume();
+  }
+
+  // 퀴즈/레벨업으로 게임이 일시정지된 상태인지 (Monster 히트스톱·Magnet 등 외부에서 조회)
+  isGamePaused(): boolean {
+    return this.isPaused;
   }
 
   private handleUpgradeSelected(data: { type: string; id: string }): void {
@@ -870,6 +885,8 @@ export class GameScene extends Phaser.Scene {
     // Number of bosses increases with wave (1 boss per 3 waves)
     const bossCount = Math.max(1, Math.floor(this.currentWave / 6));
 
+    this.showBossBanner();
+
     for (let i = 0; i < bossCount; i++) {
       this.time.delayedCall(i * 800, () => {
         const angle = Math.random() * Math.PI * 2;
@@ -888,6 +905,43 @@ export class GameScene extends Phaser.Scene {
         this.cameras.main.shake(300, 0.01);
       });
     }
+  }
+
+  /** 보스 등장 배너 (설계 §3.2 — 카메라 셰이크와 함께 등장을 명확히 알림) */
+  private showBossBanner(): void {
+    const cam = this.cameras.main;
+    const banner = this.add
+      .text(cam.width / 2, cam.height * 0.3, '보스 등장!', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '40px',
+        fontStyle: 'bold',
+        color: '#fca5a5',
+        stroke: '#450a0a',
+        strokeThickness: 6,
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(101)
+      .setAlpha(0)
+      .setScale(0.6);
+
+    this.tweens.add({
+      targets: banner,
+      alpha: 1,
+      scale: 1,
+      duration: 250,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        this.time.delayedCall(900, () => {
+          this.tweens.add({
+            targets: banner,
+            alpha: 0,
+            duration: 300,
+            onComplete: () => banner.destroy(),
+          });
+        });
+      },
+    });
   }
 
   // ... (addXp, levelUp, getUpgradeInfo, emitPlayerState, public methods, shutdown remain the same) ...
@@ -1006,7 +1060,36 @@ export class GameScene extends Phaser.Scene {
 
   // Public methods for weapons to use
   addProjectile(projectile: Phaser.GameObjects.GameObject): void {
+    // Phaser PhysicsGroup.add()는 그룹 defaults(velocity 0, bounce 0 등)를 기존 body에도
+    // 덮어쓰므로(PhysicsGroup.createCallbackHandler), 무기 코드가 먼저 설정한
+    // 속도/바운스를 보존했다가 그룹 등록 후 복원한다.
+    const body = (projectile as Phaser.Physics.Arcade.Sprite).body as Phaser.Physics.Arcade.Body | undefined;
+    const vx = body?.velocity.x ?? 0;
+    const vy = body?.velocity.y ?? 0;
+    const bx = body?.bounce.x ?? 0;
+    const by = body?.bounce.y ?? 0;
     this.projectiles.add(projectile);
+    if (body) {
+      body.setVelocity(vx, vy);
+      body.setBounce(bx, by);
+    }
+    this.triggerFireRecoil(projectile);
+  }
+
+  // 발사 반동 (설계 §3.1): 무기 발사 지점(WeaponBase.createProjectile → addProjectile)을
+  // 훅으로 사용. 같은 버스트에서 여러 발이 나가도(amount>1) 60ms 내 재호출은 스킵해
+  // "버스트당 1회"를 보장. 속도 없는 투사체(궤도형 등)는 조준각을 알 수 없어 스킵.
+  private lastRecoilTime: number = 0;
+  private triggerFireRecoil(projectile: Phaser.GameObjects.GameObject): void {
+    const now = this.time.now;
+    if (now - this.lastRecoilTime < 60) return;
+
+    const body = (projectile as Phaser.Physics.Arcade.Sprite).body as Phaser.Physics.Arcade.Body | undefined;
+    if (!body || (Math.abs(body.velocity.x) < 5 && Math.abs(body.velocity.y) < 5)) return;
+
+    this.lastRecoilTime = now;
+    const angle = Math.atan2(body.velocity.y, body.velocity.x);
+    this.player.recoil(angle);
   }
 
   getMonsters(): Phaser.Physics.Arcade.Group {

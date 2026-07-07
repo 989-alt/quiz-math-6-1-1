@@ -49,49 +49,86 @@ export class Eraser extends WeaponBase {
   private createEraserZone(angle: number, distance: number, damage: number, area: number, duration: number): void {
     const x = this.player.x + Math.cos(angle) * distance;
     const y = this.player.y + Math.sin(angle) * distance;
+    const dropHeight = 200;
 
-    // Use actual sprite
-    const eraser = this.scene.add.sprite(x, y, 'weapon_eraser');
+    // Use actual sprite, dropped in from above
+    const eraser = this.scene.add.sprite(x, y - dropHeight, 'weapon_eraser');
     eraser.setScale(1.3 * area);
     eraser.setDepth(9);
 
     this.scene.physics.add.existing(eraser);
     const body = eraser.body as Phaser.Physics.Arcade.Body;
-    body.setSize(eraser.displayWidth * 0.9, eraser.displayHeight * 0.9);
+    body.setAllowGravity(false);
+    body.enable = false;
+    body.setSize(eraser.width * 0.9, eraser.height * 0.9);
 
     (eraser as any).damage = damage;
     (eraser as any).pierce = 999;
 
-    this.scene.addProjectile(eraser as any);
+    this.scene.tweens.add({
+      targets: eraser,
+      y,
+      duration: 180,
+      ease: 'Quad.easeIn',
+      onComplete: () => {
+        if (!eraser.active) return;
+        body.enable = true;
+        this.scene.addProjectile(eraser as any);
+        this.playImpact(x, y, 'poof');
+        this.spawnEraserDecal(x, y, area);
+        this.spawnEraserDust(x, y, area);
 
-    // Erasing animation with physics body update
-    let elapsed = 0;
-    const startScale = 0;
-    const endScale = 1.6 * area;
+        // Scale punch on landing
+        eraser.setScale(1.6 * area);
+        this.scene.tweens.add({
+          targets: eraser,
+          scale: 1.3 * area,
+          duration: 140,
+          ease: 'Back.easeOut',
+        });
 
-    const updateEraser = () => {
-      if (!eraser.active) return;
+        this.scene.time.delayedCall(duration, () => {
+          if (!eraser.active) return;
+          this.scene.tweens.add({
+            targets: eraser,
+            alpha: 0,
+            duration: 150,
+            onComplete: () => eraser.destroy(),
+          });
+        });
+      },
+    });
+  }
 
-      elapsed += this.scene.game.loop.delta;
-      const t = elapsed / duration;
+  private spawnEraserDecal(x: number, y: number, area: number): void {
+    const decal = this.scene.add.ellipse(x, y, 60 * area, 24 * area, 0xffffff, 0.5);
+    decal.setDepth(7);
+    this.scene.tweens.add({
+      targets: decal,
+      alpha: 0,
+      scaleX: 1.4,
+      scaleY: 1.4,
+      duration: 600,
+      onComplete: () => decal.destroy(),
+    });
+  }
 
-      if (t >= 1) {
-        eraser.destroy();
-        return;
-      }
-
-      // Ease out cubic
-      const easeT = 1 - Math.pow(1 - t, 3);
-      const scale = startScale + (endScale - startScale) * easeT;
-      eraser.setScale(scale);
-      eraser.setAlpha(1 - t);
-
-      // Update physics body
-      body.setSize(eraser.displayWidth * 0.9, eraser.displayHeight * 0.9);
-
-      this.scene.time.delayedCall(16, updateEraser);
-    };
-
-    updateEraser();
+  private spawnEraserDust(x: number, y: number, area: number): void {
+    const dustCount = 8;
+    for (let i = 0; i < dustCount; i++) {
+      const dustAngle = (i / dustCount) * Math.PI * 2 + Math.random() * 0.3;
+      const dustSpeed = 40 + Math.random() * 30;
+      const particle = this.scene.add.circle(x, y, (2 + Math.random() * 2) * area, 0xe8e8e8, 0.9);
+      particle.setDepth(10);
+      this.scene.tweens.add({
+        targets: particle,
+        x: x + Math.cos(dustAngle) * dustSpeed,
+        y: y + Math.sin(dustAngle) * dustSpeed - 10,
+        alpha: 0,
+        duration: 400,
+        ease: 'Sine.easeOut',
+        onComplete: () => particle.destroy(),
+      });
+    }
   }
 }

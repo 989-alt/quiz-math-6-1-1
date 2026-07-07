@@ -73,16 +73,37 @@ export class Butterfly extends WeaponBase {
 
     this.scene.addProjectile(butterfly as any);
 
-    // Wing flapping animation
+    // Spawn scale pop (0.7 -> 1.0)
+    butterfly.setScale(0.7);
+    this.scene.tweens.add({
+      targets: butterfly,
+      scale: 1,
+      duration: 80,
+      ease: 'Sine.easeOut',
+    });
+
+    // Impact effect on first contact with each monster
+    const hitMonsters = new Set<Phaser.Physics.Arcade.Sprite>();
+    const fxCollider = this.scene.physics.add.overlap(butterfly, this.scene.getMonsters(), (_b, monster) => {
+      const m = monster as Phaser.Physics.Arcade.Sprite;
+      if (hitMonsters.has(m)) return;
+      hitMonsters.add(m);
+      this.playImpact(m.x, m.y, 'heal');
+    });
+    butterfly.once('destroy', () => fxCollider.destroy());
+
+    // Wing flapping animation: 2 frames @ 12fps
     this.scene.tweens.add({
       targets: [leftWing, rightWing],
       scaleX: { from: 1, to: 0.3 },
-      duration: 150,
+      duration: 83,
       yoyo: true,
       repeat: -1,
     });
 
-    // Homing with flutter
+    // Gentle homing with sine hover
+    const startTime = this.scene.time.now;
+    let steerAngle = Phaser.Math.Angle.Between(butterfly.x, butterfly.y, target.x, target.y);
     const homingEvent = this.scene.time.addEvent({
       delay: 50,
       callback: () => {
@@ -90,11 +111,14 @@ export class Butterfly extends WeaponBase {
           homingEvent.destroy();
           return;
         }
-        const angle = Phaser.Math.Angle.Between(butterfly.x, butterfly.y, target.x, target.y);
-        const flutter = Math.sin(Date.now() / 100) * 30;
+        const elapsed = this.scene.time.now - startTime;
+        const desiredAngle = Phaser.Math.Angle.Between(butterfly.x, butterfly.y, target.x, target.y);
+        steerAngle = Phaser.Math.Angle.RotateTo(steerAngle, desiredAngle, 0.08);
+        const hover = Math.sin(elapsed / 200) * 40;
+        const hoverAngle = steerAngle + Math.PI / 2;
         body2.setVelocity(
-          Math.cos(angle) * speed + flutter,
-          Math.sin(angle) * speed
+          Math.cos(steerAngle) * speed + Math.cos(hoverAngle) * hover,
+          Math.sin(steerAngle) * speed + Math.sin(hoverAngle) * hover
         );
       },
       loop: true,

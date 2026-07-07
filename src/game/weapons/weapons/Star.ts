@@ -1,3 +1,4 @@
+import Phaser from 'phaser';
 import { WeaponBase } from '../WeaponBase';
 import type { GameScene } from '../../scenes/GameScene';
 import type { Player } from '../../entities/Player';
@@ -49,11 +50,13 @@ export class Star extends WeaponBase {
     const damage = this.getDamage();
     const area = this.getArea();
 
-    // Create star above target
-    const startY = target.y - 200;
+    // 화면 상단서 랜덤 낙하 (착지 지점은 대상 위치로 수렴)
+    const cam = this.scene.cameras.main;
+    const startY = cam.scrollY - 60;
+    const startX = target.x + Phaser.Math.Between(-60, 60) * area;
 
     const star = this.scene.add.star(
-      target.x,
+      startX,
       startY,
       5,
       8 * area,
@@ -61,15 +64,21 @@ export class Star extends WeaponBase {
       0xffd700 // Gold star
     );
     star.setDepth(10);
+    star.setScale(0.6);
 
     // Fall animation
     this.scene.tweens.add({
       targets: star,
+      x: target.x,
       y: target.y,
+      scale: 1,
       rotation: Math.PI * 2,
       duration: 300,
       ease: 'Quad.easeIn',
       onComplete: () => {
+        // 착지 플래시
+        this.playImpact(target.x, target.y, 'hit_large');
+
         // Impact effect
         const impact = this.scene.add.circle(
           target.x,
