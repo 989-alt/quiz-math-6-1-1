@@ -12,12 +12,7 @@ export class Bubble extends WeaponBase {
 
   private bubbles: Phaser.GameObjects.Sprite[] = [];
   private orbitAngle: number = 0;
-  private lastTickTime: number = 0;
   private static readonly HIT_RESET_INTERVAL = 500;
-  private static readonly LIFESPAN = 2500;
-  // 퀴즈/레벨업 일시정지 동안 scene 시계는 계속 흐르므로, 절대시각 대신
-  // 틱 간 delta 누적으로 나이를 재고 큰 점프(일시정지 복귀)는 클램프한다.
-  private static readonly MAX_TICK_DELTA = 200;
 
   constructor(scene: GameScene, player: Player) {
     super(scene, player);
@@ -43,16 +38,11 @@ export class Bubble extends WeaponBase {
   }
 
   attack(): void {
-    // Create/update orbiting bubbles
+    // Create/update orbiting bubbles — 캐릭터 중심 원형 궤도에 균일 간격으로
+    // 상시 유지되는 방울들 (사용자 확정 컨셉: 수명 팝 없이 계속 회전하며 접촉 공격)
     const amount = this.getAmount();
     const damage = this.getDamage();
     const area = this.getArea();
-
-    const now = this.scene.time.now;
-    const tickDelta = this.lastTickTime
-      ? Math.min(now - this.lastTickTime, Bubble.MAX_TICK_DELTA)
-      : 0;
-    this.lastTickTime = now;
 
     // Create missing bubbles
     while (this.bubbles.length < amount) {
@@ -72,7 +62,6 @@ export class Bubble extends WeaponBase {
 
       (bubble as any).damage = damage;
       (bubble as any).pierce = 999;
-      (bubble as any).__age = 0;
       (bubble as any).__lastHitReset = this.scene.time.now;
 
       this.scene.addProjectile(bubble as any);
@@ -85,13 +74,6 @@ export class Bubble extends WeaponBase {
 
     this.bubbles.forEach((bubble, i) => {
       if (!bubble.active) return;
-
-      const age = ((bubble as any).__age ?? 0) + tickDelta;
-      (bubble as any).__age = age;
-      if (age > Bubble.LIFESPAN) {
-        this.popBubble(bubble);
-        return;
-      }
 
       const angle = this.orbitAngle + (i / this.bubbles.length) * Math.PI * 2;
       bubble.x = this.player.x + Math.cos(angle) * orbitRadius;
@@ -120,22 +102,4 @@ export class Bubble extends WeaponBase {
     this.bubbles = this.bubbles.filter(b => b.active);
   }
 
-  private popBubble(bubble: Phaser.GameObjects.Sprite): void {
-    const x = bubble.x;
-    const y = bubble.y;
-
-    this.playImpact(x, y, 'poof');
-
-    const shine = this.scene.add.circle(x, y, bubble.displayWidth * 0.6, 0xffffff, 0.6);
-    shine.setDepth(10);
-    this.scene.tweens.add({
-      targets: shine,
-      scale: 2,
-      alpha: 0,
-      duration: 300,
-      onComplete: () => shine.destroy(),
-    });
-
-    bubble.destroy();
-  }
 }
