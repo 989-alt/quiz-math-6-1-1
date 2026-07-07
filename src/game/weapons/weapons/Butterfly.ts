@@ -51,22 +51,15 @@ export class Butterfly extends WeaponBase {
     const pierce = this.getPierce();
     const area = this.getArea();
 
-    const colors = [0xff69b4, 0x9370db, 0x00ced1, 0xffd700];
-    const color = colors[Math.floor(Math.random() * colors.length)];
-
-    // Create butterfly shape (two wings)
-    const butterfly = this.scene.add.container(this.player.x, this.player.y);
-
-    const leftWing = this.scene.add.ellipse(-6 * area, 0, 12 * area, 16 * area, color, 0.8);
-    const rightWing = this.scene.add.ellipse(6 * area, 0, 12 * area, 16 * area, color, 0.8);
-    const body = this.scene.add.ellipse(0, 0, 4 * area, 10 * area, 0x000000);
-
-    butterfly.add([leftWing, rightWing, body]);
+    // 픽셀아트 나비 스프라이트. 아트 여백 때문에 0.6이면 배경 반점 수준으로 안 읽혀
+    // 1.2로 상향 (인게임 검증 실측: 형태가 식별되는 최소 크기)
+    const butterfly = this.scene.add.sprite(this.player.x, this.player.y, 'weapon_butterfly');
+    const targetScale = 1.2 * area;
     butterfly.setDepth(9);
 
     this.scene.physics.add.existing(butterfly);
     const body2 = butterfly.body as Phaser.Physics.Arcade.Body;
-    body2.setSize(20 * area, 20 * area);
+    body2.setSize(butterfly.width * 0.7, butterfly.height * 0.7);
 
     (butterfly as any).damage = damage;
     (butterfly as any).pierce = pierce;
@@ -74,10 +67,10 @@ export class Butterfly extends WeaponBase {
     this.scene.addProjectile(butterfly as any);
 
     // Spawn scale pop (0.7 -> 1.0)
-    butterfly.setScale(0.7);
+    butterfly.setScale(targetScale * 0.7);
     this.scene.tweens.add({
       targets: butterfly,
-      scale: 1,
+      scale: targetScale,
       duration: 80,
       ease: 'Sine.easeOut',
     });
@@ -92,11 +85,12 @@ export class Butterfly extends WeaponBase {
     });
     butterfly.once('destroy', () => fxCollider.destroy());
 
-    // Wing flapping animation: 2 frames @ 12fps
+    // 날개짓: 스폰 팝(0~80ms)이 끝난 뒤 scaleX 요요로 퍼덕임 (단일 스프라이트 대체 연출, 12fps 상당)
     this.scene.tweens.add({
-      targets: [leftWing, rightWing],
-      scaleX: { from: 1, to: 0.3 },
+      targets: butterfly,
+      scaleX: { from: targetScale, to: targetScale * 0.3 },
       duration: 83,
+      delay: 80,
       yoyo: true,
       repeat: -1,
     });

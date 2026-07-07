@@ -51,6 +51,29 @@ export class Crayon extends WeaponBase {
 
     // Create rainbow line segments
     const segmentCount = 6;
+
+    // 궤적을 그리는 크레용 본체 (weapon_crayon): 선이 그려지는 속도에 맞춰 궤적 끝점으로 이동
+    const crayon = this.scene.add.sprite(this.player.x, this.player.y, 'weapon_crayon');
+    crayon.setScale(0.7 * area);
+    crayon.setDepth(10);
+    crayon.setRotation(baseAngle + Math.PI / 4); // 비스듬히 쥔 느낌
+    this.scene.tweens.add({
+      targets: crayon,
+      x: this.player.x + Math.cos(baseAngle) * length,
+      y: this.player.y + Math.sin(baseAngle) * length,
+      duration: segmentCount * 50,
+      ease: 'Linear',
+      onComplete: () => {
+        // 다 그리면 살짝 튀어오르며 사라짐
+        this.scene.tweens.add({
+          targets: crayon,
+          alpha: 0,
+          scale: 0.4 * area,
+          duration: 150,
+          onComplete: () => crayon.destroy(),
+        });
+      },
+    });
     for (let i = 0; i < segmentCount; i++) {
       const color = this.colors[i % this.colors.length];
       const segmentLength = length / segmentCount;

@@ -126,6 +126,11 @@ export class GameScene extends Phaser.Scene {
 
     // Initial state update
     this.emitPlayerState();
+
+    // dev 전용 디버그 훅: 자동화 검증(Playwright)에서 무기 강제 장착/레벨업에 사용
+    if (import.meta.env.DEV) {
+      (window as unknown as Record<string, unknown>).__gs = this;
+    }
   }
 
   // 외부 호출용 SFX 헬퍼 (Monster, Player에서 사용)

@@ -24,8 +24,8 @@ export class Pencil extends WeaponBase {
       damage: 12,
       cooldown: 400,
       area: 1,
-      speed: 500,
-      duration: 900, // 발사체 수명(ms)
+      speed: 300, // 사출 속도 — 500은 너무 빨라 눈에 안 읽힘 (사용자 피드백)
+      duration: 1200, // 발사체 수명(ms) — 속도 하향분만큼 사거리 보전
       amount: 1,
       pierce: 1,
       knockback: 0,

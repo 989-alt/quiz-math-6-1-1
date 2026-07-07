@@ -54,21 +54,10 @@ export class MagnifyingGlass extends WeaponBase {
     const glassX = target.x;
     const glassY = target.y - 80;
 
-    // Glass lens (circle)
-    const lens = this.scene.add.circle(glassX, glassY, 20 * area, 0x87ceeb, 0.4);
-    lens.setStrokeStyle(3, 0x8b4513);
-    lens.setDepth(11);
-
-    // Glass handle
-    const handle = this.scene.add.rectangle(
-      glassX + 15 * area,
-      glassY + 25 * area,
-      8 * area,
-      30 * area,
-      0x8b4513
-    );
-    handle.setRotation(-Math.PI / 4);
-    handle.setDepth(11);
+    // 렌즈+손잡이 (weapon_magnifying_glass 픽셀아트, 기존 도형 렌즈 지름 40*area → native 48px 기준 스케일 환산)
+    const glass = this.scene.add.sprite(glassX, glassY, 'weapon_magnifying_glass');
+    glass.setScale(area);
+    glass.setDepth(11);
 
     // Telegraph ring shrinking over 0.5s to warn the burn is coming
     const telegraph = this.scene.add.circle(target.x, target.y, 45 * area, 0xff4500, 0);
@@ -198,8 +187,7 @@ export class MagnifyingGlass extends WeaponBase {
     this.scene.time.delayedCall(duration, () => {
       beamInterval.destroy();
       beamGraphics.destroy();
-      lens.destroy();
-      handle.destroy();
+      glass.destroy();
     });
   }
 }

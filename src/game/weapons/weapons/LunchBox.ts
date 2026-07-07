@@ -54,15 +54,15 @@ export class LunchBox extends WeaponBase {
     const damage = this.getDamage();
     const area = this.getArea();
 
-    const lunchBox = this.scene.add.rectangle(
+    // 도시락 픽셀아트 스프라이트 (기존 사각형 폭 ~32px 상당 크기로 스케일)
+    const lunchBox = this.scene.add.sprite(
       this.player.x,
       this.player.y,
-      32 * area,
-      24 * area,
-      0xff6b6b // Red lunch box
+      'weapon_lunch_box'
     );
+    const targetScale = (32 * area) / lunchBox.width;
+    lunchBox.setScale(targetScale * 0.7);
     lunchBox.setDepth(9);
-    lunchBox.setStrokeStyle(2, 0xcc5555);
 
     // Arc throw animation
     this.scene.tweens.add({
@@ -100,16 +100,46 @@ export class LunchBox extends WeaponBase {
           onComplete: () => explosion.destroy(),
         });
 
+        // 음식 파편: 도시락 조각이 사방으로 튄다
+        const crumbTints = [0xffe08a, 0xff8a5c, 0x9be37a]; // 밥·소시지·채소 느낌
+        for (let i = 0; i < 5; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const crumb = this.scene.add.sprite(targetX, targetY, 'weapon_lunch_box');
+          crumb.setScale(targetScale * 0.3);
+          crumb.setDepth(10);
+          crumb.setTint(crumbTints[i % crumbTints.length]);
+
+          this.scene.tweens.add({
+            targets: crumb,
+            x: targetX + Math.cos(angle) * (30 + Math.random() * 25) * area,
+            y: targetY + Math.sin(angle) * (30 + Math.random() * 25) * area,
+            rotation: (Math.random() - 0.5) * 6,
+            alpha: 0,
+            scale: targetScale * 0.1,
+            duration: 350,
+            ease: 'Quad.easeOut',
+            onComplete: () => crumb.destroy(),
+          });
+        }
+
         lunchBox.destroy();
       },
+    });
+
+    // 스폰 스케일 팝 (0.7 → 1.0, 80ms)
+    this.scene.tweens.add({
+      targets: lunchBox,
+      scale: targetScale,
+      duration: 80,
+      ease: 'Sine.easeOut',
     });
 
     // Parabola scale pop (up during rise, down as it lands)
     this.scene.tweens.add({
       targets: lunchBox,
-      scaleX: 1.3,
-      scaleY: 1.3,
-      duration: 250,
+      scale: targetScale * 1.3,
+      duration: 210,
+      delay: 80,
       yoyo: true,
       ease: 'Sine.easeInOut',
     });

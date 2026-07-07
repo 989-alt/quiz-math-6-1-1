@@ -51,17 +51,9 @@ export class Magnet extends WeaponBase {
     const x = this.player.x + Math.cos(angle) * distance;
     const y = this.player.y + Math.sin(angle) * distance;
 
-    // U-shaped magnet
-    const magnet = this.scene.add.container(x, y);
-
-    // Red pole
-    const redPole = this.scene.add.rectangle(-10 * area, 0, 8 * area, 24 * area, 0xff0000);
-    // Blue pole
-    const bluePole = this.scene.add.rectangle(10 * area, 0, 8 * area, 24 * area, 0x0000ff);
-    // Base
-    const base = this.scene.add.rectangle(0, 10 * area, 28 * area, 8 * area, 0x808080);
-
-    magnet.add([base, redPole, bluePole]);
+    // 자석 본체 (weapon_magnet 픽셀아트, 기존 도형 폭 28*area → native 40px 기준 스케일 환산)
+    const magnet = this.scene.add.sprite(x, y, 'weapon_magnet');
+    magnet.setScale(0.75 * area);
     magnet.setDepth(9);
 
     // Magnetic field visualization

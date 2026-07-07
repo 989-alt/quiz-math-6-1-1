@@ -55,23 +55,18 @@ export class Star extends WeaponBase {
     const startY = cam.scrollY - 60;
     const startX = target.x + Phaser.Math.Between(-60, 60) * area;
 
-    const star = this.scene.add.star(
-      startX,
-      startY,
-      5,
-      8 * area,
-      16 * area,
-      0xffd700 // Gold star
-    );
+    // 별 픽셀아트 스프라이트 (기존 별 도형 지름 ~32px 상당 크기로 스케일)
+    const star = this.scene.add.sprite(startX, startY, 'weapon_star');
+    const targetScale = (32 * area) / star.width;
     star.setDepth(10);
-    star.setScale(0.6);
+    star.setScale(targetScale * 0.6);
 
-    // Fall animation
+    // Fall animation (낙하하며 커지는 것이 스폰 팝을 겸한다)
     this.scene.tweens.add({
       targets: star,
       x: target.x,
       y: target.y,
-      scale: 1,
+      scale: targetScale,
       rotation: Math.PI * 2,
       duration: 300,
       ease: 'Quad.easeIn',
@@ -95,17 +90,15 @@ export class Star extends WeaponBase {
 
         this.scene.addProjectile(impact as any);
 
-        // Sparkle particles
+        // 별가루: 작은 별 스프라이트가 사방으로 흩어진다
         for (let i = 0; i < 6; i++) {
           const angle = (i / 6) * Math.PI * 2;
-          const sparkle = this.scene.add.star(
+          const sparkle = this.scene.add.sprite(
             target.x + Math.cos(angle) * 10,
             target.y + Math.sin(angle) * 10,
-            4,
-            3 * area,
-            6 * area,
-            0xffff00
+            'weapon_star'
           );
+          sparkle.setScale(targetScale * 0.35);
           sparkle.setDepth(10);
 
           this.scene.tweens.add({
@@ -113,7 +106,8 @@ export class Star extends WeaponBase {
             x: target.x + Math.cos(angle) * 40 * area,
             y: target.y + Math.sin(angle) * 40 * area,
             alpha: 0,
-            scale: 0.3,
+            scale: targetScale * 0.1,
+            rotation: Math.PI,
             duration: 300,
             onComplete: () => sparkle.destroy(),
           });

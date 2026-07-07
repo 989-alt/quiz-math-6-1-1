@@ -331,13 +331,16 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
       duration: 80,
       ease: 'Quad.easeOut',
       onComplete: () => {
+        // 리셋(monsters.clear) 등으로 트윈 완료 전에 파괴되면 this.scene이 undefined —
+        // 여기서 예외가 나면 Phaser RAF 체인이 끊겨 게임 전체가 프리즈된다.
+        if (!this.scene) return;
         this.scene.tweens.add({
           targets: this,
           alpha: 0,
           scale: this.isBoss ? poppedScale * 0.65 : poppedScale * 0.4,
           duration: this.isBoss ? 420 : 160,
           onComplete: () => {
-            this.destroy();
+            if (this.scene) this.destroy();
           },
         });
       },

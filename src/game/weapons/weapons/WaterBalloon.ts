@@ -54,26 +54,31 @@ export class WaterBalloon extends WeaponBase {
     const damage = this.getDamage();
     const area = this.getArea();
 
-    const balloon = this.scene.add.ellipse(
+    // 물풍선 픽셀아트 스프라이트 (기존 타원 높이 ~24px 상당 크기로 스케일)
+    const balloon = this.scene.add.sprite(
       this.player.x,
       this.player.y,
-      20 * area,
-      24 * area,
-      0x00bfff, // Deep sky blue
-      0.8
+      'weapon_water_balloon'
     );
+    const targetScale = (24 * area) / balloon.height;
+    balloon.setScale(targetScale * 0.7);
     balloon.setDepth(9);
 
-    // Arc throw
-    const midX = (this.player.x + targetX) / 2;
-    const midY = Math.min(this.player.y, targetY) - 50;
+    // 스폰 스케일 팝 (0.7 → 1.0, 80ms)
+    this.scene.tweens.add({
+      targets: balloon,
+      scale: targetScale,
+      duration: 80,
+      ease: 'Sine.easeOut',
+    });
 
     // Wobble scale while airborne
     this.scene.tweens.add({
       targets: balloon,
-      scaleX: 1.15,
-      scaleY: 0.85,
+      scaleX: targetScale * 1.15,
+      scaleY: targetScale * 0.85,
       duration: 100,
+      delay: 80,
       yoyo: true,
       repeat: 3,
       ease: 'Sine.easeInOut',

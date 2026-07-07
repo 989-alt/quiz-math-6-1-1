@@ -10,8 +10,6 @@ export class Rainbow extends WeaponBase {
   descriptionKo = '무지개 파동 공격';
   maxLevel = 8;
 
-  private colors = [0xff0000, 0xff7f00, 0xffff00, 0x00ff00, 0x0000ff, 0x4b0082, 0x8b00ff];
-
   constructor(scene: GameScene, player: Player) {
     super(scene, player);
     this.baseStats = {
@@ -48,58 +46,40 @@ export class Rainbow extends WeaponBase {
     const area = this.getArea();
     const duration = this.getDuration();
 
-    // Create rainbow arc
-    this.colors.forEach((color, i) => {
-      const arcRadius = (50 + i * 10) * area;
-      const startAngle = baseAngle - Math.PI / 4;
-      const endAngle = baseAngle + Math.PI / 4;
+    // 반원 파동 스프라이트 1장이 진행 방향으로 확장하며 알파 감쇠 (설계 §3.3).
+    // 조각 스프라이트 56개를 부채꼴로 도배하던 이전 방식은 파동으로 읽히지 않아 폐기.
+    // 무지개 아트 자체가 풀컬러라 tint cycle은 곱연산으로 색을 죽여서 적용하지 않는다.
+    const startR = 30 * area;
+    const endR = 140 * area;
+    const wave = this.createProjectile(
+      this.player.x + Math.cos(baseAngle) * startR,
+      this.player.y + Math.sin(baseAngle) * startR,
+      'weapon_rainbow',
+      0,
+      0,
+      {
+        scale: 1.0 * area,
+        rotation: baseAngle + Math.PI / 2, // 아트가 위를 향한 아치라 진행 방향으로 회전
+        lifespan: duration + 200,
+      }
+    );
+    wave.setAlpha(0.9);
+    (wave as any).damage = damage;
+    this.attachImpactEffect(wave, 'collect');
 
-      this.scene.time.delayedCall(i * 30, () => {
-        // Create arc as multiple small segments
-        const segments = 8;
-        for (let s = 0; s < segments; s++) {
-          const segAngle = startAngle + (s / segments) * (endAngle - startAngle);
-          const x = this.player.x + Math.cos(segAngle) * arcRadius;
-          const y = this.player.y + Math.sin(segAngle) * arcRadius;
-
-          const segment = this.createProjectile(x, y, 'weapon_rainbow', 0, 0, {
-            scale: 0.35,
-            rotation: segAngle,
-            lifespan: duration,
-          });
-          segment.setTint(color);
-          segment.setAlpha(0.85);
-          (segment as any).damage = damage / 3;
-          this.attachImpactEffect(segment, 'collect');
-
-          // Color shift (tint cycle) while the wave travels outward
-          let colorIdx = i;
-          const tintTimer = this.scene.time.addEvent({
-            delay: Math.max(60, duration / this.colors.length),
-            callback: () => {
-              colorIdx = (colorIdx + 1) % this.colors.length;
-              if (segment.active) segment.setTint(this.colors[colorIdx]);
-            },
-            repeat: this.colors.length - 1,
-          });
-
-          // Expand outward + fade (alpha decay). scale는 createProjectile의 스폰 팝(0~80ms)과
-          // 겹치지 않도록 팝이 끝난 뒤 시작 (Snowball의 grow 트윈과 동일한 패턴)
-          this.scene.tweens.add({
-            targets: segment,
-            x: this.player.x + Math.cos(segAngle) * (arcRadius + 100 * area),
-            y: this.player.y + Math.sin(segAngle) * (arcRadius + 100 * area),
-            alpha: 0,
-            scale: 0.15 * area,
-            duration: duration,
-            delay: 80,
-            onComplete: () => {
-              tintTimer.destroy();
-              if (segment.active) segment.destroy();
-            },
-          });
-        }
-      });
+    // 확장 + 알파 감쇠. scale은 createProjectile의 스폰 팝(0~80ms)이 끝난 뒤 시작
+    this.scene.tweens.add({
+      targets: wave,
+      x: this.player.x + Math.cos(baseAngle) * endR,
+      y: this.player.y + Math.sin(baseAngle) * endR,
+      scale: 2.2 * area,
+      alpha: 0,
+      duration: duration,
+      delay: 80,
+      ease: 'Sine.easeOut',
+      onComplete: () => {
+        if (wave.active) wave.destroy();
+      },
     });
   }
 

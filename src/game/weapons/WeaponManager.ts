@@ -76,9 +76,8 @@ const WeaponRegistry: Record<WeaponId, new (scene: GameScene, player: Player) =>
 };
 
 export const WeaponInfoList: WeaponInfo[] = [
-  // 근접/범위 무기 (Melee/Area)
-  { id: 'pencil', name: 'Pencil', nameKo: '연필', description: 'Quick melee jab', descriptionKo: '품에 쥐고 빠르게 찌르는 근접 공격', maxLevel: 8, category: 'melee' },
   // 원거리 무기 (Ranged)
+  { id: 'pencil', name: 'Pencil', nameKo: '연필', description: 'Throws pencils at the nearest monster', descriptionKo: '가장 가까운 몬스터를 향해 연필을 던지는 기본 무기', maxLevel: 8, category: 'ranged' },
   { id: 'banana', name: 'Banana', nameKo: '바나나', description: 'Boomerang banana that returns', descriptionKo: '돌아오는 바나나 부메랑', maxLevel: 8, category: 'ranged' },
   { id: 'acorn', name: 'Acorn', nameKo: '도토리', description: 'Bouncing acorns', descriptionKo: '튕기는 도토리', maxLevel: 8, category: 'ranged' },
   { id: 'paper_plane', name: 'Paper Plane', nameKo: '종이비행기', description: 'Homing paper planes', descriptionKo: '유도하는 종이비행기', maxLevel: 8, category: 'ranged' },

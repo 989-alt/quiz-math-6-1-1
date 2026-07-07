@@ -48,37 +48,37 @@ export class Marble extends WeaponBase {
     const pierce = this.getPierce();
     const area = this.getArea();
 
-    // Create glass marble with gradient effect
-    const marble = this.scene.add.circle(
+    // 유리구슬 픽셀아트 스프라이트 (기존 원 지름 ~16px 상당 크기로 스케일)
+    const marble = this.scene.add.sprite(
       this.player.x,
       this.player.y,
-      8 * area,
-      0x4169e1 // Royal blue
+      'weapon_marble'
     );
+    const targetScale = (20 * area) / marble.width;
+    marble.setScale(targetScale * 0.7);
     marble.setDepth(9);
 
-    // Add shine effect
-    const shine = this.scene.add.circle(
-      this.player.x - 2 * area,
-      this.player.y - 2 * area,
-      2 * area,
-      0xffffff,
-      0.6
-    );
-    shine.setDepth(10);
-
-    // 반짝 트윈: shine이 계속 숨쉬듯 밝기/크기를 오간다
+    // 스폰 스케일 팝 (0.7 → 1.0, 80ms)
     this.scene.tweens.add({
-      targets: shine,
-      alpha: 0.2,
-      scale: 1.6,
+      targets: marble,
+      scale: targetScale,
+      duration: 80,
+      ease: 'Sine.easeOut',
+    });
+
+    // 반짝 트윈: 구슬이 숨쉬듯 밝기를 오간다 (기존 shine 원 대체)
+    this.scene.tweens.add({
+      targets: marble,
+      alpha: 0.7,
       duration: 220,
+      delay: 80,
       yoyo: true,
       repeat: -1,
     });
 
     this.scene.physics.add.existing(marble);
     const body = marble.body as Phaser.Physics.Arcade.Body;
+    body.setSize(marble.width * 0.8, marble.height * 0.8);
     body.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
     body.setBounce(1, 1);
 
@@ -93,17 +93,6 @@ export class Marble extends WeaponBase {
     const startY = this.player.y;
     const maxRange = 260 * area;
     let hasReversed = false;
-
-    // Update shine position
-    const updateShine = this.scene.time.addEvent({
-      delay: 16,
-      callback: () => {
-        if (marble.active) {
-          shine.setPosition(marble.x - 2 * area, marble.y - 2 * area);
-        }
-      },
-      loop: true,
-    });
 
     // Bounce logic
     const bounceTimer = this.scene.time.addEvent({
@@ -137,19 +126,27 @@ export class Marble extends WeaponBase {
       loop: true,
     });
 
+    // 수명 종료 시 허공 소멸 금지: 페이드로 종결
     this.scene.time.delayedCall(this.getDuration(), () => {
       bounceTimer.destroy();
-      updateShine.destroy();
-      if (marble.active) marble.destroy();
-      if (shine.active) shine.destroy();
+      if (!marble.active) return;
+      this.scene.tweens.killTweensOf(marble); // 반짝 트윈 정지
+      this.scene.tweens.add({
+        targets: marble,
+        alpha: 0,
+        scale: targetScale * 0.5,
+        duration: 150,
+        onComplete: () => {
+          if (marble.active) marble.destroy();
+        },
+      });
     });
 
     // 관통 소진 등으로 duration 이전에 먼저 destroy되는 경우(pierce 소진, cleanupEntities)를 대비해
-    // shine과 타이머를 즉시 정리 — 안 하면 shine이 남은 시간 동안 계속 깜빡인다
+    // 타이머·트윈을 즉시 정리
     marble.once('destroy', () => {
       bounceTimer.destroy();
-      updateShine.destroy();
-      if (shine.active) shine.destroy();
+      this.scene.tweens.killTweensOf(marble);
     });
   }
 
