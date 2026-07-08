@@ -64,6 +64,10 @@ export class Bubble extends WeaponBase {
       (bubble as any).damage = damage;
       (bubble as any).pierce = 999;
       (bubble as any).__lastHitReset = this.scene.time.now;
+      // 새로 생성되는 방울은 "자신의" 목표 슬롯 각도 위에 바로 배치한다(스냅 없이 궤도 위에서 시작).
+      // 이후 매 프레임 update()에서 목표 슬롯 각도를 (인덱스 / 개수)로 재계산하고
+      // 현재 각도를 그쪽으로 부드럽게 수렴시키므로, 기존 방울들도 순간이동 없이 재배치된다.
+      (bubble as any).__slotAngle = (this.bubbles.length / amount) * Math.PI * 2;
 
       this.scene.addProjectile(bubble as any);
       this.bubbles.push(bubble);
@@ -94,17 +98,29 @@ export class Bubble extends WeaponBase {
     super.update(delta); // 쿨다운 → attack() (생성/스탯 관리)
 
     const area = this.getArea();
-    const orbitRadius = 60 * area;
+    // 캐릭터 세로 길이의 절반만큼 더 떨어뜨려 궤도가 캐릭터에 바짝 붙어 보이지 않게 한다
+    // (사용자 피드백). displayHeight는 스프라이트 스케일 변경에도 항상 정확한 실제 크기.
+    const orbitRadius = 60 * area + this.player.displayHeight / 2;
     this.orbitAngle += this.getSpeed() * 0.0007 * delta; // speed 3 ≈ 초당 2.1rad
 
     this.bubbles.forEach((bubble, i) => {
       if (!bubble.active) return;
 
-      const angle = this.orbitAngle + (i / this.bubbles.length) * Math.PI * 2;
+      // 목표 슬롯 각도는 매 프레임 (인덱스 / 현재 개수)로 재계산해 항상 균일 간격을 유지한다.
+      // 개수가 바뀌어 목표가 바뀌더라도 실제 각도(__slotAngle)는 최단 회전 방향으로
+      // 약 300ms에 걸쳐 서서히 수렴시켜(지수 감쇠) 순간이동 없이 자연스럽게 재배치된다.
+      // 개수가 그대로면 목표==현재라 드리프트도, 추가 비용도 없다.
+      const targetSlotAngle = (i / this.bubbles.length) * Math.PI * 2;
+      const currentSlotAngle = (bubble as any).__slotAngle ?? targetSlotAngle;
+      const slotDiff = Phaser.Math.Angle.Wrap(targetSlotAngle - currentSlotAngle);
+      (bubble as any).__slotAngle = currentSlotAngle + slotDiff * Math.min(1, delta * 0.01);
+
+      const angle = this.orbitAngle + (bubble as any).__slotAngle;
       bubble.x = this.player.x + Math.cos(angle) * orbitRadius;
       bubble.y = this.player.y + Math.sin(angle) * orbitRadius;
 
-      // Floating effect (크기 숨쉬기 ±8%)
+      // Floating effect (크기 숨쉬기 ±8%) — 고정 인덱스를 위상차로 써서 방울마다 다르게,
+      // 숨쉬기 주기는 공전 속도와 무관하게 일정하게 유지
       bubble.setScale((1.1 * area) * (1 + Math.sin(this.scene.time.now / 300 + i) * 0.08));
 
       const body = bubble.body as Phaser.Physics.Arcade.Body;
