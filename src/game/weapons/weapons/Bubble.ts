@@ -60,6 +60,14 @@ export class Bubble extends WeaponBase {
       this.scene.physics.add.existing(bubble);
       const body = bubble.body as Phaser.Physics.Arcade.Body;
       body.setSize(bubble.width * 0.8, bubble.height * 0.8);
+      // 방울은 update()에서 매 프레임 x/y를 직접 찍어 배치하는 "수동 구동(kinematic)" 바디다.
+      // moves=true(기본)면 Arcade가 postUpdate에서 (position - prevFrame)만큼을 스프라이트에
+      // 한 번 더 더해(updateFromGameObject로 이미 옮긴 위치 위에) 프레임 이동량을 이중 적용한다.
+      // 그 잔차는 프레임마다 부호가 뒤집히는 감쇠 없는 진동(willStep 패턴에 따라 수초간 지속되다
+      // no-step 프레임에서 리셋)이라, 생성/개수변화 직후 방울이 잠깐 튀어 보인다. moves=false로
+      // postUpdate의 스프라이트 역동기화를 꺼 위치를 update()가 단독 소유하게 한다.
+      // (몬스터 겹침 판정은 updateFromGameObject가 갱신하는 body 경계를 쓰므로 영향 없음)
+      body.moves = false;
 
       (bubble as any).damage = damage;
       (bubble as any).pierce = 999;
