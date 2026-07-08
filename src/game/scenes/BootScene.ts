@@ -114,6 +114,9 @@ export class BootScene extends Phaser.Scene {
     this.load.audio('sfx_pickup', 'assets/audio/pickup.wav');
     this.load.audio('sfx_quiz_correct', 'assets/audio/quiz_correct.wav');
     this.load.audio('sfx_quiz_wrong', 'assets/audio/quiz_wrong.wav');
+    // 몬스터 러시 이벤트 오디오 2종 (scripts/gen_rush_audio.py로 생성)
+    this.load.audio('rush_bgm', 'assets/audio/rush_bgm.wav');
+    this.load.audio('sfx_rush_warning', 'assets/audio/rush_warning.wav');
   }
 
   create(): void {

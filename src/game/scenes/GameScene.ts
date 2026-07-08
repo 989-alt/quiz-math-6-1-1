@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
-import { Monster, MonsterTypes, getMonsterConfigForWave, getMonsterConfigForRotation, FULL_ROTATION_LENGTH, getBossConfigForWave, isBossWave } from '../entities/Monster';
+import { Monster, MonsterTypes, getMonsterConfigForWave, getMonsterConfigForRotation, FULL_ROTATION_LENGTH, SPAWNS_PER_TYPE, ROTATION_LENGTH, getBossConfigForWave, isBossWave } from '../entities/Monster';
 import { XPGem, MagnetGem } from '../entities/XPGem';
 import { WeaponManager, WeaponInfoList, BonusInfoList } from '../weapons/WeaponManager';
 import { PassiveInfoList } from '../weapons/PassiveManager';
@@ -61,6 +61,29 @@ export class GameScene extends Phaser.Scene {
   private bgm: Phaser.Sound.BaseSound | null = null;
   private bgmEnabled: boolean = true;
   private sfxEnabled: boolean = true;
+
+  // === 몬스터 물량 상한 3단 체계 (평시 천장 100 / 러시 버스트 천장 160 / 왕관 하수인 캡 40 별도)
+  // → 최악의 경우 동시 활성 몬스터는 대략 100(평시) + 60(러시 버스트 여유분) + 40(하수인, 별도 카운트 없이 같은 그룹 상한 공유) ≈ 200 수준으로 억제
+  private static readonly NORMAL_SPAWN_MAX_ACTIVE = 100; // 평시 스포너 천장
+  private static readonly RUSH_MAX_ACTIVE = 160;         // 러시 버스트 천장 (평시 천장 + 60 헤드룸, 후반부에도 항상 확보)
+
+  // === 몬스터 러시 이벤트 (Task 7) — 타이머 전부 delta 누적(일시정지 안전) ===
+  private static readonly RUSH_FIRST_MS = 90000;   // 첫 러시 = 90초
+  private static readonly RUSH_WARNING_MS = 1500;   // 경고 페이즈 1.5초
+  private static readonly RUSH_ACTIVE_MS = 8000;    // 러시 페이즈 8초
+  private static readonly RUSH_SPAWN_INTERVAL = 120; // 러시 스폰 간격 ~120ms
+  private static readonly RUSH_TEXTURE_KEY = 'rush_vignette';
+
+  // idle: 다음 러시까지 카운트업 / warning: 경고 배너+사이렌 / active: 폭풍 스폰
+  private rushPhase: 'idle' | 'warning' | 'active' = 'idle';
+  private rushTimer: number = 0;              // idle 단계에서 다음 러시까지 누적(ms)
+  private rushTriggerAt: number = GameScene.RUSH_FIRST_MS; // 다음 러시 발동 임계(ms)
+  private rushPhaseTimer: number = 0;         // warning/active 단계 내 경과(ms)
+  private rushSpawnTimer: number = 0;         // 러시 전용 스폰 간격 누적(ms)
+  private lastBossSpawnAt: number = -999;     // 마지막 보스 웨이브 시각(survivalTime 초)
+  private rushBgm: Phaser.Sound.BaseSound | null = null;
+  private rushVignette: Phaser.GameObjects.Image | null = null;
+  private rushBanner: Phaser.GameObjects.Container | null = null;
 
   private background!: Phaser.GameObjects.TileSprite;
   // 결정적 청크 장식: "cx,cy" → 그 청크에 배치된 deco 오브젝트들(일반 이미지 + solid 정적 이미지)
@@ -211,6 +234,11 @@ export class GameScene extends Phaser.Scene {
     // Resize background on window resize
     this.scale.on('resize', (gameSize: Phaser.Structs.Size) => {
       this.background.setSize(gameSize.width, gameSize.height);
+      // 러시 비네트도 카메라 크기에 맞춰 재배치/스케일 (배경과 동일 규약)
+      if (this.rushVignette) {
+        this.rushVignette.setPosition(gameSize.width / 2, gameSize.height / 2);
+        this.rushVignette.setDisplaySize(gameSize.width, gameSize.height);
+      }
     });
   }
 
@@ -633,10 +661,17 @@ export class GameScene extends Phaser.Scene {
   private handleSoundSettingsChanged(data: { bgm: boolean; sfx: boolean }): void {
     this.sfxEnabled = data.sfx;
     this.bgmEnabled = data.bgm;
+    // 러시 중이면 브금 대상은 러시 브금(일반 브금 아님)
+    const inRush = this.rushPhase !== 'idle';
     if (this.bgmEnabled) {
-      this.startBgm();
+      if (inRush) {
+        this.startRushBgm();
+      } else {
+        this.startBgm();
+      }
     } else {
       this.stopBgm();
+      this.stopRushBgm(false); // 러시 브금도 함께 무음, 일반 브금 복원하지 않음
     }
   }
 
@@ -678,6 +713,9 @@ export class GameScene extends Phaser.Scene {
     this.isPaused = false;
     this.autoPausedByVisibility = false;
 
+    // 몬스터 러시 상태 전체 초기화 (비네트/배너 제거, 러시 브금 정지, 첫 러시 임계 복원)
+    this.resetRushState();
+
     // Recreate player at center
     if (this.player) {
       this.player.destroy();
@@ -714,6 +752,9 @@ export class GameScene extends Phaser.Scene {
     this.isPaused = true;
     this.physics.pause();
     this.stopBgm();
+    // 러시 중 종료(사망/그만하기/클리어/완주): 러시 브금 정지 + 비네트/배너 트윈 정리
+    this.stopRushBgm(false);
+    this.clearRushVisuals();
     EventBus.emit(GameEvents.GAME_FINISHED, {
       score: this.score,
       level: this.playerLevel,
@@ -998,6 +1039,9 @@ export class GameScene extends Phaser.Scene {
     // Spawn monsters
     this.updateMonsterSpawning(delta);
 
+    // 몬스터 러시 이벤트 스케줄/진행 (delta 누적 — 일시정지 중 자동 동결)
+    this.updateRushEvent(delta);
+
     // Cleanup distant entities
     this.cleanupEntities();
 
@@ -1045,8 +1089,11 @@ export class GameScene extends Phaser.Scene {
     const spawnInterval = Math.max(200, 1000 - this.currentWave * 50);
 
     if (this.spawnTimer >= spawnInterval) {
-      this.spawnMonster();
       this.spawnTimer = 0;
+      // 평시 천장 도달 시 스폰만 스킵 (로테이션 인덱스/세트 진급은 spawnMonster 내부에서
+      // 처리되므로, 여기서 호출 자체를 막아야 인덱스가 소모되지 않는다)
+      if (this.monsters.countActive(true) >= GameScene.NORMAL_SPAWN_MAX_ACTIVE) return;
+      this.spawnMonster();
     }
   }
 
@@ -1140,6 +1187,9 @@ export class GameScene extends Phaser.Scene {
     // Number of bosses increases with wave (1 boss per 3 waves)
     const bossCount = Math.max(1, Math.floor(this.currentWave / 6));
 
+    // 러시 스케줄러가 "보스 직후 5초 이내"를 회피하도록 발생 시각 기록
+    this.lastBossSpawnAt = this.survivalTime;
+
     this.showBossBanner();
 
     for (let i = 0; i < bossCount; i++) {
@@ -1197,6 +1247,292 @@ export class GameScene extends Phaser.Scene {
         });
       },
     });
+  }
+
+  // ===================== 몬스터 러시 이벤트 (Task 7) =====================
+
+  /**
+   * 러시 스케줄러/상태머신 (delta 누적, 일시정지 안전).
+   * idle → (임계 도달) warning(1.5s) → active(8s, 폭풍 스폰) → idle(재무장).
+   * 보스 스폰 직후 5초 이내면 발동을 10초 뒤로 미룬다.
+   */
+  private updateRushEvent(delta: number): void {
+    if (this.rushPhase === 'idle') {
+      this.rushTimer += delta;
+      if (this.rushTimer >= this.rushTriggerAt) {
+        // 보스 직후엔 시작하지 않고 임계만 뒤로 밀어 재시도(카운터는 유지)
+        if (this.survivalTime - this.lastBossSpawnAt < 5) {
+          this.rushTriggerAt += 10000;
+          return;
+        }
+        this.startRushWarning();
+      }
+    } else if (this.rushPhase === 'warning') {
+      this.rushPhaseTimer += delta;
+      if (this.rushPhaseTimer >= GameScene.RUSH_WARNING_MS) {
+        this.startRushActive();
+      }
+    } else if (this.rushPhase === 'active') {
+      this.rushPhaseTimer += delta;
+      this.rushSpawnTimer += delta;
+      if (this.rushSpawnTimer >= GameScene.RUSH_SPAWN_INTERVAL) {
+        this.rushSpawnTimer = 0;
+        this.spawnRushMonster();
+      }
+      if (this.rushPhaseTimer >= GameScene.RUSH_ACTIVE_MS) {
+        this.endRush();
+      }
+    }
+  }
+
+  /** 경고 페이즈 시작: 배너 + 사이렌 + 붉은 비네트 페이드인 + 급박 브금 전환 */
+  private startRushWarning(): void {
+    this.rushPhase = 'warning';
+    this.rushPhaseTimer = 0;
+    this.rushSpawnTimer = 0;
+
+    this.showRushBanner();
+    this.playSfx('sfx_rush_warning', 0.5);
+    this.cameras.main.shake(400, 0.008);
+
+    // 붉은 비네트 페이드인 (0 → 0.24, 경고 시간에 맞춰)
+    this.ensureRushVignette();
+    if (this.rushVignette) {
+      this.tweens.killTweensOf(this.rushVignette);
+      this.rushVignette.setAlpha(0);
+      this.tweens.add({
+        targets: this.rushVignette,
+        alpha: 0.24,
+        duration: GameScene.RUSH_WARNING_MS,
+        ease: 'Sine.easeIn',
+      });
+    }
+
+    // 일반 브금 → 급박 러시 브금 (브금 설정 존중)
+    this.startRushBgm();
+  }
+
+  /** 러시 페이즈 시작: 비네트 알파 펄스(요요) 개시 (스폰은 updateRushEvent에서) */
+  private startRushActive(): void {
+    this.rushPhase = 'active';
+    this.rushPhaseTimer = 0;
+    this.rushSpawnTimer = 0;
+
+    if (this.rushVignette) {
+      this.tweens.killTweensOf(this.rushVignette);
+      this.rushVignette.setAlpha(0.20);
+      this.tweens.add({
+        targets: this.rushVignette,
+        alpha: 0.35,
+        duration: 650,
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        repeat: -1,
+      });
+    }
+  }
+
+  /** 러시 종료: 비네트 페이드아웃 + 브금 복원 + 다음 러시 재무장(60–120초) */
+  private endRush(): void {
+    this.rushPhase = 'idle';
+    this.rushTimer = 0;
+    this.rushPhaseTimer = 0;
+    this.rushSpawnTimer = 0;
+    this.rushTriggerAt = Phaser.Math.Between(60000, 120000);
+
+    if (this.rushVignette) {
+      this.tweens.killTweensOf(this.rushVignette);
+      this.tweens.add({
+        targets: this.rushVignette,
+        alpha: 0,
+        duration: 600,
+        ease: 'Sine.easeOut',
+      });
+    }
+
+    // 급박 브금 정지 → 일반 브금 복원 (설정 존중)
+    this.stopRushBgm(true);
+  }
+
+  /**
+   * 러시 전용 스폰 (spawnRotationIndex 미소모). 현재 로테이션 종류 인덱스 기준
+   * max(0, ti-2)..ti 범위(약한 쪽 편향)에서 랜덤 선택, 현재 세트 스탯 유지.
+   * 스폰 위치는 spawnMonster처럼 플레이어 주변 링. 물량 상한 RUSH_MAX_ACTIVE(160)기.
+   */
+  private spawnRushMonster(): void {
+    if (this.monsters.countActive(true) >= GameScene.RUSH_MAX_ACTIVE) return;
+
+    const camera = this.cameras.main;
+    const padding = 100;
+    const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+    const minDistance = Math.sqrt(Math.pow(camera.width, 2) + Math.pow(camera.height, 2)) / 2 + padding;
+    const distance = minDistance + Phaser.Math.Between(0, 100);
+    const x = this.player.x + Math.cos(angle) * distance;
+    const y = this.player.y + Math.sin(angle) * distance;
+
+    // 현재 종류 인덱스(spawnRotationIndex 파생) 근처의 약한 쪽 편향 타입
+    const currentTypeIndex = Math.floor(this.spawnRotationIndex / SPAWNS_PER_TYPE) % ROTATION_LENGTH;
+    const lo = Math.max(0, currentTypeIndex - 2);
+    const typeIndex = Phaser.Math.Between(lo, currentTypeIndex);
+    // 현재 세트를 유지하는 합성 인덱스로 config 생성 (인덱스 소모 없음 — spawnMinion과 동일한 별도 경로)
+    const set0 = Math.floor(this.spawnRotationIndex / FULL_ROTATION_LENGTH); // 0-based 세트
+    const synthIndex = set0 * FULL_ROTATION_LENGTH + typeIndex * SPAWNS_PER_TYPE;
+    const config = getMonsterConfigForRotation(synthIndex);
+
+    const monster = new Monster(this, x, y, config);
+    monster.setTarget(this.player);
+    this.monsters.add(monster);
+  }
+
+  /** 붉은 비네트 텍스처 생성(1회): 중앙 투명 → 가장자리 붉음 방사형 그라디언트 */
+  private createRushVignetteTexture(): void {
+    const key = GameScene.RUSH_TEXTURE_KEY;
+    if (this.textures.exists(key)) return;
+
+    const w = 512;
+    const h = 512;
+    const tex = this.textures.createCanvas(key, w, h);
+    if (!tex) return;
+    const ctx = tex.getContext();
+    const cx = w / 2;
+    const cy = h / 2;
+    // 어두운 초원 위에서도 "붉은 기운"이 체감되도록 중심 가까이까지 그라데이션을 끌어오고
+    // 가장자리 농도를 높인다 (알파 0.35 피크 기준으로 시각 튜닝 — 검증 스크린샷 참고)
+    const grad = ctx.createRadialGradient(cx, cy, w * 0.12, cx, cy, w * 0.55);
+    grad.addColorStop(0, 'rgba(255,30,30,0)');
+    grad.addColorStop(0.45, 'rgba(255,20,20,0.30)');
+    grad.addColorStop(0.75, 'rgba(230,10,10,0.62)');
+    grad.addColorStop(1, 'rgba(180,0,0,1)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+    tex.refresh();
+  }
+
+  /** 비네트 이미지 준비 (풀스크린, 카메라 고정, 데미지 숫자[depth20] 아래) */
+  private ensureRushVignette(): void {
+    this.createRushVignetteTexture();
+    if (this.rushVignette) return;
+    const cam = this.cameras.main;
+    this.rushVignette = this.add
+      .image(cam.width / 2, cam.height / 2, GameScene.RUSH_TEXTURE_KEY)
+      .setScrollFactor(0)
+      .setDepth(18) // 엔티티/이펙트(≤15) 위, 데미지 숫자(20)·배너(101) 아래
+      .setAlpha(0);
+    this.rushVignette.setDisplaySize(cam.width, cam.height);
+  }
+
+  /** 러시 경고 배너: 붉은 WARNING! + 부제 '몬스터 러시!', 슬라이드 인/아웃 + 공격적 펄스 */
+  private showRushBanner(): void {
+    const cam = this.cameras.main;
+    const title = this.add
+      .text(0, -22, 'WARNING!', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '58px',
+        fontStyle: 'bold',
+        color: '#ff2d2d',
+        stroke: '#450a0a',
+        strokeThickness: 8,
+      })
+      .setOrigin(0.5);
+    const sub = this.add
+      .text(0, 34, '몬스터 러시!', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '30px',
+        fontStyle: 'bold',
+        color: '#fecaca',
+        stroke: '#450a0a',
+        strokeThickness: 6,
+      })
+      .setOrigin(0.5);
+
+    const targetY = cam.height * 0.28;
+    const banner = this.add
+      .container(cam.width / 2, targetY - 80, [title, sub])
+      .setScrollFactor(0)
+      .setDepth(101)
+      .setAlpha(0);
+    this.rushBanner = banner;
+
+    // 슬라이드 인(위→목표) + 페이드
+    this.tweens.add({
+      targets: banner,
+      y: targetY,
+      alpha: 1,
+      duration: 300,
+      ease: 'Back.easeOut',
+    });
+    // 공격적 펄스 (스케일/알파 요요)
+    this.tweens.add({
+      targets: banner,
+      scaleX: 1.08,
+      scaleY: 1.08,
+      duration: 180,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: 3,
+    });
+    // 슬라이드 아웃 후 파괴 (경고 시간 종료 즈음)
+    this.time.delayedCall(GameScene.RUSH_WARNING_MS - 250, () => {
+      if (!this.rushBanner) return;
+      this.tweens.add({
+        targets: banner,
+        y: targetY - 80,
+        alpha: 0,
+        duration: 250,
+        onComplete: () => {
+          banner.destroy();
+          if (this.rushBanner === banner) this.rushBanner = null;
+        },
+      });
+    });
+  }
+
+  /** 급박 러시 브금 시작 (일반 브금 정지 후 대체). 브금 설정 OFF면 무음. */
+  private startRushBgm(): void {
+    if (!this.bgmEnabled) return;
+    this.stopBgm(); // 러시 동안 일반 브금은 대체
+    if (this.rushBgm) return;
+    if (this.cache.audio.exists('rush_bgm')) {
+      this.rushBgm = this.sound.add('rush_bgm', { loop: true, volume: 0.35 });
+      this.rushBgm.play();
+    }
+  }
+
+  /** 러시 브금 정지. resumeNormal=true면 설정에 따라 일반 브금 복원. */
+  private stopRushBgm(resumeNormal: boolean): void {
+    if (this.rushBgm) {
+      this.rushBgm.stop();
+      this.rushBgm.destroy();
+      this.rushBgm = null;
+    }
+    if (resumeNormal) this.startBgm(); // startBgm 내부에서 bgmEnabled 체크
+  }
+
+  /** 러시 시각 요소(비네트/배너)의 트윈을 죽이고 파괴 — 게임오버/리셋 정리용 */
+  private clearRushVisuals(): void {
+    if (this.rushVignette) {
+      this.tweens.killTweensOf(this.rushVignette);
+      this.rushVignette.destroy();
+      this.rushVignette = null;
+    }
+    if (this.rushBanner) {
+      this.rushBanner.list.forEach((c) => this.tweens.killTweensOf(c));
+      this.tweens.killTweensOf(this.rushBanner);
+      this.rushBanner.destroy();
+      this.rushBanner = null;
+    }
+  }
+
+  /** 러시 상태 전체 리셋 (resetGame) — 첫 러시 임계로 되돌림 */
+  private resetRushState(): void {
+    this.clearRushVisuals();
+    this.stopRushBgm(false);
+    this.rushPhase = 'idle';
+    this.rushTimer = 0;
+    this.rushTriggerAt = GameScene.RUSH_FIRST_MS;
+    this.rushPhaseTimer = 0;
+    this.rushSpawnTimer = 0;
+    this.lastBossSpawnAt = -999;
   }
 
   // ... (addXp, levelUp, getUpgradeInfo, emitPlayerState, public methods, shutdown remain the same) ...
