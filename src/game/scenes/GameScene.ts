@@ -8,6 +8,7 @@ import { EventBus, GameEvents } from '../utils/EventBus';
 import { GAME_CONFIG } from '../config';
 import { GROUND_TILE_KEY, MONSTER_WALK_KEYS } from '../assetKeys';
 import { EffectManager } from '../effects/EffectManager';
+import { getSoundSettings } from '../../stores/soundSettings';
 
 // 청크 좌표 → 결정적 시드 해시 (같은 월드 위치엔 항상 같은 장식)
 function hashChunk(cx: number, cy: number): number {
@@ -53,6 +54,8 @@ export class GameScene extends Phaser.Scene {
   private pendingLevelUp: boolean = false; // Track if level up is waiting for quiz
   private levelUpQueue: number = 0; // Stacked level ups awaiting quiz processing
   private bgm: Phaser.Sound.BaseSound | null = null;
+  private bgmEnabled: boolean = true;
+  private sfxEnabled: boolean = true;
 
   private background!: Phaser.GameObjects.TileSprite;
   // 결정적 청크 장식: "cx,cy" → 그 청크에 배치된 deco 오브젝트들(일반 이미지 + solid 정적 이미지)
@@ -124,6 +127,11 @@ export class GameScene extends Phaser.Scene {
       (m, _o) => !(m as Monster).passesObstacles
     );
 
+    // 저장된 브금/효과음 설정 적용 (기본값 둘 다 true)
+    const soundSettings = getSoundSettings();
+    this.bgmEnabled = soundSettings.bgm;
+    this.sfxEnabled = soundSettings.sfx;
+
     // Setup event listeners
     this.setupEventListeners();
 
@@ -144,12 +152,14 @@ export class GameScene extends Phaser.Scene {
 
   // 외부 호출용 SFX 헬퍼 (Monster, Player에서 사용)
   playSfx(key: string, volume = 0.4): void {
+    if (!this.sfxEnabled) return;
     if (this.cache.audio.exists(key)) {
       this.sound.play(key, { volume });
     }
   }
 
   private startBgm(): void {
+    if (!this.bgmEnabled) return;
     if (this.bgm) return;
     if (this.cache.audio.exists('bgm')) {
       this.bgm = this.sound.add('bgm', { loop: true, volume: 0.3 });
@@ -583,10 +593,22 @@ export class GameScene extends Phaser.Scene {
     EventBus.on(GameEvents.STOP_GAME, this.handleGameOver, this);
     // 문제은행 완주: 진행 중인 퀴즈/강화 흐름이 끝나고 재개되면 종료
     EventBus.on(GameEvents.QUIZ_BANK_EXHAUSTED, this.handleBankExhausted, this);
+    // 브금/효과음 on-off 토글 (React HUD → GameScene)
+    EventBus.on(GameEvents.SOUND_SETTINGS_CHANGED, this.handleSoundSettingsChanged, this);
   }
 
   private handleBankExhausted(): void {
     this.finishAfterResume = true;
+  }
+
+  private handleSoundSettingsChanged(data: { bgm: boolean; sfx: boolean }): void {
+    this.sfxEnabled = data.sfx;
+    this.bgmEnabled = data.bgm;
+    if (this.bgmEnabled) {
+      this.startBgm();
+    } else {
+      this.stopBgm();
+    }
   }
 
   private resetGame(): void {
@@ -1189,5 +1211,6 @@ export class GameScene extends Phaser.Scene {
     EventBus.off(GameEvents.GAME_OVER, this.handleGameOver, this);
     EventBus.off(GameEvents.STOP_GAME, this.handleGameOver, this);
     EventBus.off(GameEvents.QUIZ_BANK_EXHAUSTED, this.handleBankExhausted, this);
+    EventBus.off(GameEvents.SOUND_SETTINGS_CHANGED, this.handleSoundSettingsChanged, this);
   }
 }

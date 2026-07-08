@@ -42,6 +42,9 @@ export const GameEvents = {
   STOP_GAME: 'stop-game',
   // 문제은행 전부 소진 — 완주 종료 (React quizStore 감지 → GameScene)
   QUIZ_BANK_EXHAUSTED: 'quiz-bank-exhausted',
+
+  // 브금/효과음 on-off 토글 (React HUD → GameScene)
+  SOUND_SETTINGS_CHANGED: 'sound-settings-changed',
 } as const;
 
 export type GameEventType = typeof GameEvents[keyof typeof GameEvents];
@@ -81,4 +84,9 @@ export interface PlayerStatePayload {
 export interface QuizResultPayload {
   correct: boolean;
   selectedUpgrade?: string;
+}
+
+export interface SoundSettingsPayload {
+  bgm: boolean;
+  sfx: boolean;
 }

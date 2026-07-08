@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { EventBus, GameEvents } from '../../game/utils/EventBus';
+import { getSoundSettings, setSoundSettings } from '../../stores/soundSettings';
 
 interface PlayerStateData {
   hp: number;
@@ -16,6 +17,7 @@ interface PlayerStateData {
 export function GameHUD() {
   const [confirmStop, setConfirmStop] = useState(false);
   const confirmStopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [soundSettings, setSoundSettingsState] = useState(() => getSoundSettings());
   const [state, setState] = useState<PlayerStateData>({
     hp: 100,
     maxHp: 100,
@@ -57,6 +59,18 @@ export function GameHUD() {
         setConfirmStop(false);
       }, 2000);
     }
+  };
+
+  const toggleBgm = () => {
+    const next = setSoundSettings({ bgm: !soundSettings.bgm });
+    setSoundSettingsState(next);
+    EventBus.emit(GameEvents.SOUND_SETTINGS_CHANGED, next);
+  };
+
+  const toggleSfx = () => {
+    const next = setSoundSettings({ sfx: !soundSettings.sfx });
+    setSoundSettingsState(next);
+    EventBus.emit(GameEvents.SOUND_SETTINGS_CHANGED, next);
   };
 
   const hpPercent = Math.max(0, (state.hp / state.maxHp) * 100);
@@ -226,6 +240,46 @@ export function GameHUD() {
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#f43f5e' }} />
             </div>
           </div>
+        </div>
+
+        {/* 브금/효과음 토글 */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <button
+            onClick={toggleBgm}
+            style={{
+              pointerEvents: 'auto',
+              cursor: 'pointer',
+              borderRadius: 16,
+              padding: 'clamp(6px, 0.8vw, 10px)',
+              background: 'rgba(10, 10, 15, 0.9)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              backdropFilter: 'blur(12px)',
+              color: soundSettings.bgm ? '#e4e4e7' : '#52525b',
+              fontSize: 'clamp(10px, 0.9vw, 12px)',
+              fontWeight: 600,
+              textDecoration: soundSettings.bgm ? 'none' : 'line-through',
+            }}
+          >
+            🎵 브금
+          </button>
+          <button
+            onClick={toggleSfx}
+            style={{
+              pointerEvents: 'auto',
+              cursor: 'pointer',
+              borderRadius: 16,
+              padding: 'clamp(6px, 0.8vw, 10px)',
+              background: 'rgba(10, 10, 15, 0.9)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              backdropFilter: 'blur(12px)',
+              color: soundSettings.sfx ? '#e4e4e7' : '#52525b',
+              fontSize: 'clamp(10px, 0.9vw, 12px)',
+              fontWeight: 600,
+              textDecoration: soundSettings.sfx ? 'none' : 'line-through',
+            }}
+          >
+            {soundSettings.sfx ? '🔊 효과음' : '🔇 효과음'}
+          </button>
         </div>
       </div>
     </div>
