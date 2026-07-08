@@ -1357,7 +1357,7 @@ export class GameScene extends Phaser.Scene {
   /**
    * 러시 전용 스폰 (spawnRotationIndex 미소모). 현재 로테이션 종류 인덱스 기준
    * max(0, ti-2)..ti 범위(약한 쪽 편향)에서 랜덤 선택, 현재 세트 스탯 유지.
-   * 스폰 위치는 spawnMonster처럼 플레이어 주변 링. 물량 상한 RUSH_MAX_ACTIVE(160)기.
+   * 스폰 위치는 spawnMonster처럼 플레이어 주변 링. 물량 상한 RUSH_MAX_ACTIVE(160).
    */
   private spawnRushMonster(): void {
     if (this.monsters.countActive(true) >= GameScene.RUSH_MAX_ACTIVE) return;
