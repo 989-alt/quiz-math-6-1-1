@@ -4,7 +4,7 @@ import { isFirebaseConfigured, submitScore } from '../../services/firebase';
 
 interface PostGameOverlayProps {
   nickname: string;
-  finish: { score: number; level: number; survivalTime: number; monstersKilled: number };
+  finish: { score: number; level: number; survivalTime: number; monstersKilled: number; cleared: boolean };
   onRestart: () => void;
   onExit: () => void;
   onShowLeaderboard: () => void;
@@ -90,12 +90,17 @@ export function PostGameOverlay({
             fontSize: 'clamp(22px, 3.5vw, 32px)',
             fontWeight: 800,
             letterSpacing: '-0.02em',
-            color: '#f43f5e',
+            color: finish.cleared ? '#fbbf24' : '#f43f5e',
             marginBottom: 8,
           }}
         >
-          게임 오버
+          {finish.cleared ? '🎉 게임 클리어!' : '게임 오버'}
         </h2>
+        {finish.cleared && (
+          <div style={{ fontSize: 13, color: '#fcd34d', fontWeight: 700, marginBottom: 6 }}>
+            무기 완성 + 최종 보스 처치
+          </div>
+        )}
         <div style={{ fontSize: 12, color: '#71717a', marginBottom: 20 }}>
           {unit.grade}학년 {unit.semester}학기 · {unit.unitNumber}단원 {unit.title}
         </div>

@@ -24,6 +24,10 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   public speed: number;
   public xpValue: number;
   public isBoss: boolean;
+  // 무기 완성 후 등장하는 최종 보스 — 처치 시 게임 클리어 (GameScene에서 세팅)
+  public isFinalBoss: boolean = false;
+  // 피격 화이트 플래시 후 복원할 상시 틴트 (최종 보스 식별용). null이면 clearTint.
+  public persistentTint: number | null = null;
   // 스폰 목표 스케일 — 스트레치류 이펙트(Magnet 등)의 복원 기준.
   // 런타임 scaleX는 스폰 팝/이펙트 트윈과 레이스가 있어 캡처하면 안 됨.
   public baseScale: number;
@@ -355,7 +359,9 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.setTintFill(0xffffff);
     this.scene.time.delayedCall(80, () => {
       if (this.active) {
-        this.clearTint();
+        // 상시 틴트(최종 보스)가 있으면 복원, 없으면 틴트 해제
+        if (this.persistentTint !== null) this.setTint(this.persistentTint);
+        else this.clearTint();
       }
     });
 

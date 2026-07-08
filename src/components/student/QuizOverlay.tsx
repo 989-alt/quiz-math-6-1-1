@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Timer } from '../shared/Timer';
 import { FracText } from '../shared/FracText';
 import type { Quiz } from '../../types/quiz';
@@ -7,7 +7,7 @@ interface QuizOverlayProps {
   quiz: Quiz;
   timeLimit: number;
   streak?: number;
-  onAnswer: (index: number, isCorrect: boolean) => void;
+  onAnswer: (index: number, isCorrect: boolean, timeSpent: number) => void;
 }
 
 export function QuizOverlay({ quiz, timeLimit, streak = 0, onAnswer }: QuizOverlayProps) {
@@ -15,6 +15,20 @@ export function QuizOverlay({ quiz, timeLimit, streak = 0, onAnswer }: QuizOverl
   const [isAnswered, setIsAnswered] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
+
+  // 문제가 표시된 시각. 문제가 바뀔 때마다 리셋 → 정답 잠금 시점까지의 실제 소요 시간 측정
+  const shownAtRef = useRef<number>(performance.now());
+  // 정답 잠금(선택) 순간에 측정한 소요 시간(초) — 오답 [확인]까지의 해설 대기시간은 제외
+  const lockedTimeRef = useRef<number>(0);
+  useEffect(() => {
+    shownAtRef.current = performance.now();
+  }, [quiz]);
+
+  // 문제 표시~지금까지의 경과 시간(초). [0, timeLimit]로 클램프
+  const elapsedSeconds = useCallback(() => {
+    const s = (performance.now() - shownAtRef.current) / 1000;
+    return Math.min(Math.max(s, 0), timeLimit);
+  }, [timeLimit]);
 
   const optionLabels = ['A', 'B', 'C', 'D'];
   const optionColors = ['#f43f5e', '#6366f1', '#f59e0b', '#10b981'];
@@ -24,14 +38,17 @@ export function QuizOverlay({ quiz, timeLimit, streak = 0, onAnswer }: QuizOverl
   // 설계 §6: 정답은 1.2초 자동 진행, 오답/타임아웃은 [확인] 버튼까지 해설 유지 (읽기 시간 보장)
   const handleSelect = useCallback((index: number) => {
     if (isAnswered) return;
+    // 소요 시간은 선택(잠금) 순간에 측정 — 정답 후 1.2초 축하 지연은 포함하지 않음
+    const timeSpent = elapsedSeconds();
+    lockedTimeRef.current = timeSpent;
     setSelectedIndex(index);
     setIsAnswered(true);
     setShowResult(true);
 
     if (index === quiz.correctIndex) {
-      setTimeout(() => onAnswer(index, true), 1200);
+      setTimeout(() => onAnswer(index, true, timeSpent), 1200);
     }
-  }, [isAnswered, quiz.correctIndex, onAnswer]);
+  }, [isAnswered, quiz.correctIndex, onAnswer, elapsedSeconds]);
 
   const handleTimeUp = useCallback(() => {
     if (!isAnswered) {
@@ -42,8 +59,10 @@ export function QuizOverlay({ quiz, timeLimit, streak = 0, onAnswer }: QuizOverl
   }, [isAnswered]);
 
   const handleConfirmWrong = useCallback(() => {
-    onAnswer(timedOut ? -1 : selectedIndex ?? -1, false);
-  }, [onAnswer, timedOut, selectedIndex]);
+    // 타임아웃은 제한시간 전부 소모, 오답은 선택 순간에 측정한 시간 사용
+    const timeSpent = timedOut ? timeLimit : lockedTimeRef.current;
+    onAnswer(timedOut ? -1 : selectedIndex ?? -1, false, timeSpent);
+  }, [onAnswer, timedOut, selectedIndex, timeLimit]);
 
   const getOptionStyle = (index: number): React.CSSProperties => {
     if (!isAnswered) {

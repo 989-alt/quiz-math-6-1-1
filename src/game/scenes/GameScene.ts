@@ -50,6 +50,9 @@ export class GameScene extends Phaser.Scene {
   private spawnTimer: number = 0;
   private spawnRotationIndex: number = 0; // 순차 로테이션 스폰 인덱스 (세트 = index / FULL_ROTATION_LENGTH)
   private finishAfterResume: boolean = false; // 문제은행 완주 — 퀴즈/강화 흐름이 끝나면 종료
+  private finalBossTriggered: boolean = false; // 무기 6종 만렙 → 최종 보스 소환 (1회만)
+  private finalBossDefeated: boolean = false; // 최종 보스 처치 = 클리어 (집계 시 cleared 강제)
+  private gameFinished: boolean = false; // 결과 집계 완료 — GAME_FINISHED 중복 발행 방지
   private stateUpdateTimer: number = 0;
   private pendingLevelUp: boolean = false; // Track if level up is waiting for quiz
   private levelUpQueue: number = 0; // Stacked level ups awaiting quiz processing
@@ -574,6 +577,16 @@ export class GameScene extends Phaser.Scene {
       this.pickups.add(new MagnetGem(this, monster.x, monster.y));
     }
 
+    // 최종 보스 처치 = 게임 클리어: 클리어 보너스 +2000 후 사망 연출을 잠깐 보여주고 집계
+    if (monster.isFinalBoss) {
+      this.score += 2000;
+      this.finalBossDefeated = true; // 이후 어떤 종료 경로든 cleared 강제
+      this.playSfx('sfx_levelup', 0.6);
+      this.time.delayedCall(700, () => this.handleGameOver(true));
+      EventBus.emit(GameEvents.MONSTER_KILLED, { total: this.monstersKilled });
+      return;
+    }
+
     // 보스 처치 보상: 무조건 1레벨업 (남은 필요 XP를 즉시 충전 → 퀴즈/업그레이드 흐름 진입)
     if (monster.isBoss) {
       this.addXp(Math.max(1, this.xpToNextLevel - this.playerXp));
@@ -639,6 +652,9 @@ export class GameScene extends Phaser.Scene {
     this.spawnTimer = 0;
     this.spawnRotationIndex = 0;
     this.finishAfterResume = false;
+    this.finalBossTriggered = false;
+    this.finalBossDefeated = false;
+    this.gameFinished = false;
     this.stateUpdateTimer = 0;
     this.pendingLevelUp = false;
     this.levelUpQueue = 0;
@@ -671,7 +687,11 @@ export class GameScene extends Phaser.Scene {
     this.emitPlayerState();
   }
 
-  private handleGameOver(): void {
+  // cleared=true면 "게임 클리어"로 집계. 사망/그만하기/완주 경로는 인자 없이 호출되어 false.
+  // 최종 보스를 잡았다면(finalBossDefeated) 다른 경로가 먼저 불려도 클리어로 강제.
+  private handleGameOver(cleared: boolean = false): void {
+    if (this.gameFinished) return; // 중복 집계 방지
+    this.gameFinished = true;
     // isPaused를 함께 세워 보스 히트스톱 해제 콜백(isGamePaused 가드)이
     // 게임오버 정지를 30ms 뒤 풀어버리지 않게 한다. resetGame()이 false로 복구.
     this.isPaused = true;
@@ -682,6 +702,7 @@ export class GameScene extends Phaser.Scene {
       level: this.playerLevel,
       survivalTime: this.survivalTime,
       monstersKilled: this.monstersKilled,
+      cleared: cleared === true || this.finalBossDefeated,
     });
   }
 
@@ -709,6 +730,9 @@ export class GameScene extends Phaser.Scene {
       this.applyBonusCard(data.id);
     }
 
+    // 강화 적용 직후 무기 6종 만렙 완성 여부 검사 → 완성되면 최종 보스 소환
+    this.checkWeaponCompletion();
+
     // 큐에 다음 레벨업이 남아있으면 바로 다음 퀴즈 노출, 아니면 보호 재개
     if (this.levelUpQueue > 0) {
       // 약간의 지연 후 다음 레벨업 처리
@@ -718,6 +742,93 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.resumeWithProtection();
     }
+  }
+
+  /**
+   * 게임 클리어 조건 검사: 무기 슬롯을 전부(6종) 채우고 모두 만렙이면 최종 보스 소환.
+   * 강화 적용 직후(handleUpgradeSelected)에 호출. finalBossTriggered로 1회만 발동.
+   * (Playwright 검증에서 직접 호출할 수 있게 접근 가능한 이름 유지)
+   */
+  private checkWeaponCompletion(): void {
+    if (this.finalBossTriggered) return;
+    const allMax =
+      this.weaponManager.getWeaponCount() === GAME_CONFIG.game.maxWeapons &&
+      this.weaponManager.getActiveWeapons().every((w) => w.isMaxLevel());
+    if (!allMax) return;
+
+    this.finalBossTriggered = true;
+    this.triggerFinalBoss();
+  }
+
+  /**
+   * 최종 보스 등장 연출 + 소환 (설계 클리어 조건): 배너 → 1.8초 뒤 강화 보스 1기.
+   * 현재 웨이브(최소 3)의 보스 config를 기반으로 HP·XP ×3, 크기 ×1.5, 보라빛 틴트.
+   */
+  private triggerFinalBoss(): void {
+    this.showFinalBossBanner();
+
+    this.time.delayedCall(1800, () => {
+      if (!this.player.active) return;
+      const bossWave = Math.max(this.currentWave, 3);
+      const base = getBossConfigForWave(bossWave);
+      const config = {
+        ...base,
+        hp: base.hp * 3,
+        xpValue: base.xpValue * 3,
+        scale: (base.scale ?? 1.4) * 1.5,
+      };
+
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 500;
+      const x = this.player.x + Math.cos(angle) * dist;
+      const y = this.player.y + Math.sin(angle) * dist;
+
+      const boss = new Monster(this, x, y, config);
+      boss.isFinalBoss = true;
+      boss.persistentTint = 0xb45cff; // 최종 보스 식별용 보라빛 틴트 (피격 후에도 유지)
+      boss.setTint(0xb45cff);
+      boss.setTarget(this.player);
+      this.monsters.add(boss);
+
+      this.cameras.main.shake(500, 0.012);
+    });
+  }
+
+  /** 최종 보스 등장 배너 (보스 배너보다 크고 금빛 — 절정임을 알림) */
+  private showFinalBossBanner(): void {
+    const cam = this.cameras.main;
+    const banner = this.add
+      .text(cam.width / 2, cam.height * 0.3, '최종 보스 등장!', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '52px',
+        fontStyle: 'bold',
+        color: '#fde047',
+        stroke: '#3b0764',
+        strokeThickness: 8,
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(101)
+      .setAlpha(0)
+      .setScale(0.6);
+
+    this.tweens.add({
+      targets: banner,
+      alpha: 1,
+      scale: 1,
+      duration: 300,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        this.time.delayedCall(1200, () => {
+          this.tweens.add({
+            targets: banner,
+            alpha: 0,
+            duration: 350,
+            onComplete: () => banner.destroy(),
+          });
+        });
+      },
+    });
   }
 
   /** 대체 보상 카드 (설계 §5.3 — 전부 만렙·만슬롯일 때) */
@@ -741,9 +852,13 @@ export class GameScene extends Phaser.Scene {
    * - 정답: 업그레이드 3택 + 점수 보너스 + 콤보 스트릭 (XP 배율 +5%/연속, 최대 +25%)
    * - 오답/타임아웃: 레벨업 소모(업그레이드 없음)로 단순화 — XP 몰수·레벨 회수 폐지
    */
-  private handleQuizResult(data: { correct: boolean }): void {
+  private handleQuizResult(data: { correct: boolean; speedBonus?: number }): void {
     if (data.correct) {
       this.score += 50;
+      // 정답을 빨리 맞힐수록 커지는 스피드 보너스 (React에서 계산해 전달)
+      if (data.speedBonus && data.speedBonus > 0) {
+        this.score += data.speedBonus;
+      }
       this.quizStreak++;
       this.pendingLevelUp = false;
       this.playSfx('sfx_quiz_correct', 0.45);

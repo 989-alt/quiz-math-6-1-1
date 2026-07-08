@@ -72,10 +72,10 @@ export function GameContainer({ nickname, onExit, onShowLeaderboard }: GameConta
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [levelUpData]);
 
-  const handleQuizAnswer = (selectedIndex: number, isCorrect: boolean) => {
-    submitAnswer(selectedIndex, 0);
+  const handleQuizAnswer = (selectedIndex: number, isCorrect: boolean, timeSpent: number) => {
+    submitAnswer(selectedIndex, timeSpent);
 
-    const { bank, quizResults } = useQuizStore.getState();
+    const { bank, quizResults, currentQuiz: answered } = useQuizStore.getState();
     if (bank && quizResults.length >= bank.quizzes.length) {
       EventBus.emit(GameEvents.QUIZ_BANK_EXHAUSTED);
     }
@@ -83,9 +83,11 @@ export function GameContainer({ nickname, onExit, onShowLeaderboard }: GameConta
     setShowQuiz(false);
 
     if (isCorrect) {
-      // 정답: 업그레이드 3택 (설계 §6)
+      // 정답: 업그레이드 3택 (설계 §6) + 빨리 맞힐수록 커지는 스피드 보너스 점수
       if (levelUpData) setFilteredUpgrades(levelUpData.upgrades as UpgradeOption[]);
-      EventBus.emit(GameEvents.QUIZ_RESULT, { correct: true });
+      const timeLimit = answered ? quizTimeLimit(answered.type) : timeSpent;
+      const speedBonus = Math.max(0, Math.ceil(100 * (1 - timeSpent / timeLimit)));
+      EventBus.emit(GameEvents.QUIZ_RESULT, { correct: true, speedBonus });
     } else {
       // 오답/타임아웃: 레벨업 소모 — 업그레이드 없음. 재개 보호는 GameScene 담당
       setFilteredUpgrades([]);

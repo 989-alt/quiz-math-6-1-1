@@ -70,6 +70,8 @@ export interface GameOverPayload {
   level: number;
   survivalTime: number;
   monstersKilled: number;
+  // 무기 완성 + 최종 보스 처치로 클리어했는지 (사망/그만하기/완주는 false)
+  cleared: boolean;
 }
 
 export interface PlayerStatePayload {
@@ -84,6 +86,8 @@ export interface PlayerStatePayload {
 export interface QuizResultPayload {
   correct: boolean;
   selectedUpgrade?: string;
+  // 정답을 빨리 맞힐수록 커지는 추가 점수 (정답일 때만)
+  speedBonus?: number;
 }
 
 export interface SoundSettingsPayload {

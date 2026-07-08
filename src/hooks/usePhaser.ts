@@ -36,6 +36,8 @@ export interface GameFinishedData {
   level: number;
   survivalTime: number;
   monstersKilled: number;
+  // 무기 완성 + 최종 보스 처치로 클리어했는지
+  cleared: boolean;
 }
 
 export function usePhaser(containerId: string, options?: { isSolo: boolean; playerName: string; onQuit?: () => void }) {
