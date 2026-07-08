@@ -37,6 +37,11 @@ export const GameEvents = {
   GAME_READY: 'game-ready',
   GAME_START: 'game-start',
   GAME_QUIT: 'game-quit',
+
+  // 학생이 "그만하기"로 플레이를 중단하고 결과 집계 (React HUD → GameScene)
+  STOP_GAME: 'stop-game',
+  // 문제은행 전부 소진 — 완주 종료 (React quizStore 감지 → GameScene)
+  QUIZ_BANK_EXHAUSTED: 'quiz-bank-exhausted',
 } as const;
 
 export type GameEventType = typeof GameEvents[keyof typeof GameEvents];

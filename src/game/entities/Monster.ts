@@ -527,6 +527,57 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   }
 }
 
+// 순차 로테이션 스폰 순서 — 한 세트(15종) 안에서 약한 종 → 강한 종 순으로 등장.
+// 한 세트를 다 돌면 세트 번호가 올라가며 전체 스탯이 강해진다 (사용자 확정 진행 방식).
+const ROTATION_ORDER = [
+  'slime_green_walk', 'slime_blue_walk', 'bat_walk', 'crow_walk', 'slime_red_walk',
+  'fox_walk', 'wasp_walk', 'wolf_walk', 'ghost_walk', 'boar_walk',
+  'badger_walk', 'slime_elite_walk', 'elite_mage_walk', 'elite_knight_walk', 'elite_crowned_walk',
+] as const;
+
+export const ROTATION_LENGTH = ROTATION_ORDER.length;
+
+// 종별 개성 배율 (특성 시스템과 짝: 벌/박쥐=빠르고 약함, 오소리/기사=탱커, 왕관=소환 엘리트)
+const TYPE_MODS: Record<string, { hp?: number; speed?: number; damage?: number; xp?: number; scale?: number }> = {
+  slime_green_walk: {},
+  slime_blue_walk: { hp: 1.15 },
+  slime_red_walk: { hp: 0.9, damage: 1.25 },
+  bat_walk: { hp: 0.5, speed: 1.45 },
+  crow_walk: { hp: 0.6, speed: 1.35 },
+  fox_walk: { hp: 0.8, speed: 1.25 },
+  wasp_walk: { hp: 0.45, speed: 1.15, damage: 0.8 }, // 특성이 이미 ×1.45 가속 + 대시
+  wolf_walk: { hp: 0.95, speed: 1.35, damage: 1.2 },
+  ghost_walk: { hp: 1.1, damage: 1.1 }, // 특성이 저속(×0.6)·지형 통과
+  boar_walk: { hp: 1.6, speed: 0.9, damage: 1.4, scale: 1.1 },
+  badger_walk: { hp: 2.2, speed: 0.6, damage: 1.5, xp: 2, scale: 1.2 },
+  slime_elite_walk: { hp: 1.8, xp: 2, scale: 1.15 },
+  elite_mage_walk: { hp: 1.4, xp: 2 },
+  elite_knight_walk: { hp: 2.5, speed: 0.8, damage: 1.5, xp: 2, scale: 1.2 },
+  elite_crowned_walk: { hp: 2.8, xp: 3, scale: 1.25 }, // 특성: 슬라임 소환
+};
+
+// 순차 로테이션 스폰용 config — spawnIndex가 전 로스터를 돌 때마다 세트가 올라간다
+export function getMonsterConfigForRotation(spawnIndex: number): MonsterConfig {
+  const spriteKey = ROTATION_ORDER[spawnIndex % ROTATION_LENGTH];
+  const set = Math.floor(spawnIndex / ROTATION_LENGTH) + 1; // 세트 번호 (1부터)
+  const mod = TYPE_MODS[spriteKey] ?? {};
+
+  // 세트 기반 스케일링 (선형 + 완만한 2차)
+  const baseHp = Math.floor(15 + set * 8 + set * set * 0.6);
+  const baseDamage = 5 + Math.floor(set * 0.8);
+  const baseSpeed = 60 + Math.min(set * 3, 45);
+  const baseXp = 1 + Math.floor(set / 2);
+
+  return {
+    hp: Math.max(1, Math.floor(baseHp * (mod.hp ?? 1))),
+    damage: Math.max(1, Math.floor(baseDamage * (mod.damage ?? 1))),
+    speed: baseSpeed * (mod.speed ?? 1),
+    xpValue: Math.max(1, Math.floor(baseXp * (mod.xp ?? 1))),
+    spriteKey,
+    scale: mod.scale ?? 1,
+  };
+}
+
 // Get monster config based on wave number
 export function getMonsterConfigForWave(wave: number): MonsterConfig {
   // Select monster sprite based on wave (cycles through 15 monster walk sheets)

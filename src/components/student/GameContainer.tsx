@@ -74,6 +74,12 @@ export function GameContainer({ nickname, onExit, onShowLeaderboard }: GameConta
 
   const handleQuizAnswer = (selectedIndex: number, isCorrect: boolean) => {
     submitAnswer(selectedIndex, 0);
+
+    const { bank, quizResults } = useQuizStore.getState();
+    if (bank && quizResults.length >= bank.quizzes.length) {
+      EventBus.emit(GameEvents.QUIZ_BANK_EXHAUSTED);
+    }
+
     setShowQuiz(false);
 
     if (isCorrect) {

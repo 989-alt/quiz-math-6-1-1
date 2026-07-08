@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
-import { Monster, MonsterTypes, getMonsterConfigForWave, getBossConfigForWave, isBossWave } from '../entities/Monster';
+import { Monster, MonsterTypes, getMonsterConfigForWave, getMonsterConfigForRotation, ROTATION_LENGTH, getBossConfigForWave, isBossWave } from '../entities/Monster';
 import { XPGem, MagnetGem } from '../entities/XPGem';
 import { WeaponManager, WeaponInfoList, BonusInfoList } from '../weapons/WeaponManager';
 import { PassiveInfoList } from '../weapons/PassiveManager';
@@ -47,7 +47,8 @@ export class GameScene extends Phaser.Scene {
 
   private isPaused: boolean = false;
   private spawnTimer: number = 0;
-  private waveTimer: number = 0;
+  private spawnRotationIndex: number = 0; // 순차 로테이션 스폰 인덱스 (세트 = index / 15)
+  private finishAfterResume: boolean = false; // 문제은행 완주 — 퀴즈/강화 흐름이 끝나면 종료
   private stateUpdateTimer: number = 0;
   private pendingLevelUp: boolean = false; // Track if level up is waiting for quiz
   private levelUpQueue: number = 0; // Stacked level ups awaiting quiz processing
@@ -578,6 +579,14 @@ export class GameScene extends Phaser.Scene {
     EventBus.on(GameEvents.QUIZ_RESULT, this.handleQuizResult, this);
     EventBus.on(GameEvents.GAME_OVER, this.handleGameOver, this);
     EventBus.on(GameEvents.GAME_START, this.resetGame, this);
+    // 학생 "그만하기": 즉시 결과 집계 (게임오버와 동일 흐름, 사망 아님)
+    EventBus.on(GameEvents.STOP_GAME, this.handleGameOver, this);
+    // 문제은행 완주: 진행 중인 퀴즈/강화 흐름이 끝나고 재개되면 종료
+    EventBus.on(GameEvents.QUIZ_BANK_EXHAUSTED, this.handleBankExhausted, this);
+  }
+
+  private handleBankExhausted(): void {
+    this.finishAfterResume = true;
   }
 
   private resetGame(): void {
@@ -606,7 +615,8 @@ export class GameScene extends Phaser.Scene {
     this.xpToNextLevel = GAME_CONFIG.xp.baseToLevel;
     this.score = 0;
     this.spawnTimer = 0;
-    this.waveTimer = 0;
+    this.spawnRotationIndex = 0;
+    this.finishAfterResume = false;
     this.stateUpdateTimer = 0;
     this.pendingLevelUp = false;
     this.levelUpQueue = 0;
@@ -817,8 +827,12 @@ export class GameScene extends Phaser.Scene {
     // Cleanup distant entities
     this.cleanupEntities();
 
-    // Update wave
-    this.updateWave(delta);
+    // 문제은행 완주 — 퀴즈/강화 오버레이가 닫히고 재개된 첫 프레임에 결과 집계로 전환
+    if (this.finishAfterResume) {
+      this.finishAfterResume = false;
+      this.handleGameOver();
+      return;
+    }
 
     // Emit state updates periodically
     this.stateUpdateTimer += delta;
@@ -877,12 +891,22 @@ export class GameScene extends Phaser.Scene {
     const x = this.player.x + Math.cos(angle) * distance;
     const y = this.player.y + Math.sin(angle) * distance;
 
-    // Get monster config based on current wave
-    const config = getMonsterConfigForWave(this.currentWave);
+    // 순차 로테이션 스폰: 로스터(15종)를 약한 종부터 차례로 돌고,
+    // 한 세트가 끝날 때마다 세트(=wave) 번호가 올라 전체가 강해진다
+    const config = getMonsterConfigForRotation(this.spawnRotationIndex);
+    this.spawnRotationIndex++;
 
     const monster = new Monster(this, x, y, config);
     monster.setTarget(this.player);
     this.monsters.add(monster);
+
+    // 세트 완주 → 다음 세트 진급 (+3세트마다 보스)
+    if (this.spawnRotationIndex % ROTATION_LENGTH === 0) {
+      this.currentWave++;
+      if (isBossWave(this.currentWave)) {
+        this.spawnBossWave();
+      }
+    }
   }
 
   // 왕관 슬라임 등 소환형 몬스터가 씬 경유로 호출하는 하수인 스폰.
@@ -935,21 +959,7 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private updateWave(delta: number): void {
-    this.waveTimer += delta;
-
-    const waveDuration = GAME_CONFIG.waves.baseDuration * 1000;
-
-    if (this.waveTimer >= waveDuration) {
-      this.currentWave++;
-      this.waveTimer = 0;
-
-      // Spawn boss every 3 waves
-      if (isBossWave(this.currentWave)) {
-        this.spawnBossWave();
-      }
-    }
-  }
+  // (세트 진급은 spawnMonster의 로테이션 완주 시점에 처리 — 시간 기반 웨이브 폐지)
 
   private spawnBossWave(): void {
     // Boss wave spawning around player
@@ -1177,5 +1187,7 @@ export class GameScene extends Phaser.Scene {
     EventBus.off(GameEvents.UPGRADE_SELECTED, this.handleUpgradeSelected, this);
     EventBus.off(GameEvents.QUIZ_RESULT, this.handleQuizResult, this);
     EventBus.off(GameEvents.GAME_OVER, this.handleGameOver, this);
+    EventBus.off(GameEvents.STOP_GAME, this.handleGameOver, this);
+    EventBus.off(GameEvents.QUIZ_BANK_EXHAUSTED, this.handleBankExhausted, this);
   }
 }
