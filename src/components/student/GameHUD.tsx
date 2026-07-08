@@ -18,6 +18,7 @@ export function GameHUD() {
   const [confirmStop, setConfirmStop] = useState(false);
   const confirmStopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [soundSettings, setSoundSettingsState] = useState(() => getSoundSettings());
+  const [isNarrow, setIsNarrow] = useState(false);
   const [state, setState] = useState<PlayerStateData>({
     hp: 100,
     maxHp: 100,
@@ -46,6 +47,16 @@ export function GameHUD() {
     return () => {
       if (confirmStopTimeoutRef.current) clearTimeout(confirmStopTimeoutRef.current);
     };
+  }, []);
+
+  // 좁은 화면(모바일/작은 태블릿)에서는 중앙 타이머를 절대 중앙 정렬 대신
+  // 좌/우 패널 사이 flex 흐름에 끼워 넣어 겹침을 원천 차단한다.
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 900px)');
+    const update = () => setIsNarrow(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
   }, []);
 
   const handleStopClick = () => {
@@ -98,7 +109,24 @@ export function GameHUD() {
     }}>
 
       {/* Center: Play Time */}
-      <div style={{
+      {/* order:2 only takes effect when isNarrow drops position:absolute below
+          (desktop keeps position:absolute, so it stays out of flex flow and
+          order has no visual effect there). */}
+      <div style={isNarrow ? {
+        order: 2,
+        flexShrink: 0,
+        borderRadius: 14,
+        padding: '6px 14px',
+        background: 'rgba(10, 10, 15, 0.9)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        backdropFilter: 'blur(12px)',
+        fontSize: 'clamp(15px, 4.5vw, 20px)',
+        fontWeight: 800,
+        letterSpacing: '-0.02em',
+        color: '#e4e4e7',
+        fontVariantNumeric: 'tabular-nums',
+      } : {
+        order: 2,
         position: 'absolute',
         top: 'clamp(12px, 2vw, 20px)',
         left: '50%',
@@ -119,9 +147,10 @@ export function GameHUD() {
 
       {/* Left: Player Info */}
       <div style={{
+        order: 1,
         borderRadius: 16,
         padding: 'clamp(12px, 1.5vw, 20px)',
-        minWidth: 'clamp(160px, 20vw, 280px)',
+        minWidth: isNarrow ? 'clamp(110px, 34vw, 150px)' : 'clamp(160px, 20vw, 280px)',
         background: 'rgba(10, 10, 15, 0.9)',
         border: '1px solid rgba(255, 255, 255, 0.08)',
         backdropFilter: 'blur(12px)',
@@ -192,7 +221,7 @@ export function GameHUD() {
       </div>
 
       {/* Right: Stop Button + Score & Stats */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ order: 3, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {/* 그만하기 버튼 */}
         <button
           onClick={handleStopClick}
@@ -251,6 +280,7 @@ export function GameHUD() {
               cursor: 'pointer',
               borderRadius: 16,
               padding: 'clamp(6px, 0.8vw, 10px)',
+              minHeight: isNarrow ? 40 : undefined,
               background: 'rgba(10, 10, 15, 0.9)',
               border: '1px solid rgba(255, 255, 255, 0.08)',
               backdropFilter: 'blur(12px)',
@@ -269,6 +299,7 @@ export function GameHUD() {
               cursor: 'pointer',
               borderRadius: 16,
               padding: 'clamp(6px, 0.8vw, 10px)',
+              minHeight: isNarrow ? 40 : undefined,
               background: 'rgba(10, 10, 15, 0.9)',
               border: '1px solid rgba(255, 255, 255, 0.08)',
               backdropFilter: 'blur(12px)',
