@@ -537,6 +537,14 @@ const ROTATION_ORDER = [
 
 export const ROTATION_LENGTH = ROTATION_ORDER.length;
 
+// 같은 종이 연속으로 몇 번 등장한 후 다음 종으로 넘어가는지 — 이게 커야
+// 초반에 약한 몬스터 구간이 실제로 체감된다 (사용자 피드백: 처음부터 다종 등장 방지).
+// 첫 보스 도달 시점을 약 3분으로 맞추기 위한 값 (아래 export function 주석의 계산 참고).
+export const SPAWNS_PER_TYPE = 6;
+
+// 한 세트(로스터 15종 완주)에 필요한 총 스폰 수 — GameScene의 "세트 완주 → wave++" 판정 기준
+export const FULL_ROTATION_LENGTH = SPAWNS_PER_TYPE * ROTATION_LENGTH;
+
 // 종별 개성 배율 (특성 시스템과 짝: 벌/박쥐=빠르고 약함, 오소리/기사=탱커, 왕관=소환 엘리트)
 const TYPE_MODS: Record<string, { hp?: number; speed?: number; damage?: number; xp?: number; scale?: number }> = {
   slime_green_walk: {},
@@ -556,10 +564,17 @@ const TYPE_MODS: Record<string, { hp?: number; speed?: number; damage?: number; 
   elite_crowned_walk: { hp: 2.8, xp: 3, scale: 1.25 }, // 특성: 슬라임 소환
 };
 
-// 순차 로테이션 스폰용 config — spawnIndex가 전 로스터를 돌 때마다 세트가 올라간다
+// 순차 로테이션 스폰용 config — 같은 종이 SPAWNS_PER_TYPE번 연속 등장한 뒤 다음 종으로 넘어가고,
+// 전 로스터(15종)를 다 돌면 세트가 올라간다.
+//
+// [첫 보스 도달 시각 계산 — GameScene.updateMonsterSpawning의 spawnInterval = max(200, 1000 - wave*50)]
+// 세트 1(wave=1, interval=950ms) 90스폰 + 세트 2(wave=2, interval=900ms) 90스폰 후
+// wave=3에서 isBossWave(3)=true → 보스 즉시 스폰.
+// 90*950 + 90*900 = 85500 + 81000 = 166500ms ≈ 166.5초(2분46초) — 목표 3분 ±30초(150~210초) 이내.
 export function getMonsterConfigForRotation(spawnIndex: number): MonsterConfig {
-  const spriteKey = ROTATION_ORDER[spawnIndex % ROTATION_LENGTH];
-  const set = Math.floor(spawnIndex / ROTATION_LENGTH) + 1; // 세트 번호 (1부터)
+  const typeIndex = Math.floor(spawnIndex / SPAWNS_PER_TYPE) % ROTATION_LENGTH;
+  const spriteKey = ROTATION_ORDER[typeIndex];
+  const set = Math.floor(spawnIndex / FULL_ROTATION_LENGTH) + 1; // 세트 번호 (1부터)
   const mod = TYPE_MODS[spriteKey] ?? {};
 
   // 세트 기반 스케일링 (선형 + 완만한 2차)

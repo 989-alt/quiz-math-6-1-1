@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
-import { Monster, MonsterTypes, getMonsterConfigForWave, getMonsterConfigForRotation, ROTATION_LENGTH, getBossConfigForWave, isBossWave } from '../entities/Monster';
+import { Monster, MonsterTypes, getMonsterConfigForWave, getMonsterConfigForRotation, FULL_ROTATION_LENGTH, getBossConfigForWave, isBossWave } from '../entities/Monster';
 import { XPGem, MagnetGem } from '../entities/XPGem';
 import { WeaponManager, WeaponInfoList, BonusInfoList } from '../weapons/WeaponManager';
 import { PassiveInfoList } from '../weapons/PassiveManager';
@@ -48,7 +48,7 @@ export class GameScene extends Phaser.Scene {
 
   private isPaused: boolean = false;
   private spawnTimer: number = 0;
-  private spawnRotationIndex: number = 0; // 순차 로테이션 스폰 인덱스 (세트 = index / 15)
+  private spawnRotationIndex: number = 0; // 순차 로테이션 스폰 인덱스 (세트 = index / FULL_ROTATION_LENGTH)
   private finishAfterResume: boolean = false; // 문제은행 완주 — 퀴즈/강화 흐름이 끝나면 종료
   private stateUpdateTimer: number = 0;
   private pendingLevelUp: boolean = false; // Track if level up is waiting for quiz
@@ -923,7 +923,7 @@ export class GameScene extends Phaser.Scene {
     this.monsters.add(monster);
 
     // 세트 완주 → 다음 세트 진급 (+3세트마다 보스)
-    if (this.spawnRotationIndex % ROTATION_LENGTH === 0) {
+    if (this.spawnRotationIndex % FULL_ROTATION_LENGTH === 0) {
       this.currentWave++;
       if (isBossWave(this.currentWave)) {
         this.spawnBossWave();
