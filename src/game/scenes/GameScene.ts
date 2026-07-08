@@ -747,7 +747,6 @@ export class GameScene extends Phaser.Scene {
   /**
    * 게임 클리어 조건 검사: 무기 슬롯을 전부(6종) 채우고 모두 만렙이면 최종 보스 소환.
    * 강화 적용 직후(handleUpgradeSelected)에 호출. finalBossTriggered로 1회만 발동.
-   * (Playwright 검증에서 직접 호출할 수 있게 접근 가능한 이름 유지)
    */
   private checkWeaponCompletion(): void {
     if (this.finalBossTriggered) return;
@@ -768,7 +767,9 @@ export class GameScene extends Phaser.Scene {
     this.showFinalBossBanner();
 
     this.time.delayedCall(1800, () => {
-      if (!this.player.active) return;
+      // 대기 중 사망→재시작(resetGame)하면 타이머가 새 게임으로 새어 들어올 수 있다 —
+      // 리셋된 상태(finalBossTriggered=false)나 이미 집계된 상태면 소환하지 않음
+      if (!this.player.active || !this.finalBossTriggered || this.gameFinished) return;
       const bossWave = Math.max(this.currentWave, 3);
       const base = getBossConfigForWave(bossWave);
       const config = {
