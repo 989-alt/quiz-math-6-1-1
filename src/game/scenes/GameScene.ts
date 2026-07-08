@@ -47,6 +47,8 @@ export class GameScene extends Phaser.Scene {
   private quizStreak: number = 0; // 연속 정답 (XP 배율 +5%/스택, 최대 +25%)
 
   private isPaused: boolean = false;
+  // 탭/창 이탈로 자동 일시정지됐는지 (복귀 시 React 일시정지 오버레이 트리거용, Task 4)
+  private autoPausedByVisibility: boolean = false;
   private spawnTimer: number = 0;
   private spawnRotationIndex: number = 0; // 순차 로테이션 스폰 인덱스 (세트 = index / FULL_ROTATION_LENGTH)
   private finishAfterResume: boolean = false; // 문제은행 완주 — 퀴즈/강화 흐름이 끝나면 종료
@@ -137,6 +139,18 @@ export class GameScene extends Phaser.Scene {
 
     // Setup event listeners
     this.setupEventListeners();
+
+    // 탭/창 이탈 자동 일시정지 (Task 4) — RAF 스로틀 중에도 몬스터만 계속 움직여
+    // 복귀 시 즉사하는 상황 방지
+    document.addEventListener('visibilitychange', this.handleVisibilityChange);
+
+    // Phaser는 유저 정의 shutdown()을 자동 호출하지 않음 — 씬 라이프사이클 이벤트에
+    // 직접 배선해야 EventBus/document 리스너가 실제로 정리된다 (홈으로→재시작 누적 방지).
+    // game.destroy(true)는 SHUTDOWN 없이 DESTROY만 emit하므로 둘 다 건다.
+    // 씬 restart(shutdown→create 재호출) 시 가드 리셋 후 재배선.
+    this.shutdownDone = false;
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
+    this.events.once(Phaser.Scenes.Events.DESTROY, this.shutdown, this);
 
     // Start BGM (loop)
     this.startBgm();
@@ -608,6 +622,8 @@ export class GameScene extends Phaser.Scene {
     EventBus.on(GameEvents.QUIZ_BANK_EXHAUSTED, this.handleBankExhausted, this);
     // 브금/효과음 on-off 토글 (React HUD → GameScene)
     EventBus.on(GameEvents.SOUND_SETTINGS_CHANGED, this.handleSoundSettingsChanged, this);
+    // 탭 이탈 자동 일시정지 복귀: React 일시정지 오버레이 [계속하기] → 3·2·1 보호 재개
+    EventBus.on(GameEvents.RESUME_WITH_PROTECTION, this.resumeWithProtection, this);
   }
 
   private handleBankExhausted(): void {
@@ -660,6 +676,7 @@ export class GameScene extends Phaser.Scene {
     this.levelUpQueue = 0;
     this.quizStreak = 0;
     this.isPaused = false;
+    this.autoPausedByVisibility = false;
 
     // Recreate player at center
     if (this.player) {
@@ -715,6 +732,25 @@ export class GameScene extends Phaser.Scene {
     this.isPaused = false;
     this.physics.resume();
   }
+
+  /**
+   * 탭/창 비활성화(document.hidden) 자동 일시정지 (Task 4): 실제 활성 플레이 중
+   * (퀴즈/강화/재개 카운트다운/게임오버가 아님 — 이미 isPaused거나 gameFinished면 무시)
+   * 탭을 벗어나면 즉시 일시정지한다. 복귀 시엔 자동 재개하지 않고 AUTO_PAUSE_SHOW로
+   * React에게 알려 "일시정지" 오버레이를 띄우게 하며, 사용자가 [계속하기]를 눌러야
+   * RESUME_WITH_PROTECTION 경유로 3·2·1 보호 재개가 이어진다(포위 즉사 방지).
+   */
+  private handleVisibilityChange = (): void => {
+    if (document.hidden) {
+      if (!this.isPaused && !this.gameFinished) {
+        this.autoPausedByVisibility = true;
+        this.pauseGame();
+      }
+    } else if (this.autoPausedByVisibility) {
+      this.autoPausedByVisibility = false;
+      EventBus.emit(GameEvents.AUTO_PAUSE_SHOW);
+    }
+  };
 
   // 퀴즈/레벨업으로 게임이 일시정지된 상태인지 (Monster 히트스톱·Magnet 등 외부에서 조회)
   isGamePaused(): boolean {
@@ -1321,14 +1357,22 @@ export class GameScene extends Phaser.Scene {
     return this.player;
   }
 
+  // SHUTDOWN·DESTROY 둘 다에 배선돼 있어 두 번 불릴 수 있음 — 재진입 가드
+  private shutdownDone: boolean = false;
+
   shutdown(): void {
+    if (this.shutdownDone) return;
+    this.shutdownDone = true;
     EventBus.off(GameEvents.PAUSE_GAME, this.pauseGame, this);
     EventBus.off(GameEvents.RESUME_GAME, this.resumeGame, this);
     EventBus.off(GameEvents.UPGRADE_SELECTED, this.handleUpgradeSelected, this);
     EventBus.off(GameEvents.QUIZ_RESULT, this.handleQuizResult, this);
     EventBus.off(GameEvents.GAME_OVER, this.handleGameOver, this);
+    EventBus.off(GameEvents.GAME_START, this.resetGame, this);
     EventBus.off(GameEvents.STOP_GAME, this.handleGameOver, this);
     EventBus.off(GameEvents.QUIZ_BANK_EXHAUSTED, this.handleBankExhausted, this);
     EventBus.off(GameEvents.SOUND_SETTINGS_CHANGED, this.handleSoundSettingsChanged, this);
+    EventBus.off(GameEvents.RESUME_WITH_PROTECTION, this.resumeWithProtection, this);
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
   }
 }

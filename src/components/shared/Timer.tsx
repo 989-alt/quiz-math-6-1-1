@@ -21,6 +21,7 @@ export function Timer({ duration, onComplete, isRunning, size = 'md', showProgre
     if (!isRunning || completedRef.current) return;
 
     const interval = setInterval(() => {
+      if (document.hidden) return; // 탭 비활성 중엔 시간 소모 정지 — 복귀 시 남은 값부터 재개
       setTimeLeft((prev) => Math.max(0, prev - 0.1));
     }, 100);
 

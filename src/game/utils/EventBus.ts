@@ -14,6 +14,10 @@ export const GameEvents = {
   RESUME_GAME: 'resume-game',
   GAME_OVER: 'game-over',
   GAME_FINISHED: 'game-finished',
+  // 탭/창 이탈 자동 일시정지 재개 (React "계속하기" → GameScene, 3·2·1 보호 재개 경유)
+  RESUME_WITH_PROTECTION: 'resume-with-protection',
+  // 탭/창 이탈로 자동 일시정지됨 — 복귀 시 React가 일시정지 오버레이 표시 (GameScene → React)
+  AUTO_PAUSE_SHOW: 'auto-pause-show',
 
   // Quiz events
   SHOW_QUIZ: 'show-quiz',

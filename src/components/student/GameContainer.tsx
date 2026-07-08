@@ -5,6 +5,7 @@ import { UpgradeSelect } from './UpgradeSelect';
 import { GameHUD } from './GameHUD';
 import { MobileControls } from './MobileControls';
 import { PostGameOverlay } from './PostGameOverlay';
+import { AutoPauseOverlay } from './AutoPauseOverlay';
 import { useQuizStore } from '../../stores/quizStore';
 import { quizTimeLimit } from '../../types/quiz';
 import { EventBus, GameEvents } from '../../game/utils/EventBus';
@@ -22,6 +23,7 @@ export function GameContainer({ nickname, onExit, onShowLeaderboard }: GameConta
   const [filteredUpgrades, setFilteredUpgrades] = useState<UpgradeOption[]>([]);
   const [isMobile, setIsMobile] = useState(false);
   const [bankError, setBankError] = useState(false);
+  const [showAutoPauseOverlay, setShowAutoPauseOverlay] = useState(false);
 
   const {
     isReady,
@@ -46,6 +48,16 @@ export function GameContainer({ nickname, onExit, onShowLeaderboard }: GameConta
       if (!ok) setBankError(true);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 탭/창 이탈 자동 일시정지 (Task 4): GameScene이 실제 활성 플레이 중 탭 이탈을 감지해
+  // 복귀 시 이 이벤트를 쏘면 "일시정지" 오버레이를 띄운다 (자동 재개 금지)
+  useEffect(() => {
+    const handleAutoPauseShow = () => setShowAutoPauseOverlay(true);
+    EventBus.on(GameEvents.AUTO_PAUSE_SHOW, handleAutoPauseShow);
+    return () => {
+      EventBus.off(GameEvents.AUTO_PAUSE_SHOW, handleAutoPauseShow);
+    };
   }, []);
 
   useEffect(() => {
@@ -104,11 +116,19 @@ export function GameContainer({ nickname, onExit, onShowLeaderboard }: GameConta
   const handleRestart = () => {
     setShowQuiz(false);
     setFilteredUpgrades([]);
+    // 사망 직전 탭 이탈→복귀 레이스로 남을 수 있는 stale 일시정지 오버레이 제거
+    setShowAutoPauseOverlay(false);
     resetQuizSession();
     restartGame();
   };
 
   const handleJoystickMove = (x: number, y: number) => sendJoystickInput(x, y);
+
+  // [계속하기]: 오버레이를 닫고 GameScene의 3·2·1 보호 재개로 넘긴다 (포위 즉사 방지)
+  const handleAutoPauseResume = () => {
+    setShowAutoPauseOverlay(false);
+    EventBus.emit(GameEvents.RESUME_WITH_PROTECTION);
+  };
 
   const showUpgradeSelect = !showQuiz && filteredUpgrades.length > 0;
 
@@ -166,6 +186,10 @@ export function GameContainer({ nickname, onExit, onShowLeaderboard }: GameConta
           }))}
           onSelect={handleUpgradeSelect}
         />
+      )}
+
+      {showAutoPauseOverlay && !showQuiz && !showUpgradeSelect && !finishData && (
+        <AutoPauseOverlay onResume={handleAutoPauseResume} />
       )}
 
       {finishData && (
