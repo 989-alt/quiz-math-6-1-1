@@ -1,5 +1,5 @@
 {
- "batch": "hero-attack",
+ "batch": "hazard-fx",
  "batches": [
   "3a",
   "3b-hero",
@@ -14,9 +14,10 @@
   "3b-ui",
   "3b-hero-walk-fix",
   "3b-boss-slime-fix",
-  "hero-attack"
+  "hero-attack",
+  "hazard-fx"
  ],
- "generated_at": "2026-07-07T13:22:18+00:00",
+ "generated_at": "2026-07-08T15:22:54+00:00",
  "style_anchors": [
   "B1_pixel_keyvisual.png",
   "B2_pixel_lineup.png"
@@ -1510,6 +1511,70 @@
    "frame_w": 68,
    "frame_h": 66,
    "baseline_y": 64,
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "decal_puddle_loop",
+   "file": "decal_puddle_loop_strip.png",
+   "kind": "strip",
+   "native": 96,
+   "frames": 4,
+   "frame_w": 100,
+   "frame_h": 77,
+   "baseline_y": 75,
+   "qa_skip": [
+    "outline",
+    "alignment"
+   ],
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "decal_ice_patch",
+   "file": "decal_ice_patch_strip.png",
+   "kind": "strip",
+   "native": 80,
+   "frames": 2,
+   "frame_w": 84,
+   "frame_h": 51,
+   "baseline_y": 49,
+   "qa_skip": [
+    "outline",
+    "alignment"
+   ],
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "decal_fire_loop",
+   "file": "decal_fire_loop_strip.png",
+   "kind": "strip",
+   "native": 80,
+   "frames": 4,
+   "frame_w": 84,
+   "frame_h": 72,
+   "baseline_y": 70,
+   "qa_skip": [
+    "outline",
+    "alignment"
+   ],
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "status_slow",
+   "file": "status_slow_strip.png",
+   "kind": "strip",
+   "native": 28,
+   "frames": 2,
+   "frame_w": 28,
+   "frame_h": 32,
+   "baseline_y": 30,
+   "qa_skip": [
+    "outline",
+    "alignment"
+   ],
    "attempts": 1,
    "qa": "pass"
   }

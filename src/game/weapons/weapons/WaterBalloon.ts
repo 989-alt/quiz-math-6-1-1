@@ -100,6 +100,7 @@ export class WaterBalloon extends WeaponBase {
           slowFactor: 0.5,
           tint: 0x3366cc,
           alpha: 0.28,
+          groundSpriteKey: 'decal_puddle_loop',
         });
 
         // Slow ring (visual only, marks the splash's slow zone)

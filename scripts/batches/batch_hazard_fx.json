@@ -1,0 +1,52 @@
+{
+  "batch": "hazard-fx",
+  "max_attempts": 3,
+  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png"],
+  "note": "지속형 해저드 지면 데칼 4종 (물웅덩이 늪/얼음판/불바닥 + 슬로우 상태아이콘). qa_skip=[outline,alignment]: 지면 데칼과 상태아이콘은 발이 없고 은은한 광택/반짝임 특성상 1px 다크 아웃라인 기준이 부적합하고, baseline 정렬 대신 align=center 세로 중앙 정렬을 쓰므로 alignment 검사도 면제. 팔레트/투명도/밀도 검사는 유지.",
+  "jobs": [
+    {
+      "id": "decal_puddle_loop",
+      "kind": "strip",
+      "cells": 4,
+      "native": 96,
+      "align": "center",
+      "qa_skip": ["outline", "alignment"],
+      "aspect_ratio": "16:9",
+      "outputs": ["decal_puddle_loop_strip.png"],
+      "prompt": "Pixel art ground decal animation sprite strip: exactly 4 frames arranged in a single horizontal row (1x4 grid), 4 equal-width columns, one decal drawing centered in each column, generous empty magenta space between and around the columns. A top-down semi-transparent blue water puddle on dark grass, clearly reading as a pool of WATER (not a flat circle): irregular puddle-shaped edge, darker blue center, lighter cyan wet sheen highlights along the rim. The 4 frames animate gentle ripple rings expanding outward from the center and fading: (1) puddle with a single small tight ripple ring near the center, (2) the ripple ring expanded halfway to the puddle edge with a second faint ring starting at center, (3) the first ripple reaching the puddle edge and fading while the second ripple is now halfway out, (4) only the second faint ripple near the edge remains, close to frame 1's starting state to loop smoothly. Same puddle shape and size in every frame, only the ripple rings move."
+    },
+    {
+      "id": "decal_ice_patch",
+      "kind": "strip",
+      "cells": 2,
+      "native": 80,
+      "align": "center",
+      "qa_skip": ["outline", "alignment"],
+      "aspect_ratio": "16:9",
+      "outputs": ["decal_ice_patch_strip.png"],
+      "prompt": "Pixel art ground decal animation sprite strip: exactly 2 frames arranged in a single horizontal row (1x2 grid), 2 equal-width columns, one decal drawing centered in each column, generous empty magenta space between and around the columns. A top-down frosty ice patch on dark grass, pale blue and semi-transparent, irregular icy-shaped edge with jagged white crack lines running across the surface and small sparkle glints. The 2 frames animate a subtle shimmer loop: (1) ice patch with crack lines visible and two small white sparkle glints in the upper-left area, (2) the same ice patch and crack lines with the sparkle glints shifted to two different spots and slightly brighter, so it reads as a gentle twinkling shimmer when looped. Same ice patch shape and crack pattern in both frames, only the sparkle glint positions/brightness change."
+    },
+    {
+      "id": "decal_fire_loop",
+      "kind": "strip",
+      "cells": 4,
+      "native": 80,
+      "align": "center",
+      "qa_skip": ["outline", "alignment"],
+      "aspect_ratio": "16:9",
+      "outputs": ["decal_fire_loop_strip.png"],
+      "prompt": "Pixel art ground decal animation sprite strip: exactly 4 frames arranged in a single horizontal row (1x4 grid), 4 equal-width columns, one decal drawing centered in each column, generous empty magenta space between and around the columns. A top-down patch of burning ground on dark grass: a dark charred circular base with small glowing orange embers and several small licking flames in warm orange and red rising from the surface. The 4 frames animate the flames flickering in a seamless loop, all four the same overall size and charred base: (1) small flames leaning slightly left with embers glowing, (2) flames standing upright with taller tips, (3) flames leaning slightly right with one tall tip, (4) flames upright again with a wider base, close to frame 1 to loop smoothly. Same charred ground patch and ember positions in every frame, only the flame tongue shapes change."
+    },
+    {
+      "id": "status_slow",
+      "kind": "strip",
+      "cells": 2,
+      "native": 28,
+      "align": "center",
+      "qa_skip": ["outline", "alignment"],
+      "aspect_ratio": "16:9",
+      "outputs": ["status_slow_strip.png"],
+      "prompt": "Pixel art status icon animation sprite strip: exactly 2 frames arranged in a single horizontal row (1x2 grid), 2 equal-width columns, one icon drawing centered in each column, generous empty magenta space between and around the columns. A single small snowflake / ice-crystal icon, icy blue with a bright white outline glow, simple and bold enough to read clearly at small size. The 2 frames animate a gentle pulse loop: (1) the snowflake at normal size with a thin white glow, (2) the snowflake slightly larger with a thicker brighter white glow, so alternating between them reads as a soft pulsing glow. Same snowflake shape and orientation in both frames, only the overall size and glow thickness change."
+    }
+  ]
+}

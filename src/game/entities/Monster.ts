@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { MONSTER_WALK_KEYS, BOSS_WALK_KEYS } from '../assetKeys';
 
 const SHADOW_KEY = 'shadow_blob';
+const SLOW_ICON_KEY = 'status_slow';
 
 export interface MonsterConfig {
   hp: number;
@@ -37,6 +38,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   private target: Phaser.Physics.Arcade.Sprite | null = null;
   private hpBar: Phaser.GameObjects.Graphics | null = null;
   private shadow: Phaser.GameObjects.Sprite | null = null;
+  private slowIcon: Phaser.GameObjects.Sprite | null = null;
   private wobblePhase: number = Math.random() * Math.PI * 2;
   private telegraphRing: Phaser.GameObjects.Arc | null = null;
   private static readonly TELEGRAPH_INTERVAL = 3500;
@@ -167,6 +169,16 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     if (!this.active) return;
     this.speed = Math.min(this.speed, this.baseSpeed * factor);
     this.slowUntil = Math.max(this.slowUntil, this.scene.time.now + durationMs);
+
+    // 슬로우 상태 아이콘 — 이미 떠 있으면 재사용(중첩 재적용 시 중복 스폰 방지)
+    if (!this.slowIcon && this.scene.textures.exists(SLOW_ICON_KEY)) {
+      this.slowIcon = this.scene.add.sprite(this.x, this.y - this.displayHeight / 2 - 10, SLOW_ICON_KEY);
+      this.slowIcon.setScale(0.9);
+      this.slowIcon.setDepth(6);
+      if (this.scene.anims.exists(SLOW_ICON_KEY)) {
+        this.slowIcon.play(SLOW_ICON_KEY);
+      }
+    }
   }
 
   update(delta: number = 16.7): void {
@@ -176,6 +188,16 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     if (this.slowUntil > 0 && this.scene.time.now > this.slowUntil) {
       this.speed = this.baseSpeed;
       this.slowUntil = 0;
+    }
+
+    // 슬로우 아이콘: 만료됐으면 제거, 아니면 몬스터 위치를 따라 이동
+    if (this.slowIcon) {
+      if (this.slowUntil > 0) {
+        this.slowIcon.setPosition(this.x, this.y - this.displayHeight / 2 - 10);
+      } else {
+        this.slowIcon.destroy();
+        this.slowIcon = null;
+      }
     }
 
     // 몬스터별 특성 갱신 (traitSpeedMul / traitDir 결정)
@@ -484,6 +506,10 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
       this.telegraphRing.destroy();
       this.telegraphRing = null;
     }
+    if (this.slowIcon) {
+      this.slowIcon.destroy();
+      this.slowIcon = null;
+    }
 
     // death_poof 이펙트
     (this.scene as any).fx?.poof(this.x, this.y);
@@ -528,6 +554,10 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     if (this.telegraphRing) {
       this.telegraphRing.destroy();
       this.telegraphRing = null;
+    }
+    if (this.slowIcon) {
+      this.slowIcon.destroy();
+      this.slowIcon = null;
     }
     super.destroy(fromScene);
   }

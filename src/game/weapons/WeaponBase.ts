@@ -338,14 +338,28 @@ export abstract class WeaponBase {
       tint: number;
       alpha?: number;
       fxKind?: string; // 주기적으로 존 안에 재생할 임팩트 이펙트
+      groundSpriteKey?: string; // 지속형 지면 데칼 루프 스프라이트 (있으면 원 위에 겹쳐 표시)
     }
   ): void {
     const scene = this.scene;
-    const zone = scene.add.circle(x, y, opts.radius, opts.tint, opts.alpha ?? 0.22);
+    // 데칼 텍스처가 있으면 원은 판정용 은은한 언더레이로 낮추고, 없으면 기존처럼 눈에 띄는 원
+    const hasDecal = !!opts.groundSpriteKey && scene.textures.exists(opts.groundSpriteKey);
+    const zone = scene.add.circle(x, y, opts.radius, opts.tint, hasDecal ? Math.min(opts.alpha ?? 0.22, 0.12) : (opts.alpha ?? 0.22));
     zone.setDepth(3);
     scene.physics.add.existing(zone);
     const body = (zone as unknown as { body: Phaser.Physics.Arcade.Body }).body;
     body.setCircle(opts.radius);
+
+    let decal: Phaser.GameObjects.Sprite | null = null;
+    if (hasDecal) {
+      decal = scene.add.sprite(x, y, opts.groundSpriteKey!);
+      decal.setScale((opts.radius * 2) / decal.width);
+      decal.setAlpha(0.85);
+      decal.setDepth(4);
+      if (scene.anims.exists(opts.groundSpriteKey!)) {
+        decal.play(opts.groundSpriteKey!);
+      }
+    }
 
     const timers: Phaser.Time.TimerEvent[] = [];
 
@@ -390,10 +404,13 @@ export abstract class WeaponBase {
     scene.time.delayedCall(opts.duration, () => {
       timers.forEach((t) => t.destroy());
       scene.tweens.add({
-        targets: zone,
+        targets: decal ? [zone, decal] : zone,
         alpha: 0,
         duration: 300,
-        onComplete: () => zone.destroy(),
+        onComplete: () => {
+          zone.destroy();
+          decal?.destroy();
+        },
       });
     });
   }

@@ -89,6 +89,7 @@ export class Snowball extends WeaponBase {
           slowFactor: 0.6,
           tint: 0xbfeaff,
           alpha: 0.3,
+          groundSpriteKey: 'decal_ice_patch',
         });
 
         const flake = this.scene.add.sprite(m.x, m.y - 10, 'weapon_snowball');

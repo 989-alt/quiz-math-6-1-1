@@ -132,6 +132,7 @@ export class MagnifyingGlass extends WeaponBase {
         tint: 0xff5522,
         alpha: 0.25,
         fxKind: 'burn',
+        groundSpriteKey: 'decal_fire_loop',
       });
 
       this.scene.physics.add.existing(burnZone);
