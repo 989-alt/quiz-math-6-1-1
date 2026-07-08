@@ -189,6 +189,10 @@ export class XPGem extends Phaser.Physics.Arcade.Sprite {
 
   collect(): number {
     if (!this.active) return 0;
+    // 즉시 비활성화 — 100ms 축소 트윈 동안 overlap이 매 프레임 재발화해
+    // 젬 1개가 XP를 6~7회 지급하던 버그 차단 (핸들러의 active 가드가 재진입을 막는다)
+    this.setActive(false);
+    (this.body as Phaser.Physics.Arcade.Body).enable = false;
 
     const value = this.xpValue;
 
@@ -272,6 +276,9 @@ export class HealthGem extends Phaser.Physics.Arcade.Sprite {
 
   collect(): number {
     if (!this.active) return 0;
+    // XPGem.collect와 동일 — 축소 트윈 동안 재발화 방지
+    this.setActive(false);
+    (this.body as Phaser.Physics.Arcade.Body).enable = false;
     const value = this.healValue;
     this.scene.tweens.add({
       targets: this,
@@ -339,6 +346,9 @@ export class MagnetGem extends Phaser.Physics.Arcade.Sprite {
   // Magnet effect: collect all XP gems on screen
   collect(): void {
     if (!this.active) return;
+    // 축소 트윈 동안 재발화 방지 (자석 효과 중복 발동 차단)
+    this.setActive(false);
+    (this.body as Phaser.Physics.Arcade.Body).enable = false;
     this.scene.tweens.add({
       targets: this,
       scale: 0,
