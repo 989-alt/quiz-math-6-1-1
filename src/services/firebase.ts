@@ -264,3 +264,19 @@ export async function fetchMyBest(unitId: string): Promise<ScoreResult> {
     return { entry: local[0] ?? null, offline: true };
   }
 }
+
+// 같은 닉네임의 중복 플레이 기록을 최고 기록 하나만 남긴다 (표시 전용, 서버 데이터는 그대로 둔다).
+export function dedupeByNicknameBest(entries: ScoreEntryWithMeta[]): ScoreEntryWithMeta[] {
+  const bestByNickname = new Map<string, ScoreEntryWithMeta>();
+  for (const entry of entries) {
+    const existing = bestByNickname.get(entry.nickname);
+    if (
+      !existing ||
+      entry.weightedScore > existing.weightedScore ||
+      (entry.weightedScore === existing.weightedScore && entry.createdAt < existing.createdAt)
+    ) {
+      bestByNickname.set(entry.nickname, entry);
+    }
+  }
+  return Array.from(bestByNickname.values()).sort((a, b) => b.weightedScore - a.weightedScore);
+}

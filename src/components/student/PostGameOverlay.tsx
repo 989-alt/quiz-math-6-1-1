@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { UNIT, weightedScore } from '../../data/unit';
 import { isFirebaseConfigured, submitScore } from '../../services/firebase';
 
@@ -23,13 +23,15 @@ export function PostGameOverlay({
   const w = weightedScore(finish.score, finish.survivalTime, finish.level);
   const [state, setState] = useState<SubmitState>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const submittedRef = useRef(false);
 
   useEffect(() => {
     if (!isFirebaseConfigured()) {
       setState('skipped');
       return;
     }
-    let cancelled = false;
+    if (submittedRef.current) return;
+    submittedRef.current = true;
     setState('submitting');
     submitScore({
       nickname,
@@ -43,16 +45,12 @@ export function PostGameOverlay({
       weightedScore: w,
     })
       .then(() => {
-        if (!cancelled) setState('done');
+        setState('done');
       })
       .catch((err) => {
-        if (cancelled) return;
         setState('error');
         setErrorMsg(err instanceof Error ? err.message : String(err));
       });
-    return () => {
-      cancelled = true;
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

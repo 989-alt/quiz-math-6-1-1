@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { UNIT } from '../../data/unit';
 import {
+  dedupeByNicknameBest,
   ensureAnonymousAuth,
   fetchMyBest,
   fetchTopScores,
@@ -47,7 +48,7 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
 
         const [top, mine] = await Promise.all([fetchTopScores(unitId, 100), fetchMyBest(unitId)]);
         if (cancelled) return;
-        setScores(top.scores);
+        setScores(dedupeByNicknameBest(top.scores));
         setMyBest(mine.entry);
         setOffline(top.offline || mine.offline);
       } catch (err) {
@@ -127,7 +128,7 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
               )}
             </h1>
             <p style={{ fontSize: 13, color: '#71717a', marginTop: 4 }}>
-              상위 100명 (가중점수 기준)
+              상위 {scores.length}명 (가중점수 기준 · 닉네임당 최고 기록)
             </p>
           </div>
           {onBack && (
