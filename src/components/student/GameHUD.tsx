@@ -24,7 +24,7 @@ export function GameHUD() {
     maxHp: 100,
     level: 1,
     xp: 0,
-    xpToNext: 10,
+    xpToNext: 20, // GAME_CONFIG.xp.baseToLevel (src/game/config.ts) — no React component imports Phaser config, so hardcoded to avoid pulling Phaser into this bundle chunk
     score: 0,
     survivalTime: 0,
     wave: 1,

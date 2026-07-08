@@ -110,6 +110,11 @@ export function UpgradeSelect({ upgrades, onSelect }: UpgradeSelectProps) {
             const rarity = getRarity(upgrade);
             const config = rarityConfig[rarity];
 
+            // 신규 패시브 카드는 description과 effectKo가 같은 문구("공격 범위 +10%")를
+            // 중복 표시하므로, 둘이 같을 때는 description을 생략하고 "▲ 효과" 줄만 남긴다.
+            const isDuplicateNewPassiveDesc =
+              upgrade.type === 'passive' && upgrade.isNew && upgrade.description === upgrade.effectKo;
+
             return (
               <button
                 key={`${upgrade.type}-${upgrade.id}`}
@@ -178,13 +183,15 @@ export function UpgradeSelect({ upgrades, onSelect }: UpgradeSelectProps) {
                 </p>
 
                 {/* Description */}
-                <p style={{
-                  fontSize: 'clamp(11px, 1vw, 14px)',
-                  color: '#a1a1aa',
-                  lineHeight: 1.6,
-                }}>
-                  {upgrade.description}
-                </p>
+                {!isDuplicateNewPassiveDesc && (
+                  <p style={{
+                    fontSize: 'clamp(11px, 1vw, 14px)',
+                    color: '#a1a1aa',
+                    lineHeight: 1.6,
+                  }}>
+                    {upgrade.description}
+                  </p>
+                )}
 
                 {/* Effect (이번 레벨업이 올려주는 것) */}
                 {upgrade.effectKo && (

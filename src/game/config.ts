@@ -8,7 +8,7 @@ export const GAME_CONFIG = {
     speed: 200,
     maxHp: 100,
     invincibilityDuration: 1000,
-    pickupRange: 50,
+    pickupRange: 70,
   },
 
   // XP settings
@@ -18,7 +18,7 @@ export const GAME_CONFIG = {
     // 1.085^49 ≈ 54배로 그 상승폭을 추종 → 퀴즈(레벨업) 간격이 25~75초 밴드에 머문다.
     // (기존 1.7은 Lv7→8=603, Lv15→16=42,094 XP로 폭증해 퀴즈가 사실상 사라졌음 — 시뮬레이션 xp_sim.py 참고)
     multiplier: 1.085,
-    gemAttractionRange: 100,
+    gemAttractionRange: 130,
     gemAttractionSpeed: 400,
   },
 
