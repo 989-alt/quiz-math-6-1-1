@@ -12,24 +12,30 @@ export interface GemConfig {
   scale: number;
 }
 
-// Get gem size based on wave number — 보수적 분포 (레벨업 속도 제어)
+// Get gem size based on wave number — 웨이브별 (small, medium, large) 확률 분포.
+// 완만한 지수형 XP 곡선(config.xp: 20 × 1.085^)에 맞춰 기대 젬 XP가 웨이브당 ~6~9%씩만
+// 오르도록 설계했다(= 소득 점프를 없애 퀴즈 간격을 25~75초 밴드에 유지). kills/min은
+// 스폰 간격 하한(200ms) 때문에 wave16까지 오르므로, 그 전에는 small 위주로 두어 소득이
+// "사냥 속도"만으로 완만히 오르게 하고, wave16 이후 medium→large로 젬값을 이어서 올린다.
+// (튜닝 근거·시뮬레이션: scratchpad/xp_sim.py, final_sim.py)
 export function getGemSizeForWave(wave: number): GemSize {
-  if (wave <= 8) {
-    // 웨이브 1-8: small only (1 XP)
-    return 'small';
-  } else if (wave <= 14) {
-    // 웨이브 9-14: small 80% / medium 20%
-    return Math.random() < 0.8 ? 'small' : 'medium';
-  } else if (wave <= 20) {
-    // 웨이브 15-20: small 40% / medium 60%
-    return Math.random() < 0.4 ? 'small' : 'medium';
-  } else if (wave <= 26) {
-    // 웨이브 21-26: medium 80% / large 20%
-    return Math.random() < 0.8 ? 'medium' : 'large';
-  } else {
-    // 웨이브 27+: medium 50% / large 50%
-    return Math.random() < 0.5 ? 'medium' : 'large';
-  }
+  let ps: number; // small 확률
+  let pm: number; // medium 확률 (large = 1 - ps - pm)
+  if (wave <= 15)      { ps = 1.00; pm = 0.00; } // E≈1.0
+  else if (wave <= 20) { ps = 0.90; pm = 0.10; } // E≈1.2
+  else if (wave <= 25) { ps = 0.75; pm = 0.25; } // E≈1.5
+  else if (wave <= 30) { ps = 0.55; pm = 0.45; } // E≈1.9
+  else if (wave <= 35) { ps = 0.35; pm = 0.65; } // E≈2.3
+  else if (wave <= 40) { ps = 0.15; pm = 0.85; } // E≈2.7
+  else if (wave <= 45) { ps = 0.00; pm = 0.90; } // E≈3.5 (large 10%)
+  else if (wave <= 50) { ps = 0.00; pm = 0.65; } // E≈4.75 (large 35%)
+  else if (wave <= 55) { ps = 0.00; pm = 0.40; } // E≈6.0 (large 60%)
+  else                 { ps = 0.00; pm = 0.15; } // E≈7.25 (large 85%)
+
+  const r = Math.random();
+  if (r < ps) return 'small';
+  if (r < ps + pm) return 'medium';
+  return 'large';
 }
 
 // Get XP value for gem size

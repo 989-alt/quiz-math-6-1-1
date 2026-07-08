@@ -13,17 +13,20 @@ export const GAME_CONFIG = {
 
   // XP settings
   xp: {
-    baseToLevel: 25, // L1→2 요구량 25 XP
-    multiplier: 1.7, // 레벨당 +70% 가파르게 증가
+    baseToLevel: 20, // L1→2 요구량 20 XP (= xpToNextLevel 공식의 L1 값)
+    // 레벨당 +8.5%의 "완만한 지수" — 소득(kills/min × 젬값)이 게임 전체에서 약 40배 상승하므로
+    // 1.085^49 ≈ 54배로 그 상승폭을 추종 → 퀴즈(레벨업) 간격이 25~75초 밴드에 머문다.
+    // (기존 1.7은 Lv7→8=603, Lv15→16=42,094 XP로 폭증해 퀴즈가 사실상 사라졌음 — 시뮬레이션 xp_sim.py 참고)
+    multiplier: 1.085,
     gemAttractionRange: 100,
     gemAttractionSpeed: 400,
   },
 
-  // Gem XP values by size — 절반 수준으로 축소
+  // Gem XP values by size — 완만한 곡선에 맞춰 medium/large 하향(간격 밴드 유지용)
   gems: {
     small: 1,
-    medium: 5,
-    large: 12,
+    medium: 3,
+    large: 8,
   },
 
   // Auto-aim sight range (weapons won't track enemies beyond this)

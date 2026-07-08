@@ -1174,6 +1174,8 @@ export class GameScene extends Phaser.Scene {
     while (this.playerXp >= this.xpToNextLevel) {
       this.playerXp -= this.xpToNextLevel;
       this.playerLevel++;
+      // 완만한 지수 곡선: 20 × 1.085^(level-1). baseToLevel·multiplier는 젬 소득 곡선에
+      // 맞춰 튜닝됨(퀴즈 간격 25~75초, 25분 내 스킬 플레이 시 50레벨 달성) — config.ts 주석 참고.
       this.xpToNextLevel = Math.floor(
         GAME_CONFIG.xp.baseToLevel * Math.pow(GAME_CONFIG.xp.multiplier, this.playerLevel - 1)
       );
