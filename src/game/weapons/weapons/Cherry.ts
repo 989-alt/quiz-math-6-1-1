@@ -38,9 +38,10 @@ export class Cherry extends WeaponBase {
     const speed = this.getSpeed();
     const damage = this.getDamage();
     const area = this.getArea();
+    const targets = this.findClosestEnemies(amount);
 
     for (let i = 0; i < amount; i++) {
-      const target = this.findClosestEnemy();
+      const target = targets.length > 0 ? targets[i % targets.length] : null;
       if (target) {
         this.throwBomb(target.x, target.y, speed, damage, area);
       } else {

@@ -262,6 +262,27 @@ export abstract class WeaponBase {
     return closest;
   }
 
+  // Helper: 사거리 내 활성 몬스터를 가까운 순서로 정렬해 최대 n마리 반환 (중복 없음).
+  // 발리(amount>1) 발사체를 서로 다른 근접 적에 분배해 오버킬 낭비를 줄이는 용도.
+  protected findClosestEnemies(n: number, maxRange?: number): Phaser.Physics.Arcade.Sprite[] {
+    const monsters = this.scene.getMonsters();
+    const range = maxRange ?? GAME_CONFIG.combat.autoAimRange;
+    const inRange: { sprite: Phaser.Physics.Arcade.Sprite; dist: number }[] = [];
+
+    monsters.getChildren().forEach((monster) => {
+      const m = monster as Phaser.Physics.Arcade.Sprite;
+      if (!m.active) return;
+
+      const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, m.x, m.y);
+      if (dist <= range) {
+        inRange.push({ sprite: m, dist });
+      }
+    });
+
+    inRange.sort((a, b) => a.dist - b.dist);
+    return inRange.slice(0, n).map((e) => e.sprite);
+  }
+
   // Helper to find random enemy in range
   protected findRandomEnemyInRange(range: number): Phaser.Physics.Arcade.Sprite | null {
     const monsters = this.scene.getMonsters();

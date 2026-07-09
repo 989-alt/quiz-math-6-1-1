@@ -35,14 +35,16 @@ export class Leaf extends WeaponBase {
 
   attack(): void {
     const amount = this.getAmount();
+    const targets = this.findClosestEnemies(amount);
     for (let i = 0; i < amount; i++) {
+      const assigned = targets.length > 0 ? targets[i % targets.length] : null;
       this.scene.time.delayedCall(i * 100, () => {
-        this.createLeaf();
+        this.createLeaf(assigned);
       });
     }
   }
 
-  private createLeaf(): void {
+  private createLeaf(assigned: Phaser.Physics.Arcade.Sprite | null): void {
     const speed = this.getSpeed();
     const duration = this.getDuration();
     const angle = Math.random() * Math.PI * 2;
@@ -75,7 +77,8 @@ export class Leaf extends WeaponBase {
       callback: () => {
         if (!leaf.active) return;
 
-        const target = this.findClosestEnemy();
+        // 배정 타겟이 죽으면 최근접으로 폴백해 계속 유도
+        const target = assigned && assigned.active ? assigned : this.findClosestEnemy();
         if (target) {
           const toTarget = Phaser.Math.Angle.Between(leaf.x, leaf.y, target.x, target.y);
           const current = Math.atan2(body.velocity.y, body.velocity.x);

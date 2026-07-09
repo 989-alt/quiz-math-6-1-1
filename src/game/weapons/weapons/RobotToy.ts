@@ -62,7 +62,7 @@ export class RobotToy extends WeaponBase {
       // Fire at nearest enemy every 1.5s (attack()는 매 프레임이 아니라 쿨다운(getCooldown())마다 호출됨)
       const fireTimer = this.robotFireTimers.get(robot) || 0;
       if (fireTimer <= 0) {
-        this.robotFire(robot, damage, area);
+        this.robotFire(robot, i, damage, area);
         this.robotFireTimers.set(robot, 1500);
       } else {
         this.robotFireTimers.set(robot, fireTimer - this.getCooldown());
@@ -92,8 +92,10 @@ export class RobotToy extends WeaponBase {
     return robot;
   }
 
-  private robotFire(robot: Phaser.GameObjects.Sprite, damage: number, area: number): void {
-    const target = this.findClosestEnemy();
+  private robotFire(robot: Phaser.GameObjects.Sprite, index: number, damage: number, area: number): void {
+    // 동시에 발사되는 로봇들이 같은 최근접 적에 몰리지 않도록 index로 분배
+    const candidates = this.findClosestEnemies(this.robots.length);
+    const target = candidates.length > 0 ? candidates[index % candidates.length] : null;
     if (!target) return;
 
     const angle = Phaser.Math.Angle.Between(robot.x, robot.y, target.x, target.y);

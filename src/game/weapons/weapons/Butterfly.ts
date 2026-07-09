@@ -35,15 +35,18 @@ export class Butterfly extends WeaponBase {
 
   attack(): void {
     const amount = this.getAmount();
+    const targets = this.findClosestEnemies(amount);
     for (let i = 0; i < amount; i++) {
+      const assigned = targets.length > 0 ? targets[i % targets.length] : null;
       this.scene.time.delayedCall(i * 200, () => {
-        this.createButterfly();
+        this.createButterfly(assigned);
       });
     }
   }
 
-  private createButterfly(): void {
-    const target = this.findClosestEnemy();
+  private createButterfly(assigned: Phaser.Physics.Arcade.Sprite | null): void {
+    // 배정 타겟이 죽었거나 없으면 발사 시점 최근접으로 폴백
+    const target = assigned && assigned.active ? assigned : this.findClosestEnemy();
     if (!target) return;
 
     const speed = this.getSpeed();

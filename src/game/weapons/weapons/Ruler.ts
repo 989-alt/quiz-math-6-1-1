@@ -36,18 +36,21 @@ export class Ruler extends WeaponBase {
 
   attack(): void {
     const amount = this.getAmount();
+    const targets = this.findClosestEnemies(amount);
     for (let i = 0; i < amount; i++) {
+      const assigned = targets.length > 0 ? targets[i % targets.length] : null;
       this.scene.time.delayedCall(i * 180, () => {
-        this.performSwing();
+        this.performSwing(assigned);
       });
     }
   }
 
-  private performSwing(): void {
+  private performSwing(assigned: Phaser.Physics.Arcade.Sprite | null): void {
     // 지연 실행이라 player가 이미 파괴/리셋됐을 수 있음
     if (!this.player.active) return;
 
-    const target = this.findClosestEnemy();
+    // 배정 타겟이 죽었거나 없으면 발사 시점 최근접으로 폴백
+    const target = assigned && assigned.active ? assigned : this.findClosestEnemy();
     let baseAngle: number;
     if (target) {
       baseAngle = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y);

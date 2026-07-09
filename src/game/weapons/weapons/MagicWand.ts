@@ -36,15 +36,17 @@ export class MagicWand extends WeaponBase {
   }
 
   attack(): void {
-    const target = this.findClosestEnemy();
-    if (!target) return;
-
     const amount = this.getAmount();
+    const targets = this.findClosestEnemies(amount);
+    if (targets.length === 0) return;
+
     const speed = this.getSpeed();
 
     for (let i = 0; i < amount; i++) {
+      const assigned = targets[i % targets.length];
       this.scene.time.delayedCall(i * 100, () => {
-        const currentTarget = this.findClosestEnemy();
+        // 발사 시점에 배정 타겟이 죽었으면 최근접으로 폴백
+        const currentTarget = assigned.active ? assigned : this.findClosestEnemy();
         if (!currentTarget) return;
 
         const angle = Phaser.Math.Angle.Between(
