@@ -23,7 +23,7 @@ export const GAME_CONFIG = {
   },
 
   // Gem XP values by tier — 값별 색 티어 (파랑1·초록3·노랑8·빨강15·무지개30).
-  // red/rainbow는 후반(wave26+/wave40+) 희귀 잭팟. 확률표는 XPGem.getGemSizeForWave 참고.
+  // red/rainbow는 후반(wave26+/wave36+) 희귀 잭팟. 확률표는 XPGem.getGemSizeForWave 참고.
   gems: {
     small: 1,
     medium: 3,
