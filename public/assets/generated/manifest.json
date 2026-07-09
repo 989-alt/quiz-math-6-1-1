@@ -1,5 +1,5 @@
 {
- "batch": "hazard-fx",
+ "batch": "scorch-decal",
  "batches": [
   "3a",
   "3b-hero",
@@ -15,9 +15,10 @@
   "3b-hero-walk-fix",
   "3b-boss-slime-fix",
   "hero-attack",
-  "hazard-fx"
+  "hazard-fx",
+  "scorch-decal"
  ],
- "generated_at": "2026-07-08T15:22:54+00:00",
+ "generated_at": "2026-07-09T11:48:53+00:00",
  "style_anchors": [
   "B1_pixel_keyvisual.png",
   "B2_pixel_lineup.png"
@@ -1571,6 +1572,22 @@
    "frame_w": 28,
    "frame_h": 32,
    "baseline_y": 30,
+   "qa_skip": [
+    "outline",
+    "alignment"
+   ],
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "decal_scorch",
+   "file": "decal_scorch_strip.png",
+   "kind": "strip",
+   "native": 80,
+   "frames": 2,
+   "frame_w": 84,
+   "frame_h": 48,
+   "baseline_y": 46,
    "qa_skip": [
     "outline",
     "alignment"

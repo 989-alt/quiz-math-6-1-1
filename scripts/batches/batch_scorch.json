@@ -1,0 +1,19 @@
+{
+  "batch": "scorch-decal",
+  "max_attempts": 3,
+  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png"],
+  "note": "돋보기 화염 2단계 잔존 데칼 1종 (불 꺼진 뒤 남는 그을린 바닥 + 잔불). qa_skip=[outline,alignment]: 지면 데칼은 발이 없고 은은한 광택/반짝임 특성상 1px 다크 아웃라인 기준이 부적합하고, baseline 정렬 대신 align=center 세로 중앙 정렬을 쓰므로 alignment 검사도 면제. 팔레트/투명도/밀도 검사는 유지.",
+  "jobs": [
+    {
+      "id": "decal_scorch",
+      "kind": "strip",
+      "cells": 2,
+      "native": 80,
+      "align": "center",
+      "qa_skip": ["outline", "alignment"],
+      "aspect_ratio": "16:9",
+      "outputs": ["decal_scorch_strip.png"],
+      "prompt": "Pixel art ground decal animation sprite strip: exactly 2 frames arranged in a single horizontal row (1x2 grid), 2 equal-width columns, one decal drawing centered in each column, generous empty magenta space between and around the columns. A top-down patch of scorched ground on dark grass, the fire now extinguished: a dark charred circular base identical in shape and size to a burnt-out fire patch, with 2 to 3 small dim embers glowing faintly red-orange scattered across the charred surface, no flames. The 2 frames animate only a soft dying-ember flicker loop, same charred ground shape and size in both frames: (1) the embers glowing at a slightly dimmer, smaller intensity, (2) the same embers glowing slightly brighter and larger, so alternating between them reads as a gentle dying flicker. Same charred ground patch outline and ember positions in every frame, only the ember glow brightness changes."
+    }
+  ]
+}

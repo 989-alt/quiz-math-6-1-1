@@ -42,6 +42,10 @@ export class MagnifyingGlass extends WeaponBase {
     }
   }
 
+  // 화염 1단계(도트 데미지 존) 지속시간 — burnZone 펄스 트윈(yoyo, duration:300 × 2(왕복) × 3회(초기+repeat:2) = 1800ms)과
+  // spawnHazard 화재 데칼 수명을 일치시키는 기준값. 이 값이 바뀌면 burnZone 트윈의 duration/repeat도 함께 조정할 것.
+  private static readonly BURN_PHASE_MS = 1800;
+
   private createLightBeam(): void {
     // 체력이 가장 많은 몬스터 우선(보스/엘리트 킬러), 없으면 가까운 적 폴백
     const target = this.findToughestEnemy(350) ?? this.findClosestEnemy(350);
@@ -124,15 +128,26 @@ export class MagnifyingGlass extends WeaponBase {
       );
       burnZone.setDepth(9);
 
-      // 잔존 화재 존 — 번 지점에 3초간 남아 밟은 적에게 도트 데미지 (즉발 번존과 별개)
+      // 화염 1단계 — 번 지점에 BURN_PHASE_MS 동안 남아 밟은 적에게 도트 데미지 (즉발 번존과 별개)
       this.spawnHazard(targetX, targetY, {
         radius: 55 * area,
-        duration: 3000,
+        duration: MagnifyingGlass.BURN_PHASE_MS,
         dps: damage * 0.4,
         tint: 0xff5522,
         alpha: 0.25,
         fxKind: 'burn',
         groundSpriteKey: 'decal_fire_loop',
+      });
+
+      // 화염 2단계 — 불이 꺼진 뒤 그을린 자국이 잔존 (도트 데미지 없이 시각 효과만)
+      this.scene.time.delayedCall(MagnifyingGlass.BURN_PHASE_MS, () => {
+        this.spawnHazard(targetX, targetY, {
+          radius: 55 * area,
+          duration: 2500,
+          tint: 0x1a1208,
+          alpha: 0.35,
+          groundSpriteKey: 'decal_scorch',
+        });
       });
 
       this.scene.physics.add.existing(burnZone);
@@ -174,17 +189,6 @@ export class MagnifyingGlass extends WeaponBase {
         scale: 2,
         duration: 600,
         onComplete: () => smoke.destroy(),
-      });
-
-      // Ground scorch decal lingering after the burn fades
-      const scorch = this.scene.add.ellipse(targetX, targetY + 6 * area, 36 * area, 12 * area, 0x1a1208, 0.55);
-      scorch.setDepth(5);
-      this.scene.tweens.add({
-        targets: scorch,
-        alpha: 0,
-        duration: 1200,
-        delay: 500,
-        onComplete: () => scorch.destroy(),
       });
 
       // Pulsing burn animation
