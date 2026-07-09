@@ -71,7 +71,8 @@ export class GameScene extends Phaser.Scene {
   private static readonly RUSH_FIRST_MS = 90000;   // 첫 러시 = 90초
   private static readonly RUSH_WARNING_MS = 1500;   // 경고 페이즈 1.5초
   private static readonly RUSH_ACTIVE_MS = 8000;    // 러시 페이즈 8초
-  private static readonly RUSH_SPAWN_INTERVAL = 120; // 러시 스폰 간격 ~120ms
+  private static readonly RUSH_SPAWN_INTERVAL = 70; // 러시 스폰 간격 ~70ms (체감 가속)
+  private static readonly RUSH_BURST_COUNT = 12;    // 액티브 페이즈 진입 즉시 터지는 초기 물량
   private static readonly RUSH_TEXTURE_KEY = 'rush_vignette';
 
   // idle: 다음 러시까지 카운트업 / warning: 경고 배너+사이렌 / active: 폭풍 스폰
@@ -1312,11 +1313,16 @@ export class GameScene extends Phaser.Scene {
     this.startRushBgm();
   }
 
-  /** 러시 페이즈 시작: 비네트 알파 펄스(요요) 개시 (스폰은 updateRushEvent에서) */
+  /** 러시 페이즈 시작: 즉시 물량 버스트 스폰 + 비네트 알파 펄스(요요) 개시 (이후 스폰은 updateRushEvent에서) */
   private startRushActive(): void {
     this.rushPhase = 'active';
     this.rushPhaseTimer = 0;
     this.rushSpawnTimer = 0;
+
+    // 러시 체감을 즉각적으로 만들기 위해 페이즈 시작 순간 몬스터 무더기를 한 번에 스폰
+    for (let i = 0; i < GameScene.RUSH_BURST_COUNT; i++) {
+      this.spawnRushMonster();
+    }
 
     if (this.rushVignette) {
       this.tweens.killTweensOf(this.rushVignette);
