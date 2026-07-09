@@ -17,6 +17,9 @@ dist-ssr
 assets_work/
 __pycache__/
 
+# economy simulation scratch (not part of the game build)
+scratchpad/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

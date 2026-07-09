@@ -1,0 +1,18 @@
+{
+  "batch": "3d-gemtiers",
+  "max_attempts": 3,
+  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png"],
+  "note": "값별 색 티어 XP젬 4종: 초록(3)/노랑(8)/빨강(15)/무지개(30). 파랑(1)=기존 xp_gem_small 재사용(생성 안 함). batch_3b_collect의 시안 다이아몬드와 동일 형태·스타일, 색만 다르게. natives로 값이 클수록 살짝 큰 native.",
+  "jobs": [
+    {
+      "id": "gem_tiers",
+      "kind": "family",
+      "cells": 4,
+      "native": 28,
+      "natives": [20, 24, 28, 32],
+      "aspect_ratio": "16:9",
+      "outputs": ["xp_gem_green.png", "xp_gem_yellow.png", "xp_gem_red.png", "xp_gem_rainbow.png"],
+      "prompt": "Pixel art XP gem sheet: exactly 4 gem crystal sprites arranged in a single horizontal row, 4 equal-width columns, one gem per column, generous empty magenta space between and around them, no drop shadows on the background. Every gem is the exact same classic faceted diamond crystal shape with a bright top facet and a clean 1px dark outline, identical shape in all four columns, differing only in color: (1) an emerald green gem, (2) a golden yellow gem, (3) a ruby red gem, (4) a rainbow gem whose facets each glow a different hue of the rainbow (red, orange, yellow, green, blue, violet) like an opal prism, with a bright white sparkle highlight. Slightly larger gem in each successive column."
+    }
+  ]
+}

@@ -22,11 +22,14 @@ export const GAME_CONFIG = {
     gemAttractionSpeed: 400,
   },
 
-  // Gem XP values by size — 완만한 곡선에 맞춰 medium/large 하향(간격 밴드 유지용)
+  // Gem XP values by tier — 값별 색 티어 (파랑1·초록3·노랑8·빨강15·무지개30).
+  // red/rainbow는 후반(wave26+/wave40+) 희귀 잭팟. 확률표는 XPGem.getGemSizeForWave 참고.
   gems: {
     small: 1,
     medium: 3,
     large: 8,
+    red: 15,
+    rainbow: 30,
   },
 
   // Auto-aim sight range (weapons won't track enemies beyond this)

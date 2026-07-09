@@ -1,5 +1,5 @@
 {
- "batch": "scorch-decal",
+ "batch": "3d-gemtiers",
  "batches": [
   "3a",
   "3b-hero",
@@ -16,9 +16,10 @@
   "3b-boss-slime-fix",
   "hero-attack",
   "hazard-fx",
-  "scorch-decal"
+  "scorch-decal",
+  "3d-gemtiers"
  ],
- "generated_at": "2026-07-09T11:48:53+00:00",
+ "generated_at": "2026-07-09T12:28:00+00:00",
  "style_anchors": [
   "B1_pixel_keyvisual.png",
   "B2_pixel_lineup.png"
@@ -1592,6 +1593,54 @@
     "outline",
     "alignment"
    ],
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "gem_tiers_0",
+   "group": "gem_tiers",
+   "file": "xp_gem_green.png",
+   "kind": "family",
+   "native": 20,
+   "frames": 1,
+   "frame_w": 24,
+   "frame_h": 23,
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "gem_tiers_1",
+   "group": "gem_tiers",
+   "file": "xp_gem_yellow.png",
+   "kind": "family",
+   "native": 24,
+   "frames": 1,
+   "frame_w": 28,
+   "frame_h": 26,
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "gem_tiers_2",
+   "group": "gem_tiers",
+   "file": "xp_gem_red.png",
+   "kind": "family",
+   "native": 28,
+   "frames": 1,
+   "frame_w": 32,
+   "frame_h": 29,
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "gem_tiers_3",
+   "group": "gem_tiers",
+   "file": "xp_gem_rainbow.png",
+   "kind": "family",
+   "native": 32,
+   "frames": 1,
+   "frame_w": 36,
+   "frame_h": 34,
    "attempts": 1,
    "qa": "pass"
   }

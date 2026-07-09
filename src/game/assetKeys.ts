@@ -21,10 +21,14 @@ export const BOSS_WALK_KEYS = [
 ] as const;
 
 // Collectibles (family singles, keyed by file basename).
+// 값별 색 티어: 파랑(1)·초록(3)·노랑(8)·빨강(15)·무지개(30). 파랑만 기존 에셋 유지,
+// 나머지 4색은 batch_3d_gemtiers 로 신규 생성(같은 다이아몬드 형태, 색만 다름).
 export const GEM_KEYS = {
-  small: 'xp_gem_small',
-  medium: 'xp_gem_mid',
-  large: 'xp_gem_large',
+  small: 'xp_gem_small',      // 파랑 · 값 1 (기존)
+  medium: 'xp_gem_green',     // 초록 · 값 3
+  large: 'xp_gem_yellow',     // 노랑 · 값 8
+  red: 'xp_gem_red',          // 빨강 · 값 15
+  rainbow: 'xp_gem_rainbow',  // 무지개 · 값 30
   health: 'heal_heart',
   magnet: 'magnet_item',
 } as const;

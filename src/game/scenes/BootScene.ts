@@ -157,9 +157,11 @@ export class BootScene extends Phaser.Scene {
     this.ensureBox(HERO_IDLE_KEY, 0x4ade80, 40, 56);
     MONSTER_WALK_KEYS.forEach((k, i) => this.ensureBox(k, 0xc84b31 + i * 0x030201, 44, 40));
     BOSS_WALK_KEYS.forEach((k) => this.ensureBox(k, 0xdc2626, 96, 110));
-    this.ensureBox(GEM_KEYS.small, 0x3b82f6, 16, 18);
-    this.ensureBox(GEM_KEYS.medium, 0x22d3ee, 20, 22);
-    this.ensureBox(GEM_KEYS.large, 0xa855f7, 24, 26);
+    this.ensureBox(GEM_KEYS.small, 0x3b82f6, 16, 18);   // 파랑 · 값 1
+    this.ensureBox(GEM_KEYS.medium, 0x22c55e, 20, 22);  // 초록 · 값 3
+    this.ensureBox(GEM_KEYS.large, 0xfacc15, 24, 26);   // 노랑 · 값 8
+    this.ensureBox(GEM_KEYS.red, 0xef4444, 26, 28);     // 빨강 · 값 15
+    this.ensureBox(GEM_KEYS.rainbow, 0xa855f7, 28, 30); // 무지개 · 값 30 (폴백은 보라 단색)
     this.ensureBox(GEM_KEYS.health, 0xef4444, 24, 22);
     this.ensureBox(GEM_KEYS.magnet, 0xf59e0b, 24, 24);
   }

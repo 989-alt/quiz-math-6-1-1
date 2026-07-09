@@ -2,8 +2,8 @@ import Phaser from 'phaser';
 import { GAME_CONFIG } from '../config';
 import { GEM_KEYS } from '../assetKeys';
 
-export type GemType = 'xp_small' | 'xp_medium' | 'xp_large' | 'health' | 'magnet';
-export type GemSize = 'small' | 'medium' | 'large';
+export type GemType = 'xp_small' | 'xp_medium' | 'xp_large' | 'xp_red' | 'xp_rainbow' | 'health' | 'magnet';
+export type GemSize = 'small' | 'medium' | 'large' | 'red' | 'rainbow';
 
 export interface GemConfig {
   type: GemType;
@@ -12,30 +12,43 @@ export interface GemConfig {
   scale: number;
 }
 
-// Get gem size based on wave number — 웨이브별 (small, medium, large) 확률 분포.
-// 완만한 지수형 XP 곡선(config.xp: 20 × 1.085^)에 맞춰 기대 젬 XP가 웨이브당 ~6~9%씩만
-// 오르도록 설계했다(= 소득 점프를 없애 퀴즈 간격을 25~75초 밴드에 유지). kills/min은
-// 스폰 간격 하한(200ms) 때문에 wave16까지 오르므로, 그 전에는 small 위주로 두어 소득이
-// "사냥 속도"만으로 완만히 오르게 하고, wave16 이후 medium→large로 젬값을 이어서 올린다.
-// (튜닝 근거·시뮬레이션: scratchpad/xp_sim.py, final_sim.py)
-export function getGemSizeForWave(wave: number): GemSize {
-  let ps: number; // small 확률
-  let pm: number; // medium 확률 (large = 1 - ps - pm)
-  if (wave <= 15)      { ps = 1.00; pm = 0.00; } // E≈1.0
-  else if (wave <= 20) { ps = 0.90; pm = 0.10; } // E≈1.2
-  else if (wave <= 25) { ps = 0.75; pm = 0.25; } // E≈1.5
-  else if (wave <= 30) { ps = 0.55; pm = 0.45; } // E≈1.9
-  else if (wave <= 35) { ps = 0.35; pm = 0.65; } // E≈2.3
-  else if (wave <= 40) { ps = 0.15; pm = 0.85; } // E≈2.7
-  else if (wave <= 45) { ps = 0.00; pm = 0.90; } // E≈3.5 (large 10%)
-  else if (wave <= 50) { ps = 0.00; pm = 0.65; } // E≈4.75 (large 35%)
-  else if (wave <= 55) { ps = 0.00; pm = 0.40; } // E≈6.0 (large 60%)
-  else                 { ps = 0.00; pm = 0.15; } // E≈7.25 (large 85%)
+// 웨이브별 5티어 젬 확률표: [파랑1, 초록3, 노랑8, 빨강15, 무지개30] (행 합 = 1.0).
+// 값별 색 티어를 부여하되 기대 젬값 E(wave)가 소득 곡선을 따라 완만히 오르게 손튜닝했다
+// (= 소득 점프를 없애 퀴즈=레벨업 간격을 25~75초 밴드에 유지).
+//
+// 설계 핵심(시뮬레이션 scratchpad/final_sim.py):
+//  - kills/s ≈ 1000/spawnInterval 이 wave16에서 5/s로 캡되므로, 그 전(1~15)은 사냥 속도가
+//    소득을 올리도록 E를 낮게(~1.3) 두고, wave16 killrate 스파이크(4→5/s)는 E 소폭 하강으로 흡수한다.
+//  - wave16 이후엔 killrate가 고정이라 소득 성장은 전적으로 E가 담당 → E를 완만히 1.5→5.8로 끌어올린다.
+//  - 빨강(15)·무지개(30)는 '희귀 잭팟': 값이 커서 자주 나오면 한 개가 소득을 폭발시켜 간격이 붕괴한다.
+//    그래서 wave26+ 빨강 3→9%, wave36+ 무지개 2→5%로 소량만 섞어 시각적 보상과 밴드를 양립시킨다.
+//  검증: 전 구간(L2~L50) 기대값 간격 25~36초, 총 게임 ~25분. (final_sim.py 참고)
+const GEM_TIER_TABLE: ReadonlyArray<readonly [number, readonly [number, number, number, number, number]]> = [
+  [5,   [1.00,  0.00,  0.00, 0.00, 0.00]], // E≈1.00
+  [10,  [0.85,  0.15,  0.00, 0.00, 0.00]], // E≈1.30
+  [15,  [0.85,  0.15,  0.00, 0.00, 0.00]], // E≈1.30
+  [20,  [0.925, 0.075, 0.00, 0.00, 0.00]], // E≈1.15 (killrate 캡 흡수)
+  [25,  [0.78,  0.20,  0.02, 0.00, 0.00]], // E≈1.54 (노랑 등장)
+  [30,  [0.805, 0.115, 0.05, 0.03, 0.00]], // E≈2.00 (빨강 등장, wave26+)
+  [35,  [0.75,  0.12,  0.08, 0.05, 0.00]], // E≈2.50
+  [40,  [0.78,  0.06,  0.08, 0.06, 0.02]], // E≈3.10 (무지개 등장, wave36+)
+  [45,  [0.675, 0.105, 0.12, 0.07, 0.03]], // E≈3.90
+  [50,  [0.52,  0.20,  0.16, 0.08, 0.04]], // E≈4.80
+  [Infinity, [0.315, 0.345, 0.20, 0.09, 0.05]], // E≈5.80
+];
 
+const GEM_SIZES: readonly GemSize[] = ['small', 'medium', 'large', 'red', 'rainbow'];
+
+// Get gem size based on wave number — 위 확률표에서 티어 추첨.
+export function getGemSizeForWave(wave: number): GemSize {
+  const row = GEM_TIER_TABLE.find(([hi]) => wave <= hi)?.[1] ?? GEM_TIER_TABLE[GEM_TIER_TABLE.length - 1][1];
   const r = Math.random();
-  if (r < ps) return 'small';
-  if (r < ps + pm) return 'medium';
-  return 'large';
+  let acc = 0;
+  for (let i = 0; i < GEM_SIZES.length; i++) {
+    acc += row[i];
+    if (r < acc) return GEM_SIZES[i];
+  }
+  return GEM_SIZES[GEM_SIZES.length - 1];
 }
 
 // Get XP value for gem size
@@ -43,57 +56,19 @@ export function getXPForGemSize(size: GemSize): number {
   return GAME_CONFIG.gems[size];
 }
 
-// Get gem config based on gem size
-function getGemConfigBySize(size: GemSize): GemConfig {
-  const xpValue = getXPForGemSize(size);
-
-  if (size === 'large') {
-    return {
-      type: 'xp_large',
-      value: xpValue,
-      spriteKey: GEM_KEYS.large,
-      scale: 1.4,
-    };
-  } else if (size === 'medium') {
-    return {
-      type: 'xp_medium',
-      value: xpValue,
-      spriteKey: GEM_KEYS.medium,
-      scale: 1.3,
-    };
-  } else {
-    return {
-      type: 'xp_small',
-      value: xpValue,
-      spriteKey: GEM_KEYS.small,
-      scale: 1.2,
-    };
-  }
-}
-
-// Legacy function for backwards compatibility
+// XPGem 생성자가 실제로 쓰는 값→스프라이트 매핑. xp 값 임계로 5티어 색을 고른다
+// (getGemSizeForWave가 뽑은 티어의 값이 그대로 들어오므로 threshold가 곧 역매핑).
 function getGemConfig(xpValue: number): GemConfig {
-  if (xpValue >= GAME_CONFIG.gems.large) {
-    return {
-      type: 'xp_large',
-      value: xpValue,
-      spriteKey: GEM_KEYS.large,
-      scale: 1.4,
-    };
+  if (xpValue >= GAME_CONFIG.gems.rainbow) {
+    return { type: 'xp_rainbow', value: xpValue, spriteKey: GEM_KEYS.rainbow, scale: 1.6 };
+  } else if (xpValue >= GAME_CONFIG.gems.red) {
+    return { type: 'xp_red', value: xpValue, spriteKey: GEM_KEYS.red, scale: 1.5 };
+  } else if (xpValue >= GAME_CONFIG.gems.large) {
+    return { type: 'xp_large', value: xpValue, spriteKey: GEM_KEYS.large, scale: 1.4 };
   } else if (xpValue >= GAME_CONFIG.gems.medium) {
-    return {
-      type: 'xp_medium',
-      value: xpValue,
-      spriteKey: GEM_KEYS.medium,
-      scale: 1.3,
-    };
+    return { type: 'xp_medium', value: xpValue, spriteKey: GEM_KEYS.medium, scale: 1.3 };
   } else {
-    return {
-      type: 'xp_small',
-      value: xpValue,
-      spriteKey: GEM_KEYS.small,
-      scale: 1.2,
-    };
+    return { type: 'xp_small', value: xpValue, spriteKey: GEM_KEYS.small, scale: 1.2 };
   }
 }
 
