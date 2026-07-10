@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { UNIT } from '../../data/unit';
+import { TutorialBooklet, TutorialPrompt } from './TutorialBooklet';
 
 const NICKNAME_KEY = 'sqb:nickname';
+const TUTORIAL_SEEN_KEY = 'sqb:tutorialSeen';
 
 interface StartScreenProps {
   onStart: (nickname: string) => void;
@@ -12,11 +14,20 @@ interface StartScreenProps {
 /** 단일 단원 프로젝트의 시작 화면 — 닉네임만 입력하면 바로 게임 (프로젝트당 1단원 아키텍처) */
 export function StartScreen({ onStart, onOpenLeaderboard, onBack }: StartScreenProps) {
   const [nickname, setNickname] = useState('');
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [showBooklet, setShowBooklet] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem(NICKNAME_KEY);
     if (saved) setNickname(saved);
+    if (!localStorage.getItem(TUTORIAL_SEEN_KEY)) setShowPrompt(true);
   }, []);
+
+  const answerPrompt = (openBooklet: boolean) => {
+    localStorage.setItem(TUTORIAL_SEEN_KEY, '1');
+    setShowPrompt(false);
+    if (openBooklet) setShowBooklet(true);
+  };
 
   const trimmed = nickname.trim();
   const canStart = trimmed.length >= 1 && trimmed.length <= 12;
@@ -137,6 +148,14 @@ export function StartScreen({ onStart, onOpenLeaderboard, onBack }: StartScreenP
             게임 시작
           </button>
 
+          <button
+            onClick={() => setShowBooklet(true)}
+            className="btn-clean btn-ghost"
+            style={{ width: '100%', padding: '12px', fontSize: 13, marginBottom: 8 }}
+          >
+            📖 게임 방법
+          </button>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <button
               onClick={onOpenLeaderboard}
@@ -155,6 +174,9 @@ export function StartScreen({ onStart, onOpenLeaderboard, onBack }: StartScreenP
           </div>
         </div>
       </div>
+
+      {showPrompt && <TutorialPrompt onYes={() => answerPrompt(true)} onNo={() => answerPrompt(false)} />}
+      {showBooklet && <TutorialBooklet onClose={() => setShowBooklet(false)} />}
     </div>
   );
 }
