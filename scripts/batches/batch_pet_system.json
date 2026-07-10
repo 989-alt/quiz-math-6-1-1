@@ -1,0 +1,63 @@
+{
+  "batch": "pet-system",
+  "max_attempts": 3,
+  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png"],
+  "note": "펫 워크 스트립 2종(identity_files로 기존 weapon_hamster/robot_toy 정체성 고정) + 이모트 말풍선 single 3종. 워크 스트립은 캐릭터 잡이므로 style_clause 오버라이드 없음(기본 사용). 이모트는 심볼이라 'no creature' 계열 오버라이드. pet_ 스트립은 BootScene 규칙상 자동 8fps 루프 등록 — 코드 수정 불요. QA는 내용 검사 안 함 — 생성 후 PNG 확대 육안 검수: 워크 스트립 4프레임 다리 위상 상이 여부, 이모트 말풍선 꼬리 방향(아래) 확인.",
+  "jobs": [
+    {
+      "id": "pet_hamster_walk",
+      "kind": "strip",
+      "cells": 4,
+      "native": 44,
+      "align": "bottom",
+      "aspect_ratio": "16:9",
+      "identity_files": ["weapon_hamster.png"],
+      "outputs": ["pet_hamster_walk_strip.png"],
+      "prompt": "A 1x4 horizontal pixel-art sprite strip: exactly 4 equal-width columns on a solid magenta #FF00FF background, one sprite centered per column with generous empty magenta space around each. A cute round golden hamster pet in strict side view facing right, matching the reference hamster's identity exactly (same golden-orange fur, cream belly, small round ears, tiny black eyes, stubby tail), shown as a 4-frame walking cycle on all fours: (1) front paw forward and back paw back, body level, (2) paws passing under the body, body slightly raised, (3) front paw back and back paw forward, body level, (4) paws passing, body slightly lowered with cheeks gently puffed. Feet stay on the same ground line in every frame. Just the hamster, no shadow, no other objects."
+    },
+    {
+      "id": "pet_robot_walk",
+      "kind": "strip",
+      "cells": 4,
+      "native": 48,
+      "align": "bottom",
+      "aspect_ratio": "16:9",
+      "identity_files": ["weapon_robot_toy.png"],
+      "outputs": ["pet_robot_walk_strip.png"],
+      "prompt": "A 1x4 horizontal pixel-art sprite strip: exactly 4 equal-width columns on a solid magenta #FF00FF background, one sprite centered per column with generous empty magenta space around each. A small grey toy robot pet in strict side view facing right, matching the reference robot's identity exactly (same boxy grey body, round head with single visor eye, stubby arms, wind-up key details if present), shown as a 4-frame waddling walk cycle: (1) left leg forward with body tilted slightly back, (2) legs together with body upright and a tiny hop so both feet just leave the ground line, (3) right leg forward with body tilted slightly forward, (4) legs together upright again with the visor eye glowing one shade brighter. Feet return to the same ground line each ground frame. Just the robot, no shadow, no other objects."
+    },
+    {
+      "id": "status_emote_alert",
+      "kind": "single",
+      "cells": 1,
+      "native": 28,
+      "aspect_ratio": "1:1",
+      "qa_skip": ["outline", "alignment"],
+      "outputs": ["status_emote_alert.png"],
+      "prompt": "Single pixel art UI emote icon: a small white rounded speech bubble with a tiny tail pointing down-left, containing one bold yellow exclamation mark with a thin dark orange outline, drawn as hard-edged opaque pixels on a solid magenta #FF00FF background. Just the one speech bubble symbol and nothing else.",
+      "style_clause": "16-bit SNES-era pixel art, crisp uniform pixel grid, limited palette matching the reference images, solid magenta background #FF00FF, flat symbol icon only, no creature, no face, no letters no words no numbers except the exclamation mark itself"
+    },
+    {
+      "id": "status_emote_heart",
+      "kind": "single",
+      "cells": 1,
+      "native": 28,
+      "aspect_ratio": "1:1",
+      "qa_skip": ["outline", "alignment"],
+      "outputs": ["status_emote_heart.png"],
+      "prompt": "Single pixel art UI emote icon: a small white rounded speech bubble with a tiny tail pointing down-left, containing one plump pink heart with a lighter pink top-left highlight and a thin dark rose outline, drawn as hard-edged opaque pixels on a solid magenta #FF00FF background. Just the one speech bubble symbol and nothing else.",
+      "style_clause": "16-bit SNES-era pixel art, crisp uniform pixel grid, limited palette matching the reference images, solid magenta background #FF00FF, flat symbol icon only, no creature, no face, no letters no words no numbers"
+    },
+    {
+      "id": "status_emote_sleep",
+      "kind": "single",
+      "cells": 1,
+      "native": 28,
+      "aspect_ratio": "1:1",
+      "qa_skip": ["outline", "alignment"],
+      "outputs": ["status_emote_sleep.png"],
+      "prompt": "Single pixel art UI emote icon: a small white rounded speech bubble with a tiny tail pointing down-left, containing three light-blue letter-Z shapes arranged diagonally from small at bottom-left to large at top-right, each with a thin dark blue outline, drawn as hard-edged opaque pixels on a solid magenta #FF00FF background. Just the one speech bubble symbol and nothing else.",
+      "style_clause": "16-bit SNES-era pixel art, crisp uniform pixel grid, limited palette matching the reference images, solid magenta background #FF00FF, flat symbol icon only, no creature, no face, no letters no words no numbers except the three Z letters themselves"
+    }
+  ]
+}
