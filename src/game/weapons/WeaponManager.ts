@@ -84,7 +84,7 @@ export const WeaponInfoList: WeaponInfo[] = [
   { id: 'marble', name: 'Marble', nameKo: '구슬', description: 'Bounces off walls', descriptionKo: '벽에 반사되는 구슬', maxLevel: 8, category: 'ranged' },
   { id: 'snowball', name: 'Snowball', nameKo: '눈덩이', description: 'Slows enemies', descriptionKo: '적을 느리게 만드는 눈덩이', maxLevel: 8, category: 'ranged' },
   { id: 'leaf', name: 'Leaf', nameKo: '나뭇잎', description: 'Drifting leaf projectile', descriptionKo: '바람에 흔들리는 나뭇잎', maxLevel: 8, category: 'ranged' },
-  { id: 'ruler', name: 'Ruler', nameKo: '자', description: 'Auto-targets nearby enemies', descriptionKo: '주변 적을 자동 조준해 발사', maxLevel: 8, category: 'ranged' },
+  { id: 'ruler', name: 'Ruler', nameKo: '자', description: 'Giant ruler slams down for area damage', descriptionKo: '거대한 자로 내려쳐 넓은 범위를 강타', maxLevel: 8, category: 'ranged' },
   // 근접/범위 무기 (Melee/Area)
   { id: 'eraser', name: 'Eraser', nameKo: '지우개', description: 'Erases enemies in area', descriptionKo: '범위 내 적을 지우는 지우개', maxLevel: 8, category: 'melee' },
   { id: 'crayon', name: 'Crayon', nameKo: '크레파스', description: 'Draws rainbow damage', descriptionKo: '무지개 선을 그리는 크레파스', maxLevel: 8, category: 'melee' },

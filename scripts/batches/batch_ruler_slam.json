@@ -1,0 +1,28 @@
+{
+  "batch": "ruler-slam",
+  "max_attempts": 3,
+  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png"],
+  "note": "자(Ruler) 여의봉 내려치기 리워크 2종: 거대 자 본체(single, 9:16 세로), 착지 충격파 이펙트(strip 6, fx_ 접두사=원샷 12fps 등록).",
+  "jobs": [
+    {
+      "id": "weapon_ruler_giant",
+      "kind": "single",
+      "cells": 1,
+      "native": 224,
+      "aspect_ratio": "9:16",
+      "outputs": ["weapon_ruler_giant.png"],
+      "prompt": "Single pixel art in-game weapon sprite: a tall vertical yellow wooden ruler/measuring stick standing upright, filling the full height, with tick marks only (ABSOLUTELY no numbers, no letters, no digits), a rounded cap at the bottom end, single object, no hands, no character, no drop shadow on the background."
+    },
+    {
+      "id": "fx_ruler_slam",
+      "kind": "strip",
+      "cells": 6,
+      "native": 96,
+      "align": "center",
+      "qa_skip": ["outline", "alignment"],
+      "aspect_ratio": "16:9",
+      "outputs": ["fx_ruler_slam_strip.png"],
+      "prompt": "Pixel art effect animation sprite strip: a 1x6 horizontal sprite strip (6 equal columns, one effect centered per column, generous empty magenta space around each), hard-edged opaque pixel clusters (no soft glow/blur), a ground-impact shockwave sequence: (1) bright central impact flash, (2) white starburst spikes, (3) expanding brown dust shockwave ring, (4) ring wider + debris, (5) ring dissolving, (6) faint residual dust settling."
+    }
+  ]
+}
