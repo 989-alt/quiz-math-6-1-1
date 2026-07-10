@@ -7,15 +7,13 @@ export class Banana extends WeaponBase {
   name = 'Banana';
   nameKo = '바나나';
   description = 'Boomerang banana that returns';
-  descriptionKo = '오른쪽으로 던졌다 돌아오는 바나나 부메랑';
+  descriptionKo = '돌아오는 바나나 부메랑';
   maxLevel = 8;
 
   // 사거리 = 플레이어 신장(displayHeight) x 3 을 기본으로, area 배율이 곱해진다
   private static readonly RANGE_HEIGHT_MULT = 3;
   // displayHeight가 0/undefined일 때의 폴백 신장(px). 폴백 사거리 = 80 * 3 = 240
   private static readonly FALLBACK_PLAYER_HEIGHT = 80;
-  // amount>1일 때 오른쪽 주변으로 벌어지는 전체 부채꼴 폭(rad). ±0.3rad(±17°) — 전부 명확히 오른쪽
-  private static readonly FAN_TOTAL = 0.6;
 
   constructor(scene: GameScene, player: Player) {
     super(scene, player);
@@ -47,12 +45,8 @@ export class Banana extends WeaponBase {
     const area = this.getArea();
 
     for (let i = 0; i < amount; i++) {
-      // 항상 월드 오른쪽(0rad) 고정. amount>1이면 0을 중심으로 총 FAN_TOTAL(±0.3rad)
-      // 부채꼴로 균등 분산 — cos(0.3)≈0.96이라 전부 명확히 오른쪽으로 나간다.
-      const angle =
-        amount === 1
-          ? 0
-          : (i / (amount - 1) - 0.5) * Banana.FAN_TOTAL;
+      // 전방향(360도)으로 균등 분산 + 약간의 랜덤 지터
+      const angle = (i / amount) * Math.PI * 2 + Math.random() * 0.5;
       this.createBoomerang(angle, damage, speed, area);
     }
   }
