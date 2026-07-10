@@ -1,0 +1,62 @@
+{
+  "batch": "weapon-overhaul",
+  "max_attempts": 3,
+  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png"],
+  "note": "T2 비행기 폭발 fx / T4 용암 장판+몬스터 화상 status / T5 무지개·자 고해상 재생성. fx/decal/status 잡은 앵커 블리드 방지 style_clause 오버라이드 필수(과거 슬라임화 사고). QA는 내용 검사 안 함 — 생성 후 PNG 확대 육안 검수할 것.",
+  "jobs": [
+    {
+      "id": "fx_plane_explosion",
+      "kind": "strip",
+      "cells": 6,
+      "native": 96,
+      "align": "center",
+      "aspect_ratio": "16:9",
+      "qa_skip": ["outline", "alignment"],
+      "outputs": ["fx_plane_explosion_strip.png"],
+      "prompt": "Abstract explosion effect ONLY (this is a visual fire-and-smoke effect, NOT a character or creature). A 1x6 horizontal pixel-art sprite strip: exactly 6 equal-width columns on a solid magenta #FF00FF background, one effect centered per column with generous empty magenta space around each, drawn as hard-edged opaque pixel clusters with no soft glow and no blur. A cartoon crash-explosion sequence with white paper scraps: (1) small bright white-yellow impact flash with two tiny paper scraps, (2) round orange fireball expanding with a white-hot core, (3) fireball at maximum size with jagged flame edges and several white paper scraps flying outward, (4) fireball breaking apart into orange and grey puffs with a thin smoke ring, (5) grey smoke puffs and falling paper scraps dissolving, (6) faint last wisps of smoke almost gone. Nothing else in the image: no airplane silhouette, no character, no creature, no slime, no face.",
+      "style_clause": "16-bit SNES-era pixel art, crisp uniform pixel grid, limited palette matching the reference images, solid magenta background #FF00FF, abstract explosion fire and smoke effect only, absolutely no characters, no creatures, no slime, no blob, no animal, no face, no eyes, no mouth, no body, no letters no words no numbers"
+    },
+    {
+      "id": "decal_lava",
+      "kind": "strip",
+      "cells": 4,
+      "native": 128,
+      "align": "center",
+      "aspect_ratio": "16:9",
+      "qa_skip": ["outline", "alignment"],
+      "outputs": ["decal_lava_strip.png"],
+      "prompt": "Abstract ground decal ONLY (a flat pool of molten lava seen from directly above, NOT a character or creature). A 1x4 horizontal pixel-art sprite strip: exactly 4 equal-width columns on a solid magenta #FF00FF background, each column showing the same roughly circular molten lava puddle with an irregular blobby outline, viewed top-down: bright yellow-orange glowing center, darker red-orange rim, thin dark cooled-crust cracks with yellow glow shining through, and two or three small round surface bubbles, all drawn as hard-edged opaque pixels with no soft glow and no gradient. The puddle outline and position are identical in every frame; only the inner glow pattern shifts and the bubbles swell and pop to make a seamless bubbling loop: frame 1 bubbles small, frame 2 bubbles swollen, frame 3 one bubble popped leaving a small ring, frame 4 glow slightly dimmer returning to frame 1. Nothing else in the image: no rising flames, no smoke, no character, no creature, no slime, no face.",
+      "style_clause": "16-bit SNES-era pixel art, crisp uniform pixel grid, limited palette matching the reference images, solid magenta background #FF00FF, flat top-down abstract ground decal only, absolutely no characters, no creatures, no slime, no blob, no animal, no face, no eyes, no mouth, no body, no letters no words no numbers"
+    },
+    {
+      "id": "status_burn",
+      "kind": "strip",
+      "cells": 4,
+      "native": 36,
+      "align": "center",
+      "aspect_ratio": "16:9",
+      "qa_skip": ["outline", "alignment"],
+      "outputs": ["status_burn_strip.png"],
+      "prompt": "Abstract fire status effect ONLY (one small burning flame tongue, NOT a character or creature). A 1x4 horizontal pixel-art sprite strip: exactly 4 equal-width columns on a solid magenta #FF00FF background, each column showing one small lively flame tongue with a bright yellow core, orange middle and red-orange tip, plus one or two tiny detached rising embers above it, drawn as hard-edged opaque pixels with no soft glow and no blur. The flame stays anchored at the same bottom-center point in every frame; only the tongue flickers left and right and the embers rise, making a seamless loop across the 4 frames. Nothing else in the image: no logs, no campfire base, no character, no creature, no face, no eyes.",
+      "style_clause": "16-bit SNES-era pixel art, crisp uniform pixel grid, limited palette matching the reference images, solid magenta background #FF00FF, tiny abstract flame effect only, absolutely no characters, no creatures, no slime, no blob, no animal, no face, no eyes, no mouth, no body, no letters no words no numbers"
+    },
+    {
+      "id": "weapon_rainbow",
+      "kind": "single",
+      "cells": 1,
+      "native": 512,
+      "aspect_ratio": "16:9",
+      "outputs": ["weapon_rainbow.png"],
+      "prompt": "Single pixel art game asset: one giant rainbow arch seen from the side, a smooth semicircular arc spanning the full width of the image, made of clean concentric banded stripes in strict order red on the outside, then orange, yellow, green, blue and violet on the inside, each stripe several pixels thick with crisp 1px transitions between bands, and a small soft rounded white cloud puff at each end where the arch meets the ground. Just the one rainbow arch with its two end clouds and nothing else, no sky background, no sun, no character, no drop shadow on the background."
+    },
+    {
+      "id": "weapon_ruler_giant",
+      "kind": "single",
+      "cells": 1,
+      "native": 448,
+      "aspect_ratio": "9:16",
+      "outputs": ["weapon_ruler_giant.png"],
+      "prompt": "Single pixel art in-game weapon sprite: a tall vertical yellow wooden ruler/measuring stick standing upright, filling the full height, with tick marks only (ABSOLUTELY no numbers, no letters, no digits), a rounded cap at the bottom end, single object, no hands, no character, no drop shadow on the background."
+    }
+  ]
+}

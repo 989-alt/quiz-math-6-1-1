@@ -1,5 +1,5 @@
 {
- "batch": "crayon-rework",
+ "batch": "weapon-overhaul",
  "batches": [
   "3a",
   "3b-hero",
@@ -19,9 +19,10 @@
   "scorch-decal",
   "3d-gemtiers",
   "crayon-rework",
-  "ruler-slam"
+  "ruler-slam",
+  "weapon-overhaul"
  ],
- "generated_at": "2026-07-10T07:15:16+00:00",
+ "generated_at": "2026-07-10T10:47:15+00:00",
  "style_anchors": [
   "B1_pixel_keyvisual.png",
   "B2_pixel_lineup.png"
@@ -802,18 +803,6 @@
    "frames": 1,
    "frame_w": 38,
    "frame_h": 52,
-   "attempts": 1,
-   "qa": "pass"
-  },
-  {
-   "id": "weapon_rainbow",
-   "group": "weapon_rainbow",
-   "file": "weapon_rainbow.png",
-   "kind": "single",
-   "native": 48,
-   "frames": 1,
-   "frame_w": 52,
-   "frame_h": 31,
    "attempts": 1,
    "qa": "pass"
   },
@@ -1675,18 +1664,6 @@
    "qa": "pass"
   },
   {
-   "id": "weapon_ruler_giant",
-   "group": "weapon_ruler_giant",
-   "file": "weapon_ruler_giant.png",
-   "kind": "single",
-   "native": 224,
-   "frames": 1,
-   "frame_w": 37,
-   "frame_h": 228,
-   "attempts": 1,
-   "qa": "pass"
-  },
-  {
    "id": "fx_ruler_slam",
    "file": "fx_ruler_slam_strip.png",
    "kind": "strip",
@@ -1715,6 +1692,78 @@
     "outline",
     "alignment"
    ],
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "fx_plane_explosion",
+   "file": "fx_plane_explosion_strip.png",
+   "kind": "strip",
+   "native": 96,
+   "frames": 6,
+   "frame_w": 97,
+   "frame_h": 100,
+   "baseline_y": 98,
+   "qa_skip": [
+    "outline",
+    "alignment"
+   ],
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "decal_lava",
+   "file": "decal_lava_strip.png",
+   "kind": "strip",
+   "native": 128,
+   "frames": 4,
+   "frame_w": 132,
+   "frame_h": 119,
+   "baseline_y": 117,
+   "qa_skip": [
+    "outline",
+    "alignment"
+   ],
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "status_burn",
+   "file": "status_burn_strip.png",
+   "kind": "strip",
+   "native": 36,
+   "frames": 4,
+   "frame_w": 20,
+   "frame_h": 40,
+   "baseline_y": 38,
+   "qa_skip": [
+    "outline",
+    "alignment"
+   ],
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "weapon_rainbow",
+   "group": "weapon_rainbow",
+   "file": "weapon_rainbow.png",
+   "kind": "single",
+   "native": 512,
+   "frames": 1,
+   "frame_w": 516,
+   "frame_h": 201,
+   "attempts": 2,
+   "qa": "pass"
+  },
+  {
+   "id": "weapon_ruler_giant",
+   "group": "weapon_ruler_giant",
+   "file": "weapon_ruler_giant.png",
+   "kind": "single",
+   "native": 448,
+   "frames": 1,
+   "frame_w": 54,
+   "frame_h": 452,
    "attempts": 1,
    "qa": "pass"
   }
