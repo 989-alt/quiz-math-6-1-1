@@ -42,9 +42,8 @@ export class MagnifyingGlass extends WeaponBase {
     }
   }
 
-  // 화염 1단계(도트 데미지 존) 지속시간 — burnZone 펄스 트윈(yoyo, duration:300 × 2(왕복) × 3회(초기+repeat:2) = 1800ms)과
-  // spawnHazard 화재 데칼 수명을 일치시키는 기준값. 이 값이 바뀌면 burnZone 트윈의 duration/repeat도 함께 조정할 것.
-  private static readonly BURN_PHASE_MS = 1800;
+  // 화염 1단계(용암 장판, 도트 데미지 존) 지속시간 — spawnHazard 용암 데칼 수명 기준값.
+  private static readonly LAVA_PHASE_MS = 3000;
 
   private createLightBeam(): void {
     // 체력이 가장 많은 몬스터 우선(보스/엘리트 킬러), 없으면 가까운 적 폴백
@@ -118,29 +117,29 @@ export class MagnifyingGlass extends WeaponBase {
     this.scene.time.delayedCall(500, () => {
       this.playImpact(targetX, targetY, 'burn');
 
-      // Burn circle at target location (타격 반경 +40%: 25 → 35)
+      // Burn circle at target location (타격 반경 +40%: 25 → 35) — 판정 전용, 화면엔 보이지 않음
       const burnZone = this.scene.add.circle(
         targetX,
         targetY,
         35 * area,
         0xff4500,
-        0.6
+        0
       );
       burnZone.setDepth(9);
 
-      // 화염 1단계 — 번 지점에 BURN_PHASE_MS 동안 남아 밟은 적에게 도트 데미지 (즉발 번존과 별개)
+      // 화염 1단계 — 용암 장판이 LAVA_PHASE_MS 동안 남아 밟은 적에게 도트 데미지 + 화상 이펙트
       this.spawnHazard(targetX, targetY, {
         radius: 55 * area,
-        duration: MagnifyingGlass.BURN_PHASE_MS,
+        duration: MagnifyingGlass.LAVA_PHASE_MS,
         dps: damage * 0.4,
         tint: 0xff5522,
         alpha: 0.25,
-        fxKind: 'burn',
-        groundSpriteKey: 'decal_fire_loop',
+        burnVisual: true,
+        groundSpriteKey: 'decal_lava',
       });
 
       // 화염 2단계 — 불이 꺼진 뒤 그을린 자국이 잔존 (도트 데미지 없이 시각 효과만)
-      this.scene.time.delayedCall(MagnifyingGlass.BURN_PHASE_MS, () => {
+      this.scene.time.delayedCall(MagnifyingGlass.LAVA_PHASE_MS, () => {
         this.spawnHazard(targetX, targetY, {
           radius: 55 * area,
           duration: 2500,
@@ -179,27 +178,9 @@ export class MagnifyingGlass extends WeaponBase {
         });
       }
 
-      // Smoke effect
-      const smoke = this.scene.add.circle(targetX, targetY - 10, 15 * area, 0x808080, 0.4);
-      smoke.setDepth(10);
-      this.scene.tweens.add({
-        targets: smoke,
-        y: targetY - 50,
-        alpha: 0,
-        scale: 2,
-        duration: 600,
-        onComplete: () => smoke.destroy(),
-      });
-
-      // Pulsing burn animation
-      this.scene.tweens.add({
-        targets: burnZone,
-        scale: { from: 0.8, to: 1.3 },
-        alpha: { from: 0.7, to: 0.3 },
-        duration: 300,
-        yoyo: true,
-        repeat: 2,
-        onComplete: () => burnZone.destroy(),
+      // 즉발 판정 존 정리 — 데미지 판정을 0.3초 유지한 뒤 파괴 (시각은 용암 장판이 대신함)
+      this.scene.time.delayedCall(300, () => {
+        if (burnZone.active) burnZone.destroy();
       });
     });
 

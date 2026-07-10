@@ -356,6 +356,7 @@ export abstract class WeaponBase {
       duration: number;
       dps?: number; // 초당 도트 데미지
       slowFactor?: number; // 0.5 = 50% 감속
+      burnVisual?: boolean; // true면 존 위 몬스터에 Monster.applyBurn 화상 이펙트 표시(시각 전용, 데미지는 dps가 처리)
       tint: number;
       alpha?: number;
       fxKind?: string; // 주기적으로 존 안에 재생할 임팩트 이펙트
@@ -405,6 +406,13 @@ export abstract class WeaponBase {
         (monster as any).applySlow?.(opts.slowFactor, 350);
       });
       (zone as any).once?.('destroy', () => overlap.destroy());
+    }
+
+    if (opts.burnVisual) {
+      const burnOverlap = scene.physics.add.overlap(zone as any, scene.getMonsters(), (_z, monster) => {
+        (monster as any).applyBurn?.(500);
+      });
+      (zone as any).once?.('destroy', () => burnOverlap.destroy());
     }
 
     if (opts.fxKind) {

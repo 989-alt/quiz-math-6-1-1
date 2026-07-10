@@ -3,6 +3,7 @@ import { MONSTER_WALK_KEYS, BOSS_WALK_KEYS } from '../assetKeys';
 
 const SHADOW_KEY = 'shadow_blob';
 const SLOW_ICON_KEY = 'status_slow';
+const BURN_FX_KEY = 'status_burn';
 
 export interface MonsterConfig {
   hp: number;
@@ -39,6 +40,8 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   private hpBar: Phaser.GameObjects.Graphics | null = null;
   private shadow: Phaser.GameObjects.Sprite | null = null;
   private slowIcon: Phaser.GameObjects.Sprite | null = null;
+  private burnFx: Phaser.GameObjects.Sprite | null = null;
+  private burnUntil: number = 0;
   private wobblePhase: number = Math.random() * Math.PI * 2;
   private telegraphRing: Phaser.GameObjects.Arc | null = null;
   private static readonly TELEGRAPH_INTERVAL = 3500;
@@ -181,6 +184,18 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
+  // 화상 상태 표시 (용암 장판 등): 시각 효과 전용 — 데미지는 해저드 dps가 처리(중복 데미지 방지)
+  applyBurn(durationMs: number): void {
+    if (!this.active) return;
+    this.burnUntil = Math.max(this.burnUntil, this.scene.time.now + durationMs);
+    if (!this.burnFx && this.scene.textures.exists(BURN_FX_KEY)) {
+      this.burnFx = this.scene.add.sprite(this.x, this.y - this.displayHeight * 0.15, BURN_FX_KEY);
+      this.burnFx.setDepth(6);
+      this.burnFx.setAlpha(0.9);
+      if (this.scene.anims.exists(BURN_FX_KEY)) this.burnFx.play(BURN_FX_KEY);
+    }
+  }
+
   update(delta: number = 16.7): void {
     if (!this.target || !this.active) return;
 
@@ -197,6 +212,21 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
       } else {
         this.slowIcon.destroy();
         this.slowIcon = null;
+      }
+    }
+
+    // 화상 만료 판정
+    if (this.burnUntil > 0 && this.scene.time.now > this.burnUntil) {
+      this.burnUntil = 0;
+    }
+
+    // 화상 이펙트: 만료됐으면 제거, 아니면 몬스터 위치를 따라 이동
+    if (this.burnFx) {
+      if (this.burnUntil > 0) {
+        this.burnFx.setPosition(this.x, this.y - this.displayHeight * 0.15);
+      } else {
+        this.burnFx.destroy();
+        this.burnFx = null;
       }
     }
 
@@ -510,6 +540,10 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
       this.slowIcon.destroy();
       this.slowIcon = null;
     }
+    if (this.burnFx) {
+      this.burnFx.destroy();
+      this.burnFx = null;
+    }
 
     // death_poof 이펙트
     (this.scene as any).fx?.poof(this.x, this.y);
@@ -558,6 +592,10 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     if (this.slowIcon) {
       this.slowIcon.destroy();
       this.slowIcon = null;
+    }
+    if (this.burnFx) {
+      this.burnFx.destroy();
+      this.burnFx = null;
     }
     super.destroy(fromScene);
   }
