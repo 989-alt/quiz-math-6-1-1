@@ -91,6 +91,7 @@ export class Crayon extends WeaponBase {
       trail.setScale(length / texW, (16 * area) / texH);
       trail.setAlpha(0.9);
       trail.setDepth(9);
+      trail.setCrop(0, 0, 1, texH); // 리빌 전 초기 크롭(폭 1px): 첫 프레임 전체 스펙트럼 노출 플래시 방지
 
       // 리빌: t(0→1)에 비례해 crop 폭을 넓혀 크레파스가 지나간 만큼만 보이게 (Rainbow.createSweep 패턴)
       const reveal = { t: 0 };
@@ -103,7 +104,10 @@ export class Crayon extends WeaponBase {
           if (!trail.active) return;
           trail.setCrop(0, 0, Math.round(reveal.t * texW), texH);
         },
-        onComplete: () => this.placeSparkleDecals(startX, startY, baseAngle, length, area, duration),
+        // 데칼 수명을 트레일에 맞춤: (duration-drawDuration) 뒤 페이드 시작 → 페이드 시점이
+        // 트레일 페이드(delayedCall(duration))와 일치, 300ms 페이드도 같아 동시에 사라진다.
+        onComplete: () =>
+          this.placeSparkleDecals(startX, startY, baseAngle, length, area, Math.max(0, duration - drawDuration)),
       });
 
       // 수명이 다하면 페이드 아웃 후 제거 (허공 소멸 금지)
@@ -201,8 +205,11 @@ export class Crayon extends WeaponBase {
         segment.once('destroy', () => fxCollider.destroy());
 
         if (hasTrailTex) {
-          // 시각은 트레일 스프라이트가 담당 → 사각형은 수명/판정만 유지하고 조용히 제거
-          this.scene.time.delayedCall(duration + 200, () => {
+          // 시각은 트레일 스프라이트가 담당 → 사각형은 수명/판정만 유지.
+          // 파괴 시점을 트레일 소멸(≈duration+300, 절대시각)에 정렬 → 세그먼트는 i*drawInterval에
+          // 생성되므로 상대 지연 = (duration+300) - i*drawInterval. 트레일이 사라진 뒤 보이지 않는
+          // 판정이 남아 데미지를 주는 일을 막는다.
+          this.scene.time.delayedCall(Math.max(0, duration + 300 - i * drawInterval), () => {
             if (segment.active) segment.destroy();
           });
         } else {
