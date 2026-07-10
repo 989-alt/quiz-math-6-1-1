@@ -6,15 +6,15 @@ export class PaperPlane extends WeaponBase {
   id = 'paper_plane';
   name = 'Paper Plane';
   nameKo = '종이비행기';
-  description = 'Homing paper planes';
-  descriptionKo = '유도하는 종이비행기';
+  description = 'Paper plane that explodes on impact';
+  descriptionKo = '명중하면 폭발하는 종이비행기';
   maxLevel = 8;
 
   constructor(scene: GameScene, player: Player) {
     super(scene, player);
     this.baseStats = {
-      damage: 18,
-      cooldown: 1400,
+      damage: 30,
+      cooldown: 2600,
       area: 1,
       speed: 250,
       duration: 4000,
@@ -23,13 +23,13 @@ export class PaperPlane extends WeaponBase {
       knockback: 0,
     };
     this.levelUpgrades = [
-      { damage: 4 },
+      { damage: 8 },
+      { area: 0.15 },
+      { damage: 10 },
+      { cooldown: -300 },
+      { area: 0.2 },
+      { damage: 12 },
       { amount: 1 },
-      { speed: 30 },
-      { damage: 5 },
-      { amount: 1 },
-      { damage: 6 },
-      { pierce: 1 },
     ];
   }
 
@@ -79,15 +79,9 @@ export class PaperPlane extends WeaponBase {
 
     this.scene.addProjectile(plane as any);
 
-    // Impact effect on first contact with each monster
-    const hitMonsters = new Set<Phaser.Physics.Arcade.Sprite>();
-    const fxCollider = this.scene.physics.add.overlap(plane, this.scene.getMonsters(), (_p, monster) => {
-      const m = monster as Phaser.Physics.Arcade.Sprite;
-      if (hitMonsters.has(m)) return;
-      hitMonsters.add(m);
-      this.playImpact(m.x, m.y, 'hit_small');
-    });
-    plane.once('destroy', () => fxCollider.destroy());
+    // 명중이든 수명종료든, 파괴되는 자리에서 폭발한다 (아래 explode() 참고)
+    (plane as any).__exploded = false;
+    plane.once('destroy', () => this.explode(plane));
 
     // Homing glide: sine-wave steering + banking roll
     const startTime = this.scene.time.now;
@@ -111,14 +105,30 @@ export class PaperPlane extends WeaponBase {
 
     this.scene.time.delayedCall(this.getDuration(), () => {
       homingEvent.destroy();
-      if (plane.active) {
-        this.scene.tweens.add({
-          targets: plane,
-          alpha: 0,
-          duration: 200,
-          onComplete: () => plane.destroy(),
-        });
-      }
+      if (plane.active) plane.destroy(); // destroy 리스너(explode)가 공중폭발 처리
+    });
+  }
+
+  // 명중 파괴(pierce 소진)든 수명 종료든, plane이 파괴되는 지점에서 스플래시 폭발.
+  // 게임 리셋/그만하기(gameFinished 구간)로 인한 그룹 일괄 destroy는 폭발 금지 —
+  // player.active만으로는 부족: resetGame()이 projectiles.clear()를 old player.destroy()보다
+  // 먼저 실행하므로 그 시점엔 player.active가 아직 true. gameFinished는 handleGameOver()에서
+  // true로 세워져 resetGame() 후반부(엔티티 정리 이후)에야 false로 복구되므로 이 구간을 정확히 덮는다.
+  private explode(plane: Phaser.GameObjects.Sprite): void {
+    if ((plane as any).__exploded) return;
+    (plane as any).__exploded = true;
+    if (!this.player.active || (this.scene as any).gameFinished) return;
+
+    const area = this.getArea();
+    this.playImpact(plane.x, plane.y, 'plane_explosion');
+
+    const zone = this.scene.add.circle(plane.x, plane.y, 70 * area, 0xffa500, 0); // 판정 전용(투명)
+    this.scene.physics.add.existing(zone);
+    (zone as any).damage = Math.round(this.getDamage() * 0.7); // 스플래시 = 본데미지의 70%
+    (zone as any).pierce = 999;
+    this.scene.addProjectile(zone as any);
+    this.scene.time.delayedCall(250, () => {
+      if (zone.active) zone.destroy();
     });
   }
 }

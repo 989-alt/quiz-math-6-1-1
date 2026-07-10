@@ -10,6 +10,7 @@ const BURST_KEYS: Record<string, string> = {
   levelup: 'fx_levelup',
   heal: 'fx_heal',
   collect: 'fx_collect',
+  plane_explosion: 'fx_plane_explosion',
 };
 
 const HIT_POOL_SIZE = 10;

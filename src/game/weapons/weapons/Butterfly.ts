@@ -6,30 +6,30 @@ export class Butterfly extends WeaponBase {
   id = 'butterfly';
   name = 'Butterfly';
   nameKo = '나비';
-  description = 'Homing butterfly attack';
-  descriptionKo = '유도하는 나비 공격';
+  description = 'Multiple weak homing butterflies';
+  descriptionKo = '여러 마리가 날아가는 나비 떼';
   maxLevel = 8;
 
   constructor(scene: GameScene, player: Player) {
     super(scene, player);
     this.baseStats = {
-      damage: 14,
+      damage: 8,
       cooldown: 1200,
       area: 1,
       speed: 180,
       duration: 5000,
-      amount: 2,
+      amount: 3,
       pierce: 1,
       knockback: 0,
     };
     this.levelUpgrades = [
       { amount: 1 },
-      { damage: 3 },
+      { damage: 2 },
+      { amount: 1 },
       { speed: 20 },
       { amount: 1 },
-      { damage: 4 },
-      { amount: 1 },
-      { damage: 6 },
+      { damage: 3 },
+      { amount: 2 },
     ];
   }
 

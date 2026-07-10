@@ -80,7 +80,7 @@ export const WeaponInfoList: WeaponInfo[] = [
   { id: 'pencil', name: 'Pencil', nameKo: '연필', description: 'Throws pencils at the nearest monster', descriptionKo: '가장 가까운 몬스터를 향해 연필을 던지는 기본 무기', maxLevel: 8, category: 'ranged' },
   { id: 'banana', name: 'Banana', nameKo: '바나나', description: 'Boomerang banana that returns', descriptionKo: '돌아오는 바나나 부메랑', maxLevel: 8, category: 'ranged' },
   { id: 'acorn', name: 'Acorn', nameKo: '도토리', description: 'Bouncing acorns', descriptionKo: '튕기는 도토리', maxLevel: 8, category: 'ranged' },
-  { id: 'paper_plane', name: 'Paper Plane', nameKo: '종이비행기', description: 'Homing paper planes', descriptionKo: '유도하는 종이비행기', maxLevel: 8, category: 'ranged' },
+  { id: 'paper_plane', name: 'Paper Plane', nameKo: '종이비행기', description: 'Paper plane that explodes on impact', descriptionKo: '명중하면 폭발하는 종이비행기', maxLevel: 8, category: 'ranged' },
   { id: 'marble', name: 'Marble', nameKo: '구슬', description: 'Bounces off walls', descriptionKo: '벽에 반사되는 구슬', maxLevel: 8, category: 'ranged' },
   { id: 'snowball', name: 'Snowball', nameKo: '눈덩이', description: 'Slows enemies', descriptionKo: '적을 느리게 만드는 눈덩이', maxLevel: 8, category: 'ranged' },
   { id: 'leaf', name: 'Leaf', nameKo: '나뭇잎', description: 'Drifting leaf projectile', descriptionKo: '바람에 흔들리는 나뭇잎', maxLevel: 8, category: 'ranged' },
@@ -93,7 +93,7 @@ export const WeaponInfoList: WeaponInfo[] = [
   { id: 'water_balloon', name: 'Water Balloon', nameKo: '물풍선', description: 'Splash damage on impact', descriptionKo: '터지면 튀는 물풍선', maxLevel: 8, category: 'melee' },
   // 보조/동료 무기 (Companion)
   { id: 'hamster', name: 'Hamster', nameKo: '햄스터', description: 'Spinning hamster friend', descriptionKo: '회전하는 햄스터 친구', maxLevel: 8, category: 'companion' },
-  { id: 'butterfly', name: 'Butterfly', nameKo: '나비', description: 'Homing butterfly attack', descriptionKo: '유도하는 나비 공격', maxLevel: 8, category: 'companion' },
+  { id: 'butterfly', name: 'Butterfly', nameKo: '나비', description: 'Multiple weak homing butterflies', descriptionKo: '여러 마리가 날아가는 나비 떼', maxLevel: 8, category: 'companion' },
   { id: 'robot_toy', name: 'Robot Toy', nameKo: '로봇 장난감', description: 'Auto-attacking robot', descriptionKo: '자동으로 공격하는 로봇', maxLevel: 8, category: 'companion' },
   // 특수 무기 (Special)
   { id: 'rainbow', name: 'Rainbow', nameKo: '무지개', description: 'Rainbow wave attack', descriptionKo: '무지개 파동 공격', maxLevel: 8, category: 'special' },
