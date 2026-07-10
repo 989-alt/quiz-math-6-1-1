@@ -1,5 +1,5 @@
 {
- "batch": "ruler-slam",
+ "batch": "crayon-rework",
  "batches": [
   "3a",
   "3b-hero",
@@ -21,7 +21,7 @@
   "crayon-rework",
   "ruler-slam"
  ],
- "generated_at": "2026-07-10T07:03:18+00:00",
+ "generated_at": "2026-07-10T07:15:16+00:00",
  "style_anchors": [
   "B1_pixel_keyvisual.png",
   "B2_pixel_lineup.png"
@@ -1663,22 +1663,6 @@
    "qa": "pass"
   },
   {
-   "id": "decal_crayon_sparkle",
-   "file": "decal_crayon_sparkle_strip.png",
-   "kind": "strip",
-   "native": 48,
-   "frames": 4,
-   "frame_w": 40,
-   "frame_h": 52,
-   "baseline_y": 50,
-   "qa_skip": [
-    "outline",
-    "alignment"
-   ],
-   "attempts": 1,
-   "qa": "pass"
-  },
-  {
    "id": "weapon_crayon_rainbow",
    "group": "weapon_crayon_rainbow",
    "file": "weapon_crayon_rainbow.png",
@@ -1716,6 +1700,22 @@
     "alignment"
    ],
    "attempts": 2,
+   "qa": "pass"
+  },
+  {
+   "id": "decal_crayon_sparkle",
+   "file": "decal_crayon_sparkle_strip.png",
+   "kind": "strip",
+   "native": 48,
+   "frames": 4,
+   "frame_w": 52,
+   "frame_h": 41,
+   "baseline_y": 39,
+   "qa_skip": [
+    "outline",
+    "alignment"
+   ],
+   "attempts": 1,
    "qa": "pass"
   }
  ]
