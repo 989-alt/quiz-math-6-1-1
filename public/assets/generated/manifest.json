@@ -1,5 +1,5 @@
 {
- "batch": "3d-gemtiers",
+ "batch": "crayon-rework",
  "batches": [
   "3a",
   "3b-hero",
@@ -17,9 +17,10 @@
   "hero-attack",
   "hazard-fx",
   "scorch-decal",
-  "3d-gemtiers"
+  "3d-gemtiers",
+  "crayon-rework"
  ],
- "generated_at": "2026-07-09T12:28:00+00:00",
+ "generated_at": "2026-07-10T06:54:22+00:00",
  "style_anchors": [
   "B1_pixel_keyvisual.png",
   "B2_pixel_lineup.png"
@@ -1641,6 +1642,50 @@
    "frames": 1,
    "frame_w": 36,
    "frame_h": 34,
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "trail_crayon_spectrum",
+   "group": "trail_crayon_spectrum",
+   "file": "trail_crayon_spectrum.png",
+   "kind": "single",
+   "native": 256,
+   "frames": 1,
+   "frame_w": 260,
+   "frame_h": 30,
+   "qa_skip": [
+    "outline",
+    "alignment"
+   ],
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "decal_crayon_sparkle",
+   "file": "decal_crayon_sparkle_strip.png",
+   "kind": "strip",
+   "native": 48,
+   "frames": 4,
+   "frame_w": 40,
+   "frame_h": 52,
+   "baseline_y": 50,
+   "qa_skip": [
+    "outline",
+    "alignment"
+   ],
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "weapon_crayon_rainbow",
+   "group": "weapon_crayon_rainbow",
+   "file": "weapon_crayon_rainbow.png",
+   "kind": "single",
+   "native": 56,
+   "frames": 1,
+   "frame_w": 59,
+   "frame_h": 60,
    "attempts": 1,
    "qa": "pass"
   }
