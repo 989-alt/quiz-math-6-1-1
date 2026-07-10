@@ -80,17 +80,7 @@ export class Snowball extends WeaponBase {
         this.playImpact(m.x, m.y, 'splash');
 
         // 공용 슬로우 API로 감속 — 만료 자동 복원, 중첩 레이스 없음
-        (m as Monster).applySlow(0.5, 2000);
-
-        // 명중 지점에 소형 빙판 잔존 — 밟은 적 추가 둔화
-        this.spawnHazard(m.x, m.y, {
-          radius: 40 * area,
-          duration: 2000,
-          slowFactor: 0.6,
-          tint: 0xbfeaff,
-          alpha: 0.3,
-          groundSpriteKey: 'decal_ice_patch',
-        });
+        (m as Monster).applySlow(0.45, 2500);
 
         const flake = this.scene.add.sprite(m.x, m.y - 10, 'weapon_snowball');
         flake.setScale(0.5);

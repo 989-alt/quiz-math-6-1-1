@@ -21,8 +21,8 @@ export class Ruler extends WeaponBase {
   constructor(scene: GameScene, player: Player) {
     super(scene, player);
     this.baseStats = {
-      damage: 60,
-      cooldown: 15000,
+      damage: 100,
+      cooldown: 30000,
       area: 1,
       speed: 0,
       duration: 300,
@@ -31,13 +31,13 @@ export class Ruler extends WeaponBase {
       knockback: 0,
     };
     this.levelUpgrades = [
-      { damage: 15 },
-      { cooldown: -2000 },
+      { damage: 25 },
+      { cooldown: -3000 },
       { area: 0.2 },
-      { damage: 20 },
-      { cooldown: -2000 },
+      { damage: 30 },
+      { cooldown: -3000 },
       { area: 0.2 },
-      { damage: 25, cooldown: -1500 },
+      { damage: 40, cooldown: -2000 },
     ];
   }
 

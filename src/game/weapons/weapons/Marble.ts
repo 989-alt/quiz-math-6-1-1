@@ -36,8 +36,12 @@ export class Marble extends WeaponBase {
 
   attack(): void {
     const amount = this.getAmount();
+    const targets = this.findClosestEnemies(amount);
     for (let i = 0; i < amount; i++) {
-      const angle = (i / amount) * Math.PI * 2 + Math.random() * 0.5;
+      const t = targets.length > 0 ? targets[i % targets.length] : null;
+      const angle = t
+        ? Phaser.Math.Angle.Between(this.player.x, this.player.y, t.x, t.y)
+        : (i / amount) * Math.PI * 2 + Math.random() * 0.5; // 폴백: 기존 산개
       this.createMarble(angle);
     }
   }

@@ -17,7 +17,7 @@ export class Hamster extends WeaponBase {
   constructor(scene: GameScene, player: Player) {
     super(scene, player);
     this.baseStats = {
-      damage: 18,
+      damage: 26,
       cooldown: 100,
       area: 1,
       speed: 4,
@@ -60,7 +60,7 @@ export class Hamster extends WeaponBase {
       (hamster as any).damage = damage;
       (hamster as any).pierce = 999;
       (hamster as any).dashExtra = 0;
-      (hamster as any).nextDashAt = this.scene.time.now + 3000;
+      (hamster as any).nextDashAt = this.scene.time.now + 2200;
       (hamster as any).__lastHitReset = this.scene.time.now;
 
       this.scene.addProjectile(hamster as any);
@@ -93,8 +93,12 @@ export class Hamster extends WeaponBase {
       // Rolling animation
       hamster.setRotation(this.orbitAngle * 3);
 
-      // Dash out and back every 3s
-      if (!(hamster as any).dashing && this.scene.time.now >= (hamster as any).nextDashAt) {
+      // Dash out and back every 2.2s — 근처에 요격할 적이 있을 때만 발동
+      if (
+        !(hamster as any).dashing &&
+        this.scene.time.now >= (hamster as any).nextDashAt &&
+        this.findClosestEnemy(orbitRadius + 90)
+      ) {
         this.startDash(hamster, area);
       }
 
@@ -112,7 +116,7 @@ export class Hamster extends WeaponBase {
 
     this.scene.tweens.add({
       targets: hamster,
-      dashExtra: 40 * area,
+      dashExtra: 70 * area,
       duration: 200,
       ease: 'Sine.easeOut',
       yoyo: true,
@@ -121,7 +125,7 @@ export class Hamster extends WeaponBase {
       },
       onComplete: () => {
         (hamster as any).dashing = false;
-        (hamster as any).nextDashAt = this.scene.time.now + 3000;
+        (hamster as any).nextDashAt = this.scene.time.now + 2200;
       },
     });
   }

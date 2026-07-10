@@ -17,7 +17,7 @@ export class Bubble extends WeaponBase {
   constructor(scene: GameScene, player: Player) {
     super(scene, player);
     this.baseStats = {
-      damage: 12,
+      damage: 9,
       cooldown: 100, // Continuous damage check
       area: 1,
       speed: 3, // Orbit speed
@@ -32,7 +32,7 @@ export class Bubble extends WeaponBase {
       { area: 0.1 },
       { amount: 1 },
       { damage: 4 },
-      { amount: 1 },
+      { amount: 2 },
       { damage: 5 },
     ];
   }

@@ -14,8 +14,8 @@ export class Rainbow extends WeaponBase {
     super(scene, player);
     // 컨셉: 저빈도 광역 "궁극기" — 자주 안 나가는 대신 발동 시 화면 대부분을 타격
     this.baseStats = {
-      damage: 25,
-      cooldown: 7000,
+      damage: 70,
+      cooldown: 30000,
       area: 1,
       speed: 0,
       duration: 1400, // 스윕 1회가 화면을 관통하는 데 걸리는 시간
@@ -24,13 +24,13 @@ export class Rainbow extends WeaponBase {
       knockback: 0,
     };
     this.levelUpgrades = [
-      { damage: 5 },
+      { damage: 15 },
       { amount: 1 },
-      { area: 0.2 },
-      { damage: 8 },
+      { cooldown: -3000 },
+      { damage: 20 },
       { amount: 1 },
-      { cooldown: -1000 },
-      { damage: 12 },
+      { cooldown: -3000 },
+      { damage: 25 },
     ];
   }
 

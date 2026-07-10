@@ -13,8 +13,8 @@ export class LunchBox extends WeaponBase {
   constructor(scene: GameScene, player: Player) {
     super(scene, player);
     this.baseStats = {
-      damage: 35,
-      cooldown: 3000,
+      damage: 45,
+      cooldown: 3500,
       area: 1,
       speed: 150,
       duration: 1000,
@@ -75,11 +75,11 @@ export class LunchBox extends WeaponBase {
         // Explosion effect
         this.playImpact(targetX, targetY, 'explosion');
 
-        // 폭발 데미지 반경 +30% (48 → 62)
+        // 폭발 데미지 반경 확대 (48 → 80, 대형 단발화)
         const explosion = this.scene.add.circle(
           targetX,
           targetY,
-          62 * area,
+          80 * area,
           0xffa500,
           0.7
         );

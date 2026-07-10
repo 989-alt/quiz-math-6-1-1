@@ -19,7 +19,7 @@ export class Leaf extends WeaponBase {
       speed: 200,
       duration: 3000,
       amount: 3,
-      pierce: 2,
+      pierce: 3,
       knockback: 0,
     };
     this.levelUpgrades = [
@@ -82,7 +82,7 @@ export class Leaf extends WeaponBase {
         if (target) {
           const toTarget = Phaser.Math.Angle.Between(leaf.x, leaf.y, target.x, target.y);
           const current = Math.atan2(body.velocity.y, body.velocity.x);
-          const steered = Phaser.Math.Angle.RotateTo(current, toTarget, 0.05);
+          const steered = Phaser.Math.Angle.RotateTo(current, toTarget, 0.015);
           body.setVelocity(Math.cos(steered) * speed, Math.sin(steered) * speed);
         }
 
