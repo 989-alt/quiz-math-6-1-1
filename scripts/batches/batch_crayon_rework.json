@@ -1,0 +1,38 @@
+{
+  "batch": "crayon-rework",
+  "max_attempts": 3,
+  "anchors": ["B1_pixel_keyvisual.png", "B2_pixel_lineup.png"],
+  "note": "크레파스 리워크 3종: 무지개 스펙트럼 트레일(single, 반투명은 코드 setAlpha 처리 전제), 트레일 반짝임 루프(decal_ 접두사=루프 등록), 그리기 연출용 크레파스 본체 재생성. trail/decal은 지면 장식 특성상 outline/alignment 면제.",
+  "jobs": [
+    {
+      "id": "trail_crayon_spectrum",
+      "kind": "single",
+      "cells": 1,
+      "native": 256,
+      "aspect_ratio": "16:9",
+      "qa_skip": ["outline", "alignment"],
+      "outputs": ["trail_crayon_spectrum.png"],
+      "prompt": "Single pixel art game asset: one long thick horizontal crayon stroke drawn from left to right, whose color shifts smoothly through the rainbow spectrum, red at the far left blending gradually through orange, yellow, green, cyan and blue to violet at the far right, with many gradual in-between hues and dithered pixel blending where neighbouring colors meet, absolutely no hard vertical color boundaries and no separate solid color blocks. The stroke has slightly rough waxy crayon edges with tiny pigment speckles, stays roughly the same thickness along its length and tapers to a thin scratchy broken tip at both ends. Just the one stroke and nothing else, no crayon stick, no hands, no character, no drop shadow on the background."
+    },
+    {
+      "id": "decal_crayon_sparkle",
+      "kind": "strip",
+      "cells": 4,
+      "native": 48,
+      "align": "center",
+      "qa_skip": ["outline", "alignment"],
+      "aspect_ratio": "16:9",
+      "outputs": ["decal_crayon_sparkle_strip.png"],
+      "prompt": "Pixel art effect animation sprite strip: exactly 4 frames arranged in a single horizontal row (1x4 grid), 4 equal-width columns, one effect drawing centered in each column, generous empty magenta space between and around the columns. Everything drawn as hard-edged opaque pixel clusters, no soft glow, no blur. A small cluster of three tiny four-pointed star sparkles in white, pale yellow and pale pink that twinkle in place in a seamless loop: (1) the left sparkle bright and large while the other two are tiny dots, (2) the middle sparkle bright while the left one shrinks, (3) the right sparkle bright while the middle one shrinks, (4) all three as small dim dots, close to frame 1 to loop smoothly. Same three sparkle positions in every frame, only their size and brightness change."
+    },
+    {
+      "id": "weapon_crayon_rainbow",
+      "kind": "single",
+      "cells": 1,
+      "native": 56,
+      "aspect_ratio": "1:1",
+      "outputs": ["weapon_crayon_rainbow.png"],
+      "prompt": "Single pixel art in-game weapon sprite: one crayon with a plain ivory-white paper wrapper (completely plain wrapper, no letters) and a rounded waxy tip colored with small rainbow bands of red, yellow, green and blue, lying diagonally pointing to the upper right as if actively drawing. Just the one crayon object and nothing else, no hands, no character, no drop shadow on the background."
+    }
+  ]
+}
