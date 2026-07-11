@@ -216,6 +216,17 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  // 창 리사이즈 시 배경·러시 비네트를 카메라 크기에 맞춰 갱신한다. 익명 함수 대신 클래스
+  // 필드 화살표로 만들어 shutdown()에서 this.scale.off로 정확히 해제할 수 있게 한다(리스너 누수 방지).
+  private handleResize = (gameSize: Phaser.Structs.Size): void => {
+    this.background.setSize(gameSize.width, gameSize.height);
+    // 러시 비네트도 카메라 크기에 맞춰 재배치/스케일 (배경과 동일 규약)
+    if (this.rushVignette) {
+      this.rushVignette.setPosition(gameSize.width / 2, gameSize.height / 2);
+      this.rushVignette.setDisplaySize(gameSize.width, gameSize.height);
+    }
+  };
+
   private createBackground(): void {
     // 바닥: 이음매 없는 512px ground_tile을 카메라 고정 TileSprite로 스크롤 (안개 불필요)
     const tileKey = this.textures.exists(GROUND_TILE_KEY)
@@ -232,15 +243,8 @@ export class GameScene extends Phaser.Scene {
     this.background.setScrollFactor(0); // Fix to camera
     this.background.setDepth(-10);
 
-    // Resize background on window resize
-    this.scale.on('resize', (gameSize: Phaser.Structs.Size) => {
-      this.background.setSize(gameSize.width, gameSize.height);
-      // 러시 비네트도 카메라 크기에 맞춰 재배치/스케일 (배경과 동일 규약)
-      if (this.rushVignette) {
-        this.rushVignette.setPosition(gameSize.width / 2, gameSize.height / 2);
-        this.rushVignette.setDisplaySize(gameSize.width, gameSize.height);
-      }
-    });
+    // Resize background on window resize — 클래스 필드 화살표로 등록해 shutdown에서 해제 가능
+    this.scale.on('resize', this.handleResize);
   }
 
   /** ground_tile 로드 실패 시 안전망: 밋밋한 풀밭 타일 (512px seamless) */
@@ -597,6 +601,13 @@ export class GameScene extends Phaser.Scene {
       this.onMonsterKilled(m);
     }
 
+    // 발사체가 파괴되기(pierce 차감) 전에 무기별 명중 효과(슬로우 등)를 적용하는 훅 —
+    // 별도 배치가 Snowball에서 사용.
+    const onHit = (p as any).onHit as
+      | ((projectile: Phaser.Physics.Arcade.Sprite, monster: Monster) => void)
+      | undefined;
+    if (onHit) onHit(p, m); // 계약 = WeaponBase.createProjectile options.onHit(projectile, monster)
+
     // Handle pierce
     const newPierce = pierce - 1;
     if (newPierce <= 0) {
@@ -663,6 +674,8 @@ export class GameScene extends Phaser.Scene {
   private handleSoundSettingsChanged(data: { bgm: boolean; sfx: boolean }): void {
     this.sfxEnabled = data.sfx;
     this.bgmEnabled = data.bgm;
+    // 결과 화면(게임오버 후)에서 토글하면 브금을 새로 시작하지 않는다 — 모두 정지만.
+    if (this.gameFinished) { this.stopBgm(); this.stopRushBgm(false); return; }
     // 러시 중이면 브금 대상은 러시 브금(일반 브금 아님)
     const inRush = this.rushPhase !== 'idle';
     if (this.bgmEnabled) {
@@ -678,6 +691,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   private resetGame(): void {
+    // 이전 판의 모든 유령 지연 호출(보스 지연 스폰, 무기 장판/슬램 체인)과 잔존 트윈을 일괄
+    // 제거하고 클럭 동결을 해제한다 — 직전 게임오버에서 얼려둔 씬 클럭/트윈이 새 판으로
+    // 새어 들어오지 않게 한다.
+    this.time.paused = false;
+    this.time.removeAllEvents();
+    this.tweens.killAll();
+
     // 이전 판 무기의 자체 관리 리소스 정리 (예: RobotToy가 그룹 밖에서 직접 들고 있는 로봇 스프라이트)
     this.weaponManager?.destroyAll();
 
@@ -753,10 +773,14 @@ export class GameScene extends Phaser.Scene {
     // 게임오버 정지를 30ms 뒤 풀어버리지 않게 한다. resetGame()이 false로 복구.
     this.isPaused = true;
     this.physics.pause();
+    // 결과 화면 뒤에서 유령 지연체인·트윈이 계속 도는 것 방지 (씬 클럭·전역 트윈 동결)
+    this.time.paused = true;
+    this.tweens.pauseAll();
     this.stopBgm();
-    // 러시 중 종료(사망/그만하기/클리어/완주): 러시 브금 정지 + 비네트/배너 트윈 정리
-    this.stopRushBgm(false);
-    this.clearRushVisuals();
+    // 러시 중 종료(사망/그만하기/클리어/완주): 러시 상태 전체 리셋(rushPhase='idle' 포함).
+    // 단순 stopRushBgm+clearRushVisuals면 rushPhase가 남아, 결과 화면에서 사운드 토글 시
+    // 러시 브금이 되살아난다 — resetRushState로 페이즈까지 idle로 되돌린다.
+    this.resetRushState();
     EventBus.emit(GameEvents.GAME_FINISHED, {
       score: this.score,
       level: this.playerLevel,
@@ -769,11 +793,21 @@ export class GameScene extends Phaser.Scene {
   private pauseGame(): void {
     this.isPaused = true;
     this.physics.pause();
+    // 씬 클럭·전역 트윈도 함께 동결한다. physics.pause()만으로는 this.time(지연 호출)과
+    // 트윈이 계속 돌아 퀴즈(일시정지) 중 무기 지연체인·장판 수명·시각 트윈이 실시간으로
+    // 소모된다. UI 흐름 타이머는 wall-clock(setTimeout)으로 분리돼 이 동결의 영향을 안 받는다.
+    this.time.paused = true;
+    this.tweens.pauseAll();
   }
 
   private resumeGame(): void {
+    // 게임오버 후 외부 RESUME 이벤트가 물리를 되살려 유령 플레이가 이어지는 것 방지
+    if (this.gameFinished) return;
     this.isPaused = false;
     this.physics.resume();
+    // 동결 복원 (클럭 재개 + 전역 트윈 재개)
+    this.time.paused = false;
+    this.tweens.resumeAll();
   }
 
   /**
@@ -816,10 +850,9 @@ export class GameScene extends Phaser.Scene {
 
     // 큐에 다음 레벨업이 남아있으면 바로 다음 퀴즈 노출, 아니면 보호 재개
     if (this.levelUpQueue > 0) {
-      // 약간의 지연 후 다음 레벨업 처리
-      this.time.delayedCall(100, () => {
-        this.processNextLevelUp();
-      });
+      // 약간의 지연 후 다음 레벨업 처리. 클럭이 동결(일시정지)된 상태이므로 wall-clock으로
+      // 걸어야 다음 퀴즈가 열린다 (this.time.delayedCall이면 클럭 동결로 영원히 안 열려 소프트락).
+      window.setTimeout(() => this.processNextLevelUp(), 100);
     } else {
       this.resumeWithProtection();
     }
@@ -953,9 +986,8 @@ export class GameScene extends Phaser.Scene {
       this.emitPlayerState();
       // 큐에 남은 레벨업이 있으면 다음 퀴즈, 없으면 보호 재개
       if (this.levelUpQueue > 0) {
-        this.time.delayedCall(600, () => {
-          this.processNextLevelUp();
-        });
+        // 클럭 동결 상태에서 다음 퀴즈를 열어야 하므로 wall-clock (this.time이면 소프트락)
+        window.setTimeout(() => this.processNextLevelUp(), 600);
       } else {
         this.resumeWithProtection();
       }
@@ -983,6 +1015,9 @@ export class GameScene extends Phaser.Scene {
 
     let count = 3;
     const tick = () => {
+      // 게임오버(그만하기/완주/사망) 후에도 wall-clock 콜백이 살아있을 수 있어 가드 —
+      // 카운트다운 텍스트만 정리하고 재개하지 않는다 (물리 부활 방지)
+      if (this.gameFinished) { countdownText.destroy(); return; }
       if (count <= 0) {
         countdownText.destroy();
         this.pushbackMonsters(200);
@@ -991,10 +1026,13 @@ export class GameScene extends Phaser.Scene {
         return;
       }
       countdownText.setText(String(count));
+      // 숫자 팝 연출: 전역 트윈이 일시정지(pauseAll) 중이라 트윈을 쓰면 멈춰버린다 —
+      // wall-clock으로 잠깐 키웠다가 되돌린다.
       countdownText.setScale(1.4);
-      this.tweens.add({ targets: countdownText, scale: 1, duration: 250, ease: 'Back.easeOut' });
+      window.setTimeout(() => { if (countdownText.active) countdownText.setScale(1); }, 150);
       count--;
-      this.time.delayedCall(400, tick);
+      // UI 흐름 타이머는 wall-clock(setTimeout) — 씬 클럭(this.time)이 동결돼도 진행된다.
+      window.setTimeout(tick, 400);
     };
     tick();
   }
@@ -1163,7 +1201,23 @@ export class GameScene extends Phaser.Scene {
     this.monsters.getChildren().forEach((monster) => {
       const m = monster as Monster;
       if (m.active && Phaser.Math.Distance.BetweenPoints(playerPos, new Phaser.Math.Vector2(m.x, m.y)) > cleanupDistance) {
-        m.destroy();
+        // 보스/최종보스는 컬링(destroy)하지 않고 플레이어 주변 스폰 링으로 순간이동시킨다 —
+        // 최종 보스가 컬링되면 finalBossTriggered=true인 채 사라져 재소환이 없고, 클리어가
+        // 영구 불가능해진다. spawnMonster와 동일 공식(카메라 대각선/2 + 100 거리, 랜덤 각).
+        if (m.isBoss || m.isFinalBoss) {
+          const camera = this.cameras.main;
+          const padding = 100;
+          const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+          const minDistance = Math.sqrt(Math.pow(camera.width, 2) + Math.pow(camera.height, 2)) / 2 + padding;
+          const distance = minDistance + Phaser.Math.Between(0, 100);
+          const x = this.player.x + Math.cos(angle) * distance;
+          const y = this.player.y + Math.sin(angle) * distance;
+          const body = m.body as Phaser.Physics.Arcade.Body | undefined;
+          if (body) body.reset(x, y); // 바디+스프라이트 위치 동기 이동
+          else { m.x = x; m.y = y; }
+        } else {
+          m.destroy();
+        }
       }
     });
 
@@ -1198,6 +1252,8 @@ export class GameScene extends Phaser.Scene {
 
     for (let i = 0; i < bossCount; i++) {
       this.time.delayedCall(i * 800, () => {
+        // 지연 스폰 도중 게임 종료/플레이어 소멸 시 유령 보스가 새 판으로 새지 않게 (5번 이중 안전망)
+        if (this.gameFinished || !this.player.active) return;
         const angle = Math.random() * Math.PI * 2;
         const dist = 500;
         const x = this.player.x + Math.cos(angle) * dist;
@@ -1576,6 +1632,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private processNextLevelUp(): void {
+    // 종료(게임오버)·최종보스 처치 후엔 퀴즈를 더 열지 않는다 — 최종보스 처치 700ms 유예
+    // 동안 젬 수집으로 레벨업이 큐잉되면 결과 집계와 충돌하고, 종료 후 퀴즈가 재출현한다.
+    if (this.gameFinished || this.finalBossDefeated) return;
     if (this.levelUpQueue <= 0 || this.pendingLevelUp) return;
 
     this.levelUpQueue--;
@@ -1753,5 +1812,10 @@ export class GameScene extends Phaser.Scene {
     EventBus.off(GameEvents.SOUND_SETTINGS_CHANGED, this.handleSoundSettingsChanged, this);
     EventBus.off(GameEvents.RESUME_WITH_PROTECTION, this.resumeWithProtection, this);
     document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+    // 리사이즈 리스너 해제 (씬 종료 후 잔존 방지)
+    this.scale.off('resize', this.handleResize);
+    // 무기/펫이 등록한 전역 EventBus 리스너 정리 (특히 RobotPet의 PLAYER_DAMAGE 리스너가
+    // 씬 종료 후에도 잔존해 다음 씬으로 새는 누수 차단)
+    this.weaponManager?.destroyAll();
   }
 }
