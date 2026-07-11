@@ -5,6 +5,23 @@ import { TutorialBooklet, TutorialPrompt } from './TutorialBooklet';
 const NICKNAME_KEY = 'sqb:nickname';
 const TUTORIAL_SEEN_KEY = 'sqb:tutorialSeen';
 
+/** 쿠키/사이트데이터 차단 브라우저 등에서 localStorage 접근이 예외를 던져도 시작 화면이 크래시하지 않도록 보호 */
+function safeGetItem(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSetItem(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // 저장 실패는 무시(다음 세션에 값이 유지되지 않을 뿐)
+  }
+}
+
 interface StartScreenProps {
   onStart: (nickname: string) => void;
   onOpenLeaderboard: () => void;
@@ -18,13 +35,13 @@ export function StartScreen({ onStart, onOpenLeaderboard, onBack }: StartScreenP
   const [showBooklet, setShowBooklet] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem(NICKNAME_KEY);
+    const saved = safeGetItem(NICKNAME_KEY);
     if (saved) setNickname(saved);
-    if (!localStorage.getItem(TUTORIAL_SEEN_KEY)) setShowPrompt(true);
+    if (!safeGetItem(TUTORIAL_SEEN_KEY)) setShowPrompt(true);
   }, []);
 
   const answerPrompt = (openBooklet: boolean) => {
-    localStorage.setItem(TUTORIAL_SEEN_KEY, '1');
+    safeSetItem(TUTORIAL_SEEN_KEY, '1');
     setShowPrompt(false);
     if (openBooklet) setShowBooklet(true);
   };
@@ -34,7 +51,7 @@ export function StartScreen({ onStart, onOpenLeaderboard, onBack }: StartScreenP
 
   const handleStart = () => {
     if (!canStart) return;
-    localStorage.setItem(NICKNAME_KEY, trimmed);
+    safeSetItem(NICKNAME_KEY, trimmed);
     onStart(trimmed);
   };
 

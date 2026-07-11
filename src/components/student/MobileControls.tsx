@@ -8,6 +8,7 @@ export function MobileControls({ onMove }: MobileControlsProps) {
   const joystickRef = useRef<HTMLDivElement>(null);
   const knobRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
+  const activeTouchId = useRef<number | null>(null);
   const centerPos = useRef({ x: 0, y: 0 });
 
   const maxDistance = 40;
@@ -45,6 +46,7 @@ export function MobileControls({ onMove }: MobileControlsProps) {
 
   const handleEnd = useCallback(() => {
     isDragging.current = false;
+    activeTouchId.current = null;
     if (knobRef.current) {
       knobRef.current.style.transform = 'translate(0px, 0px)';
     }
@@ -53,35 +55,64 @@ export function MobileControls({ onMove }: MobileControlsProps) {
 
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
+      // 이미 다른 손가락이 조이스틱을 조작 중이면 새 터치는 무시(멀티터치 뺏김 방지)
+      if (isDragging.current) return;
       if (joystickRef.current?.contains(e.target as Node)) {
         e.preventDefault();
-        const touch = e.touches[0];
+        const touch = e.changedTouches[0];
+        activeTouchId.current = touch.identifier;
         handleStart(touch.clientX, touch.clientY);
       }
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (isDragging.current) {
-        e.preventDefault();
-        const touch = e.touches[0];
-        handleMove(touch.clientX, touch.clientY);
+      if (!isDragging.current || activeTouchId.current === null) return;
+      // 조이스틱을 시작한 손가락(identifier)만 추적 — 다른 손가락의 이동은 무시
+      let touch: Touch | undefined;
+      for (let i = 0; i < e.touches.length; i++) {
+        if (e.touches[i].identifier === activeTouchId.current) {
+          touch = e.touches[i];
+          break;
+        }
       }
+      if (!touch) return;
+      e.preventDefault();
+      handleMove(touch.clientX, touch.clientY);
     };
 
-    const handleTouchEnd = () => {
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (activeTouchId.current === null) return;
+      // 조이스틱을 시작한 손가락이 뗀 경우만 종료 처리 — 다른 손가락의 end는 무시
+      let ended = false;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === activeTouchId.current) {
+          ended = true;
+          break;
+        }
+      }
+      if (!ended) return;
       handleEnd();
     };
 
     document.addEventListener('touchstart', handleTouchStart, { passive: false });
     document.addEventListener('touchmove', handleTouchMove, { passive: false });
     document.addEventListener('touchend', handleTouchEnd);
+    document.addEventListener('touchcancel', handleTouchEnd);
 
     return () => {
       document.removeEventListener('touchstart', handleTouchStart);
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('touchcancel', handleTouchEnd);
+      // 언마운트 시(레벨업/퀴즈 오버레이 등) 드래그 중이었다면 정지 입력을 보내
+      // 재개 후 마지막 방향으로 자동 질주하는 것을 방지
+      if (isDragging.current) {
+        isDragging.current = false;
+        activeTouchId.current = null;
+        onMove(0, 0);
+      }
     };
-  }, [handleStart, handleMove, handleEnd]);
+  }, [handleStart, handleMove, handleEnd, onMove]);
 
   return (
     <div className="absolute bottom-8 left-8 pointer-events-auto">

@@ -20,9 +20,19 @@ export function QuizOverlay({ quiz, timeLimit, streak = 0, onAnswer }: QuizOverl
   const shownAtRef = useRef<number>(performance.now());
   // 정답 잠금(선택) 순간에 측정한 소요 시간(초) — 오답 [확인]까지의 해설 대기시간은 제외
   const lockedTimeRef = useRef<number>(0);
+  // 정답 시 1.2초 후 onAnswer를 호출하는 setTimeout id — 언마운트 시 정리해 소멸 후 콜백 실행을 방지
+  const advanceTimeoutRef = useRef<number | null>(null);
   useEffect(() => {
     shownAtRef.current = performance.now();
   }, [quiz]);
+
+  useEffect(() => {
+    return () => {
+      if (advanceTimeoutRef.current !== null) {
+        clearTimeout(advanceTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // 문제 표시~지금까지의 경과 시간(초). [0, timeLimit]로 클램프
   const elapsedSeconds = useCallback(() => {
@@ -46,7 +56,7 @@ export function QuizOverlay({ quiz, timeLimit, streak = 0, onAnswer }: QuizOverl
     setShowResult(true);
 
     if (index === quiz.correctIndex) {
-      setTimeout(() => onAnswer(index, true, timeSpent), 1200);
+      advanceTimeoutRef.current = window.setTimeout(() => onAnswer(index, true, timeSpent), 1200);
     }
   }, [isAnswered, quiz.correctIndex, onAnswer, elapsedSeconds]);
 

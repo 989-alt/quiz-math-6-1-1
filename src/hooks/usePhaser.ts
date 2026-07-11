@@ -53,6 +53,11 @@ export function usePhaser(containerId: string, options?: { isSolo: boolean; play
   const isSolo = options?.isSolo ?? false;
   const playerName = options?.playerName ?? 'Player';
 
+  // onQuit이 렌더마다 새 함수로 바뀌어도 stale closure가 되지 않도록 매 렌더 갱신
+  useEffect(() => {
+    onQuitRef.current = options?.onQuit;
+  }, [options?.onQuit]);
+
   useEffect(() => {
     // Prevent multiple game instances
     if (gameRef.current) return;

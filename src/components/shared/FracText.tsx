@@ -3,9 +3,11 @@ import { Fragment } from 'react';
 /**
  * 문제은행 분수 마크업 렌더러.
  * "{a/b}" → 세로 분수, "{w r/b}" → 대분수(자연수 + 세로 분수), 나머지는 일반 텍스트.
+ * 분자/분모(a, b, r)는 숫자뿐 아니라 "(4÷2)", "▲" 같은 식/기호도 허용한다
+ * (중괄호·슬래시만 제외) — 문제은행 explanation 필드의 식 분수 표기 대응.
  */
 
-const MARKUP_RE = /\{(\d+) (\d+)\/(\d+)\}|\{(\d+)\/(\d+)\}/g;
+const MARKUP_RE = /\{(\d+) ([^{}/]+)\/([^{}/]+)\}|\{([^{}/]+)\/([^{}/]+)\}/g;
 
 function Frac({ num, den }: { num: string; den: string }) {
   return (

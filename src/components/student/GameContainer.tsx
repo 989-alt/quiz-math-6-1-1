@@ -61,10 +61,21 @@ export function GameContainer({ nickname, onExit, onShowLeaderboard }: GameConta
   }, []);
 
   useEffect(() => {
+    // 주 포인터가 터치인 기기에서만 조이스틱 표시 — 터치스크린 노트북/키보드 유저는 제외
+    const coarsePointerQuery = window.matchMedia?.('(pointer: coarse)');
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window);
+      if (coarsePointerQuery) {
+        setIsMobile(coarsePointerQuery.matches);
+      } else {
+        // matchMedia 미지원 시 기존 판정으로 폴백
+        setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window);
+      }
     };
     checkMobile();
+    if (coarsePointerQuery) {
+      coarsePointerQuery.addEventListener('change', checkMobile);
+      return () => coarsePointerQuery.removeEventListener('change', checkMobile);
+    }
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);

@@ -11,22 +11,41 @@ interface TimerProps {
 export function Timer({ duration, onComplete, isRunning, size = 'md', showProgress = true }: TimerProps) {
   const [timeLeft, setTimeLeft] = useState(duration);
   const completedRef = useRef(false);
+  // 시작 시각(performance.now()) 기준으로 잔여시간을 계산 — tick 횟수 누적 방식은 인터벌 지연/스로틀 시
+  // 실제 경과시간과 어긋나므로, 매 tick마다 실제 경과시간을 다시 측정해 잔여시간을 산출한다.
+  const startRef = useRef(performance.now());
+  // 탭이 hidden 상태였던 누적 시간(ms) — "탭 비활성 중엔 시간 소모 정지" 동작 보존용
+  const pausedMsRef = useRef(0);
+  const hiddenSinceRef = useRef<number | null>(document.hidden ? performance.now() : null);
 
   useEffect(() => {
     setTimeLeft(duration);
     completedRef.current = false;
+    startRef.current = performance.now();
+    pausedMsRef.current = 0;
+    hiddenSinceRef.current = document.hidden ? performance.now() : null;
   }, [duration]);
 
   useEffect(() => {
     if (!isRunning || completedRef.current) return;
 
     const interval = setInterval(() => {
-      if (document.hidden) return; // 탭 비활성 중엔 시간 소모 정지 — 복귀 시 남은 값부터 재개
-      setTimeLeft((prev) => Math.max(0, prev - 0.1));
+      const now = performance.now();
+      if (document.hidden) {
+        // 탭 비활성 중엔 시간 소모 정지 — 복귀 시 남은 값부터 재개
+        if (hiddenSinceRef.current === null) hiddenSinceRef.current = now;
+        return;
+      }
+      if (hiddenSinceRef.current !== null) {
+        pausedMsRef.current += now - hiddenSinceRef.current;
+        hiddenSinceRef.current = null;
+      }
+      const elapsedSeconds = (now - startRef.current - pausedMsRef.current) / 1000;
+      setTimeLeft(Math.max(0, duration - elapsedSeconds));
     }, 100);
 
     return () => clearInterval(interval);
-  }, [isRunning]);
+  }, [isRunning, duration]);
 
   // onComplete는 state updater 밖(effect)에서 호출 — 부모 setState during render 방지
   useEffect(() => {
