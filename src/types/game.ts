@@ -54,7 +54,7 @@ export interface GameConfig {
 }
 
 export interface UpgradeOption {
-  type: 'weapon' | 'passive' | 'bonus';
+  type: 'weapon' | 'passive' | 'bonus' | 'pet';
   id: string;
   name: string;
   description: string;

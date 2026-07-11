@@ -356,7 +356,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
-  takeDamage(amount: number): void {
+  // source = 가해 몬스터 좌표 (옵션 — 로봇 펫 GUARD_BURST 복수 조준용, 미지정 호출과 하위호환)
+  takeDamage(amount: number, source?: { x: number; y: number }): void {
     if (this.isInvincible) return;
 
     const finalDamage = Math.max(1, amount - this.armor);
@@ -380,7 +381,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.setAlpha(1);
     });
 
-    EventBus.emit(GameEvents.PLAYER_DAMAGE, { hp: this.currentHp, maxHp: this.maxHp, damage: finalDamage });
+    EventBus.emit(GameEvents.PLAYER_DAMAGE, { hp: this.currentHp, maxHp: this.maxHp, damage: finalDamage, source });
 
     if (this.currentHp <= 0) {
       this.die();

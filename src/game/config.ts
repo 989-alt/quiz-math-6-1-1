@@ -47,6 +47,7 @@ export const GAME_CONFIG = {
   game: {
     maxLevel: 50,
     maxWeapons: 6,
+    maxPets: 2,
     maxPassives: 6,
     upgradeChoices: 3,
   },

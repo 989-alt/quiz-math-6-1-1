@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { Player } from '../entities/Player';
 import { Monster, MonsterTypes, getMonsterConfigForWave, getMonsterConfigForRotation, FULL_ROTATION_LENGTH, SPAWNS_PER_TYPE, ROTATION_LENGTH, getBossConfigForWave, isBossWave } from '../entities/Monster';
 import { XPGem, MagnetGem } from '../entities/XPGem';
-import { WeaponManager, WeaponInfoList, BonusInfoList } from '../weapons/WeaponManager';
+import { WeaponManager, WeaponInfoList, PetInfoList, BonusInfoList } from '../weapons/WeaponManager';
 import { PassiveInfoList } from '../weapons/PassiveManager';
 import { EventBus, GameEvents } from '../utils/EventBus';
 import { GAME_CONFIG } from '../config';
@@ -537,7 +537,8 @@ export class GameScene extends Phaser.Scene {
     if (!m.active || !this.player.active) return;
 
     // 몬스터 접촉 시 플레이어 피격 (Player.takeDamage 내부에서 무적시간 처리)
-    this.player.takeDamage(m.damage);
+    // source 좌표는 로봇 펫 GUARD_BURST의 복수 조준용 (PLAYER_DAMAGE payload 경유)
+    this.player.takeDamage(m.damage, { x: m.x, y: m.y });
     this.emitPlayerState();
   }
 
@@ -804,6 +805,8 @@ export class GameScene extends Phaser.Scene {
       this.weaponManager.addWeapon(data.id as any);
     } else if (data.type === 'passive') {
       this.weaponManager.addPassive(data.id as any);
+    } else if (data.type === 'pet') {
+      this.weaponManager.addPet(data.id as any);
     } else if (data.type === 'bonus') {
       this.applyBonusCard(data.id);
     }
@@ -1605,6 +1608,30 @@ export class GameScene extends Phaser.Scene {
         maxLevel: 0,
       };
     }
+    if (type === 'pet') {
+      const pet = this.weaponManager.getPet(id as any);
+      if (pet) {
+        const info = pet.getInfo();
+        return {
+          name: info.name,
+          nameKo: info.nameKo,
+          description: info.description,
+          descriptionKo: info.descriptionKo,
+          currentLevel: info.level,
+          maxLevel: info.maxLevel,
+        };
+      }
+      // New pet
+      const petInfo = PetInfoList.find((p) => p.id === id);
+      return {
+        name: petInfo?.name || id,
+        nameKo: petInfo?.nameKo || id,
+        description: petInfo?.description || '',
+        descriptionKo: petInfo?.descriptionKo || '',
+        currentLevel: 0,
+        maxLevel: petInfo?.maxLevel || 8,
+      };
+    }
     if (type === 'weapon') {
       const weapon = this.weaponManager.getWeapon(id as any);
       if (weapon) {
@@ -1693,6 +1720,11 @@ export class GameScene extends Phaser.Scene {
 
   getMonsters(): Phaser.Physics.Arcade.Group {
     return this.monsters;
+  }
+
+  // 햄스터 펫의 젬 배달(FETCH) 후보 탐색용
+  getXpGems(): Phaser.Physics.Arcade.Group {
+    return this.xpGems;
   }
 
   getPlayer(): Player {

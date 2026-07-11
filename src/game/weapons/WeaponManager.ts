@@ -1,6 +1,7 @@
 import type { GameScene } from '../scenes/GameScene';
 import type { Player } from '../entities/Player';
 import { WeaponBase } from './WeaponBase';
+import { GAME_CONFIG } from '../config';
 
 // Import all weapons - Child-friendly theme (학용품/자연)
 import { Banana } from './weapons/Banana';
@@ -16,12 +17,15 @@ import { Crayon } from './weapons/Crayon';
 import { LunchBox } from './weapons/LunchBox';
 import { Bubble } from './weapons/Bubble';
 import { WaterBalloon } from './weapons/WaterBalloon';
-import { Hamster } from './weapons/Hamster';
 import { Butterfly } from './weapons/Butterfly';
-import { RobotToy } from './weapons/RobotToy';
 import { Rainbow } from './weapons/Rainbow';
 import { Star } from './weapons/Star';
 import { MagnifyingGlass } from './weapons/MagnifyingGlass';
+
+// 펫 (전용 슬롯 — 무기 6슬롯/클리어 조건과 완전 분리)
+import { PetBase } from './pets/PetBase';
+import { HamsterPet } from './pets/HamsterPet';
+import { RobotPet } from './pets/RobotPet';
 
 import { PassiveManager, PassiveInfoList } from './PassiveManager';
 import type { PassiveId } from './PassiveManager';
@@ -29,13 +33,15 @@ import type { PassiveId } from './PassiveManager';
 export type WeaponId =
   | 'banana' | 'acorn' | 'pencil' | 'paper_plane' | 'marble'
   | 'snowball' | 'leaf' | 'ruler' | 'eraser' | 'crayon'
-  | 'lunch_box' | 'bubble' | 'water_balloon' | 'hamster' | 'butterfly'
-  | 'robot_toy' | 'rainbow' | 'star' | 'magnifying_glass';
+  | 'lunch_box' | 'bubble' | 'water_balloon' | 'butterfly'
+  | 'rainbow' | 'star' | 'magnifying_glass';
 
-export type WeaponCategory = 'ranged' | 'melee' | 'companion' | 'special';
+export type PetId = 'hamster' | 'robot_toy';
+
+export type WeaponCategory = 'ranged' | 'melee' | 'pet' | 'special';
 
 export interface WeaponInfo {
-  id: WeaponId;
+  id: WeaponId | PetId;
   name: string;
   nameKo: string;
   description: string;
@@ -46,7 +52,7 @@ export interface WeaponInfo {
 
 /** 레벨업 선택지 항목. bonus = 무기/패시브가 모두 만렙·만슬롯일 때의 대체 보상 */
 export interface UpgradeChoice {
-  type: 'weapon' | 'passive' | 'bonus';
+  type: 'weapon' | 'passive' | 'bonus' | 'pet';
   id: string;
   isNew: boolean;
   /** 이번 선택이 주는 효과 설명 (카드 UI 보조 라인 표기용) */
@@ -67,12 +73,15 @@ const WeaponRegistry: Record<WeaponId, new (scene: GameScene, player: Player) =>
   lunch_box: LunchBox,
   bubble: Bubble,
   water_balloon: WaterBalloon,
-  hamster: Hamster,
   butterfly: Butterfly,
-  robot_toy: RobotToy,
   rainbow: Rainbow,
   star: Star,
   magnifying_glass: MagnifyingGlass,
+};
+
+const PetRegistry: Record<PetId, new (scene: GameScene, player: Player) => PetBase> = {
+  hamster: HamsterPet,
+  robot_toy: RobotPet,
 };
 
 export const WeaponInfoList: WeaponInfo[] = [
@@ -85,20 +94,23 @@ export const WeaponInfoList: WeaponInfo[] = [
   { id: 'snowball', name: 'Snowball', nameKo: '눈덩이', description: 'Slows enemies', descriptionKo: '적을 느리게 만드는 눈덩이', maxLevel: 8, category: 'ranged' },
   { id: 'leaf', name: 'Leaf', nameKo: '나뭇잎', description: 'Drifting leaf projectile', descriptionKo: '바람에 흔들리는 나뭇잎', maxLevel: 8, category: 'ranged' },
   { id: 'ruler', name: 'Ruler', nameKo: '자', description: 'Giant ruler slams down for area damage', descriptionKo: '거대한 자로 내려쳐 넓은 범위를 강타', maxLevel: 8, category: 'ranged' },
+  { id: 'butterfly', name: 'Butterfly', nameKo: '나비', description: 'Multiple weak homing butterflies', descriptionKo: '여러 마리가 날아가는 나비 떼', maxLevel: 8, category: 'ranged' },
   // 근접/범위 무기 (Melee/Area)
   { id: 'eraser', name: 'Eraser', nameKo: '지우개', description: 'Erases enemies in area', descriptionKo: '범위 내 적을 지우는 지우개', maxLevel: 8, category: 'melee' },
   { id: 'crayon', name: 'Crayon', nameKo: '크레파스', description: 'Draws rainbow damage', descriptionKo: '무지개 선을 그리는 크레파스', maxLevel: 8, category: 'melee' },
   { id: 'lunch_box', name: 'Lunch Box', nameKo: '도시락', description: 'Explosive area damage', descriptionKo: '폭발하는 도시락', maxLevel: 8, category: 'melee' },
   { id: 'bubble', name: 'Bubble', nameKo: '비눗방울', description: 'Orbiting bubbles', descriptionKo: '주위를 도는 비눗방울', maxLevel: 8, category: 'melee' },
   { id: 'water_balloon', name: 'Water Balloon', nameKo: '물풍선', description: 'Splash damage on impact', descriptionKo: '터지면 튀는 물풍선', maxLevel: 8, category: 'melee' },
-  // 보조/동료 무기 (Companion)
-  { id: 'hamster', name: 'Hamster', nameKo: '햄스터', description: 'Spinning hamster friend', descriptionKo: '회전하는 햄스터 친구', maxLevel: 8, category: 'companion' },
-  { id: 'butterfly', name: 'Butterfly', nameKo: '나비', description: 'Multiple weak homing butterflies', descriptionKo: '여러 마리가 날아가는 나비 떼', maxLevel: 8, category: 'companion' },
-  { id: 'robot_toy', name: 'Robot Toy', nameKo: '로봇 장난감', description: 'Auto-attacking robot', descriptionKo: '자동으로 공격하는 로봇', maxLevel: 8, category: 'companion' },
   // 특수 무기 (Special)
   { id: 'rainbow', name: 'Rainbow', nameKo: '무지개', description: 'Rainbow wave attack', descriptionKo: '무지개 파동 공격', maxLevel: 8, category: 'special' },
   { id: 'star', name: 'Star', nameKo: '별', description: 'Random lightning strikes', descriptionKo: '무작위 별똥별 공격', maxLevel: 8, category: 'special' },
   { id: 'magnifying_glass', name: 'Magnifying Glass', nameKo: '돋보기', description: 'Focus sunlight to burn enemies', descriptionKo: '햇빛을 모아 적을 태우는 공격', maxLevel: 8, category: 'special' },
+];
+
+/** 펫 목록 (전용 슬롯 maxPets=2 — 무기 로스터·클리어 조건과 분리) */
+export const PetInfoList: WeaponInfo[] = [
+  { id: 'hamster', name: 'Hamster', nameKo: '햄스터', description: 'Charges at enemies and fetches gems', descriptionKo: '적에게 몸통 돌진! 떨어진 수정도 물어다 줘요', maxLevel: 8, category: 'pet' },
+  { id: 'robot_toy', name: 'Robot Toy', nameKo: '로봇 장난감', description: 'Guard turret that avenges the player', descriptionKo: '멈춰 서서 조준 사격! 내가 맞으면 바로 복수해요', maxLevel: 8, category: 'pet' },
 ];
 
 /** 대체 보상 카드 (설계 §5.3 — 제안할 강화/신규가 없을 때) */
@@ -112,8 +124,12 @@ export class WeaponManager {
   private scene: GameScene;
   private player: Player;
   private weapons: Map<WeaponId, WeaponBase> = new Map();
+  // 펫은 별도 Map — getWeaponCount()/getActiveWeapons()가 weapons Map만 순회하므로
+  // 클리어 조건(checkWeaponCompletion)에 어떤 영향도 주지 않는다 (설계 불변식)
+  private pets: Map<PetId, PetBase> = new Map();
   private passiveManager: PassiveManager;
   private maxWeapons: number = 6;
+  private maxPets: number = GAME_CONFIG.game.maxPets;
 
   constructor(scene: GameScene, player: Player) {
     this.scene = scene;
@@ -125,11 +141,13 @@ export class WeaponManager {
     this.weapons.forEach((weapon) => {
       weapon.update(delta);
     });
+    this.pets.forEach((p) => p.update(delta));
   }
 
-  // 게임 리셋 시 모든 무기의 자체 리소스 정리 훅 호출
+  // 게임 리셋 시 모든 무기/펫의 자체 리소스 정리 훅 호출
   destroyAll(): void {
     this.weapons.forEach((weapon) => weapon.destroy());
+    this.pets.forEach((p) => p.destroy());
   }
 
   addWeapon(id: WeaponId): boolean {
@@ -178,6 +196,53 @@ export class WeaponManager {
     return Array.from(this.weapons.values());
   }
 
+  // Pet management (무기와 대칭 — 단, 슬롯/클리어 조건은 완전 독립)
+  addPet(id: PetId): boolean {
+    if (this.pets.has(id)) {
+      return this.upgradePet(id);
+    }
+
+    if (this.pets.size >= this.maxPets) {
+      return false;
+    }
+
+    const PetClass = PetRegistry[id];
+    if (!PetClass) {
+      console.warn(`Pet ${id} not found in registry`);
+      return false;
+    }
+
+    const pet = new PetClass(this.scene, this.player);
+    this.pets.set(id, pet);
+    return true;
+  }
+
+  upgradePet(id: PetId): boolean {
+    const pet = this.pets.get(id);
+    if (!pet) return false;
+
+    if (pet.isMaxLevel()) return false;
+
+    pet.upgrade();
+    return true;
+  }
+
+  hasPet(id: PetId): boolean {
+    return this.pets.has(id);
+  }
+
+  getPet(id: PetId): PetBase | undefined {
+    return this.pets.get(id);
+  }
+
+  getPetCount(): number {
+    return this.pets.size;
+  }
+
+  getActivePets(): PetBase[] {
+    return Array.from(this.pets.values());
+  }
+
   // Passive management
   addPassive(id: PassiveId): boolean {
     return this.passiveManager.addPassive(id);
@@ -221,19 +286,37 @@ export class WeaponManager {
       if (!weapon.isMaxLevel())
         owned.push({ type: 'weapon', id, isNew: false, effectKo: weapon.getNextUpgradeDescKo() ?? '' });
     });
+    this.pets.forEach((pet, id) => {
+      if (!pet.isMaxLevel())
+        owned.push({ type: 'pet', id, isNew: false, effectKo: pet.getNextUpgradeDescKo() ?? '' });
+    });
     this.passiveManager.getActivePassives().forEach(({ id, level, maxLevel }) => {
       if (level < maxLevel) owned.push({ type: 'passive', id, isNew: false, effectKo: passiveEffectKo(id) });
     });
 
     const newWeapons: UpgradeChoice[] =
       this.weapons.size < this.maxWeapons
-        ? WeaponInfoList.filter((w) => !this.weapons.has(w.id)).map((w) => ({
+        ? WeaponInfoList.filter((w) => !this.weapons.has(w.id as WeaponId)).map((w) => ({
             type: 'weapon' as const,
             id: w.id,
             isNew: true,
             effectKo: '새 무기 획득!',
           }))
         : [];
+
+    // 신규 펫은 무기 슬롯 게이트(weapons.size < maxWeapons)와 독립 — 무기 6슬롯이
+    // 만석이어도 펫 슬롯이 남아있으면 계속 제안된다 (클리어 여정과 펫 수집의 분리)
+    const newPets: UpgradeChoice[] =
+      this.pets.size < this.maxPets
+        ? PetInfoList.filter((p) => !this.pets.has(p.id as PetId)).map((p) => ({
+            type: 'pet' as const,
+            id: p.id,
+            isNew: true,
+            effectKo: '새 친구 획득!',
+          }))
+        : [];
+
+    const newAcquisitions: UpgradeChoice[] = [...newWeapons, ...newPets];
 
     const newPassives: UpgradeChoice[] =
       this.passiveManager.getPassiveCount() < this.passiveManager.getMaxPassives()
@@ -246,12 +329,12 @@ export class WeaponManager {
         : [];
 
     this.shuffleArray(owned);
-    this.shuffleArray(newWeapons);
+    this.shuffleArray(newAcquisitions);
     this.shuffleArray(newPassives);
 
     const pools = [
       { list: owned, weight: 55 },
-      { list: newWeapons, weight: 30 * (1 + luck) },
+      { list: newAcquisitions, weight: 30 * (1 + luck) },
       { list: newPassives, weight: 15 * (1 + luck) },
     ];
 
