@@ -18,7 +18,7 @@ export class Acorn extends WeaponBase {
       area: 1,
       speed: 350,
       duration: 3000,
-      amount: 2,
+      amount: 1,
       pierce: 3,
       knockback: 0,
     };
@@ -92,6 +92,13 @@ export class Acorn extends WeaponBase {
         ease: 'Quad.easeOut',
       });
     };
+
+    // 맵 장애물(바위/그루터기 등)에 닿으면 반사: body가 setBounce(1,1)이라 물리가 자동 처리, 콜백은 연출만
+    const obstacleCollider = this.scene.physics.add.collider(acorn, this.scene.getObstacles(), () => {
+      bounceCount++;
+      squash();
+    });
+    acorn.once('destroy', () => obstacleCollider.destroy());
 
     // Bounce off screen edges
     const checkBounds = () => {

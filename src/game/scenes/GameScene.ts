@@ -1727,6 +1727,11 @@ export class GameScene extends Phaser.Scene {
     return this.xpGems;
   }
 
+  // 도토리 반사용
+  getObstacles(): Phaser.Physics.Arcade.StaticGroup {
+    return this.obstacles;
+  }
+
   getPlayer(): Player {
     return this.player;
   }

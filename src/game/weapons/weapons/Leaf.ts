@@ -18,7 +18,7 @@ export class Leaf extends WeaponBase {
       area: 1,
       speed: 200,
       duration: 3000,
-      amount: 3,
+      amount: 1,
       pierce: 3,
       knockback: 0,
     };
