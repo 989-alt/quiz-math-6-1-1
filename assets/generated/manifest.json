@@ -1,5 +1,5 @@
 {
- "batch": "weapon-overhaul",
+ "batch": "pet-system",
  "batches": [
   "3a",
   "3b-hero",
@@ -20,9 +20,10 @@
   "3d-gemtiers",
   "crayon-rework",
   "ruler-slam",
-  "weapon-overhaul"
+  "weapon-overhaul",
+  "pet-system"
  ],
- "generated_at": "2026-07-10T10:47:15+00:00",
+ "generated_at": "2026-07-10T15:40:17+00:00",
  "style_anchors": [
   "B1_pixel_keyvisual.png",
   "B2_pixel_lineup.png"
@@ -1764,6 +1765,78 @@
    "frames": 1,
    "frame_w": 54,
    "frame_h": 452,
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "pet_hamster_walk",
+   "file": "pet_hamster_walk_strip.png",
+   "kind": "strip",
+   "native": 44,
+   "frames": 4,
+   "frame_w": 48,
+   "frame_h": 36,
+   "baseline_y": 34,
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "pet_robot_walk",
+   "file": "pet_robot_walk_strip.png",
+   "kind": "strip",
+   "native": 48,
+   "frames": 4,
+   "frame_w": 39,
+   "frame_h": 52,
+   "baseline_y": 50,
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "status_emote_alert",
+   "group": "status_emote_alert",
+   "file": "status_emote_alert.png",
+   "kind": "single",
+   "native": 28,
+   "frames": 1,
+   "frame_w": 32,
+   "frame_h": 32,
+   "qa_skip": [
+    "outline",
+    "alignment"
+   ],
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "status_emote_heart",
+   "group": "status_emote_heart",
+   "file": "status_emote_heart.png",
+   "kind": "single",
+   "native": 28,
+   "frames": 1,
+   "frame_w": 32,
+   "frame_h": 31,
+   "qa_skip": [
+    "outline",
+    "alignment"
+   ],
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "status_emote_sleep",
+   "group": "status_emote_sleep",
+   "file": "status_emote_sleep.png",
+   "kind": "single",
+   "native": 28,
+   "frames": 1,
+   "frame_w": 32,
+   "frame_h": 28,
+   "qa_skip": [
+    "outline",
+    "alignment"
+   ],
    "attempts": 1,
    "qa": "pass"
   }
