@@ -5,7 +5,6 @@ import {
   ensureAnonymousAuth,
   fetchMyBest,
   fetchTopScores,
-  isFirebaseConfigured,
   type ScoreEntryWithMeta,
 } from '../../services/firebase';
 
@@ -29,23 +28,24 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
   const [offline, setOffline] = useState(false);
 
   useEffect(() => {
-    if (!isFirebaseConfigured()) {
-      setErrorMsg('Firebase 환경변수가 설정되지 않았습니다. .env.local을 확인해주세요.');
-      setScores([]);
-      setMyBest(null);
-      return;
-    }
-
+    // Firebase 미설정이어도 fetchTopScores/fetchMyBest가 내부적으로 localStorage 폴백을
+    // 처리하므로, 여기서 조기 반환하지 않고 그대로 진행해 오프라인 기록을 보여준다.
     let cancelled = false;
     setLoading(true);
     setErrorMsg(null);
 
     (async () => {
+      // 인증 실패는 원격 랭킹 조회 자체를 막는 사유가 아니다 — fetchTopScores/fetchMyBest는
+      // 각자 내부에서 오프라인(localStorage) 폴백을 처리하므로, 인증 실패와 별개로 계속 진행한다.
       try {
         const user = await ensureAnonymousAuth();
-        if (cancelled) return;
-        setMyUid(user.uid);
+        if (!cancelled) setMyUid(user.uid);
+      } catch (err) {
+        console.error('[LeaderboardView] 인증 실패, 오프라인 모드로 계속 진행:', err);
+      }
+      if (cancelled) return;
 
+      try {
         const [top, mine] = await Promise.all([fetchTopScores(unitId, 100), fetchMyBest(unitId)]);
         if (cancelled) return;
         setScores(dedupeByNicknameBest(top.scores));
@@ -54,6 +54,7 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
       } catch (err) {
         if (cancelled) return;
         const msg = err instanceof Error ? err.message : '랭킹을 불러오지 못했습니다.';
+        console.error('[LeaderboardView] 랭킹 조회 실패:', err);
         setErrorMsg(msg);
         setScores([]);
         setMyBest(null);
@@ -69,7 +70,13 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
 
   const myRank = useMemo(() => {
     if (!myBest) return null;
-    const idx = scores.findIndex((s) => s.docId === myBest.docId);
+    let idx = scores.findIndex((s) => s.docId === myBest.docId);
+    if (idx < 0) {
+      // docId가 어긋나는 경우(로컬↔원격 소스 불일치 등) 닉네임+점수 일치로 폴백한다.
+      idx = scores.findIndex(
+        (s) => s.nickname === myBest.nickname && s.weightedScore === myBest.weightedScore
+      );
+    }
     return idx >= 0 ? idx + 1 : null;
   }, [scores, myBest]);
 

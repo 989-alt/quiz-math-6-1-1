@@ -5,11 +5,22 @@ service cloud.firestore {
       allow read: if true;
 
       allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly([
+          'nickname', 'unitId', 'grade', 'semester', 'score',
+          'survivalTime', 'level', 'kills', 'weightedScore',
+          'authUid', 'createdAt'
+        ])
         && request.resource.data.nickname is string
         && request.resource.data.nickname.size() > 0
         && request.resource.data.nickname.size() <= 12
         && request.resource.data.unitId is string
         && request.resource.data.unitId == unitId
+        && request.resource.data.grade is number
+        && request.resource.data.grade >= 5
+        && request.resource.data.grade <= 6
+        && request.resource.data.semester is number
+        && request.resource.data.semester >= 1
+        && request.resource.data.semester <= 2
         && request.resource.data.score is number
         && request.resource.data.score >= 0
         && request.resource.data.score <= 1000000
@@ -24,7 +35,9 @@ service cloud.firestore {
         && request.resource.data.kills <= 1000000
         && request.resource.data.weightedScore is number
         && request.resource.data.weightedScore >= 0
-        && request.resource.data.authUid == request.auth.uid;
+        && request.resource.data.weightedScore <= 1000000
+        && request.resource.data.authUid == request.auth.uid
+        && request.resource.data.createdAt == request.time;
 
       allow update, delete: if false;
     }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { UNIT, weightedScore } from '../../data/unit';
-import { isFirebaseConfigured, submitScore } from '../../services/firebase';
+import { retrySubmitScore, submitScore, type ScoreEntry } from '../../services/firebase';
 
 interface PostGameOverlayProps {
   nickname: string;
@@ -10,7 +10,8 @@ interface PostGameOverlayProps {
   onShowLeaderboard: () => void;
 }
 
-type SubmitState = 'idle' | 'submitting' | 'done' | 'error' | 'skipped';
+// offline: 로컬에는 저장됐지만 원격 등록은 안 된 상태(오프라인/타임아웃/Firebase 미설정 공통)
+type SubmitState = 'idle' | 'submitting' | 'done' | 'offline' | 'error';
 
 export function PostGameOverlay({
   nickname,
@@ -23,29 +24,34 @@ export function PostGameOverlay({
   const w = weightedScore(finish.score, finish.survivalTime, finish.level);
   const [state, setState] = useState<SubmitState>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [localDocId, setLocalDocId] = useState<string | null>(null);
   const submittedRef = useRef(false);
 
+  const entry: ScoreEntry = {
+    nickname,
+    unitId: UNIT.unitId,
+    grade: UNIT.grade,
+    semester: UNIT.semester,
+    score: finish.score,
+    survivalTime: finish.survivalTime,
+    level: finish.level,
+    kills: finish.monstersKilled,
+    weightedScore: w,
+  };
+
   useEffect(() => {
-    if (!isFirebaseConfigured()) {
-      setState('skipped');
-      return;
-    }
     if (submittedRef.current) return;
     submittedRef.current = true;
     setState('submitting');
-    submitScore({
-      nickname,
-      unitId: UNIT.unitId,
-      grade: UNIT.grade,
-      semester: UNIT.semester,
-      score: finish.score,
-      survivalTime: finish.survivalTime,
-      level: finish.level,
-      kills: finish.monstersKilled,
-      weightedScore: w,
-    })
-      .then(() => {
-        setState('done');
+    // 로컬 저장은 submitScore 내부에서 Firebase 설정/성공 여부와 무관하게 항상 먼저 시도된다.
+    submitScore(entry)
+      .then((result) => {
+        if (result.offline) {
+          setLocalDocId(result.docId);
+          setState('offline');
+        } else {
+          setState('done');
+        }
       })
       .catch((err) => {
         setState('error');
@@ -53,6 +59,22 @@ export function PostGameOverlay({
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleRetry = () => {
+    setState('submitting');
+    const p = localDocId ? retrySubmitScore(entry, localDocId) : submitScore(entry);
+    p.then((result) => {
+      if (result.offline) {
+        setLocalDocId(result.docId);
+        setState('offline');
+      } else {
+        setState('done');
+      }
+    }).catch((err) => {
+      setState('error');
+      setErrorMsg(err instanceof Error ? err.message : String(err));
+    });
+  };
 
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
@@ -133,7 +155,7 @@ export function PostGameOverlay({
                 ? '#34d399'
                 : state === 'error'
                 ? '#fda4af'
-                : state === 'skipped'
+                : state === 'offline'
                 ? '#fbbf24'
                 : '#71717a',
             marginBottom: 20,
@@ -142,10 +164,20 @@ export function PostGameOverlay({
         >
           {state === 'submitting' && '랭킹 등록 중...'}
           {state === 'done' && '✓ 랭킹 등록 완료'}
-          {state === 'error' && `등록 실패: ${errorMsg}`}
-          {state === 'skipped' && 'Firebase 미설정 — 랭킹 등록 생략'}
+          {state === 'error' && `등록 실패: ${errorMsg} (기기 저장도 실패했습니다)`}
+          {state === 'offline' && '기기에 저장됨 - 인터넷 연결 시 다시 시도해주세요'}
           {state === 'idle' && ' '}
         </div>
+
+        {(state === 'offline' || state === 'error') && (
+          <button
+            onClick={handleRetry}
+            className="btn-clean btn-ghost"
+            style={{ width: '100%', padding: '10px 8px', fontSize: 13, fontWeight: 700, marginBottom: 12 }}
+          >
+            다시 시도
+          </button>
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
           <button
