@@ -82,6 +82,7 @@ const RANGED_WEAPONS: WeaponEntry[] = [
   { id: 'snowball', nameKo: '눈덩이', desc: '맞은 적을 느리게 해요' },
   { id: 'leaf', nameKo: '나뭇잎', desc: '바람에 흔들리며 날아가요' },
   { id: 'ruler', nameKo: '자', desc: '거대한 자로 넓게 쾅!' },
+  { id: 'butterfly', nameKo: '나비', desc: '나비 떼가 적을 쫓아 날아가요' },
 ];
 
 const MELEE_WEAPONS: WeaponEntry[] = [
@@ -92,10 +93,9 @@ const MELEE_WEAPONS: WeaponEntry[] = [
   { id: 'water_balloon', nameKo: '물풍선', desc: '터지면 사방으로 촥!' },
 ];
 
-const FRIEND_WEAPONS: WeaponEntry[] = [
-  { id: 'hamster', nameKo: '햄스터', desc: '빙글빙글 도는 햄스터 친구' },
-  { id: 'butterfly', nameKo: '나비', desc: '적을 쫓아가는 나비' },
-  { id: 'robot_toy', nameKo: '로봇 장난감', desc: '자동으로 싸워주는 로봇' },
+const PET_FRIENDS: WeaponEntry[] = [
+  { id: 'hamster', nameKo: '햄스터', desc: '적에게 돌진! 수정도 물어다 줘요' },
+  { id: 'robot_toy', nameKo: '로봇 장난감', desc: '조준 사격! 내가 맞으면 복수해요' },
 ];
 
 const SPECIAL_WEAPONS: WeaponEntry[] = [
@@ -200,6 +200,8 @@ const PAGES: { title: string; content: React.ReactNode }[] = [
             보스를 물리치면 게임 클리어! 🎉
             <br />
             퀴즈 300문제를 다 풀어도 명예로운 완주예요.
+            <br />
+            친구(펫)는 클리어 조건에 들어가지 않아요. 무기 6개가 핵심!
           </div>
         </div>
       </div>
@@ -216,7 +218,7 @@ const PAGES: { title: string; content: React.ReactNode }[] = [
     ),
   },
   {
-    title: '무기 도감 ② 근접 · 친구',
+    title: '무기 도감 ② 근접 · 친구(펫)',
     content: (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18, textAlign: 'left' }}>
         <div>
@@ -228,11 +230,17 @@ const PAGES: { title: string; content: React.ReactNode }[] = [
           </div>
         </div>
         <div>
-          <div style={{ fontSize: 11, color: '#71717a', fontWeight: 700, marginBottom: 10 }}>친구</div>
+          <div style={{ fontSize: 11, color: '#71717a', fontWeight: 700, marginBottom: 10 }}>
+            친구 (펫) — 무기 칸을 차지하지 않아요!
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            {FRIEND_WEAPONS.map((w) => (
+            {PET_FRIENDS.map((w) => (
               <WeaponRow key={w.id} weapon={w} />
             ))}
+          </div>
+          <div style={{ fontSize: 12, color: '#a1a1aa', lineHeight: 1.6, marginTop: 10 }}>
+            친구는 무기 6칸과 별도로 최대 2마리까지 함께해요. 레벨업 카드에서 똑같이 뽑고 키울 수 있어요.
+            단, 게임 클리어(무기 6개 만렙)에는 무기만 세어져요!
           </div>
         </div>
       </div>
@@ -259,7 +267,7 @@ const PAGES: { title: string; content: React.ReactNode }[] = [
           </div>
         </div>
         <div style={{ fontSize: 12, color: '#a5b4fc' }}>
-          무기는 최대 6개까지! 어떤 조합을 만들지 골라 보세요.
+          무기는 최대 6개 + 친구는 2마리까지! 어떤 조합을 만들지 골라 보세요.
         </div>
       </div>
     ),

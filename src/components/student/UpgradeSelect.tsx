@@ -27,6 +27,7 @@ export function UpgradeSelect({ upgrades, onSelect }: UpgradeSelectProps) {
   const getRarity = (upgrade: UpgradeOption): string => {
     if (upgrade.type === 'bonus') return 'bonus';
     if (upgrade.isEvolution) return 'evolution';
+    if (upgrade.type === 'pet' && upgrade.isNew) return 'pet';
     if (upgrade.isNew) return 'new';
     return 'upgrade';
   };
@@ -36,6 +37,7 @@ export function UpgradeSelect({ upgrades, onSelect }: UpgradeSelectProps) {
     new: { color: '#a78bfa', bg: 'rgba(167, 139, 250, 0.1)', label: '신규' },
     upgrade: { color: '#67e8f9', bg: 'rgba(103, 232, 249, 0.1)', label: '강화' },
     bonus: { color: '#34d399', bg: 'rgba(52, 211, 153, 0.1)', label: '보상' },
+    pet: { color: '#f9a8d4', bg: 'rgba(249, 168, 212, 0.1)', label: '친구' },
   };
 
   const getCardStyle = (upgrade: UpgradeOption): React.CSSProperties => {
