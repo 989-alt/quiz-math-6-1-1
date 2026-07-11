@@ -42,6 +42,9 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   private slowIcon: Phaser.GameObjects.Sprite | null = null;
   private burnFx: Phaser.GameObjects.Sprite | null = null;
   private burnUntil: number = 0;
+  // 멧돼지 발구르기(돌진 예고) 틴트가 적용 중인지 — 피격 화이트 플래시 복원 시 이 상태를 참고해
+  // 예고 틴트가 지워지지 않게 한다 (persistentTint와 별개, boar 전용 텔레그래프 상태)
+  private boarTelegraphActive: boolean = false;
   private wobblePhase: number = Math.random() * Math.PI * 2;
   private telegraphRing: Phaser.GameObjects.Arc | null = null;
   private static readonly TELEGRAPH_INTERVAL = 3500;
@@ -342,6 +345,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
         if (this.traitPhase !== 1) {
           this.traitPhase = 1;
           this.setTint(0xffb0b0); // 발구르기 텔레그래프 (붉은 기)
+          this.boarTelegraphActive = true;
         }
         this.traitSpeedMul = 0;
         // 제자리 발구르기: 좌우로 빠르게 흔들리는 연출
@@ -350,6 +354,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
         if (this.traitPhase !== 2) {
           this.traitPhase = 2;
           this.clearTint();
+          this.boarTelegraphActive = false;
           if (this.target) {
             // 돌진 시작 시점의 플레이어 방향으로 고정 (돌진 중 유도 안 함)
             const a = Phaser.Math.Angle.Between(this.x, this.y, this.target.x, this.target.y);
@@ -411,8 +416,9 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.setTintFill(0xffffff);
     this.scene.time.delayedCall(80, () => {
       if (this.active) {
-        // 상시 틴트(최종 보스)가 있으면 복원, 없으면 틴트 해제
+        // 상시 틴트(최종 보스) → 멧돼지 텔레그래프 틴트 순으로 현재 상태를 복원, 둘 다 아니면 틴트 해제
         if (this.persistentTint !== null) this.setTint(this.persistentTint);
+        else if (this.boarTelegraphActive) this.setTint(0xffb0b0);
         else this.clearTint();
       }
     });

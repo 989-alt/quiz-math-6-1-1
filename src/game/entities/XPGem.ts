@@ -119,12 +119,15 @@ export class XPGem extends Phaser.Physics.Arcade.Sprite {
       duration: 160,
       ease: 'Sine.easeOut',
       onComplete: () => {
+        // 체인 진행 중 이미 collect()로 파괴됐으면 다음 트윈을 만들지 않음 (트윈 누수 방지)
+        if (!this.active) return;
         scene.tweens.add({
           targets: this,
           y,
           duration: 160,
           ease: 'Sine.easeIn',
           onComplete: () => {
+            if (!this.active) return;
             // Floating animation
             scene.tweens.add({
               targets: this,
@@ -149,6 +152,11 @@ export class XPGem extends Phaser.Physics.Arcade.Sprite {
         Math.cos(angle) * speed,
         Math.sin(angle) * speed
       );
+    } else if (this.isBeingCollected) {
+      // 타깃이 사라짐(비활성/파괴) — 마지막 속도로 영구 직진하며 고착되지 않도록 원상 복귀
+      this.isBeingCollected = false;
+      this.collectTarget = null;
+      this.setVelocity(0, 0);
     }
   }
 
@@ -168,6 +176,9 @@ export class XPGem extends Phaser.Physics.Arcade.Sprite {
     // 젬 1개가 XP를 6~7회 지급하던 버그 차단 (핸들러의 active 가드가 재진입을 막는다)
     this.setActive(false);
     (this.body as Phaser.Physics.Arcade.Body).enable = false;
+    // startCollection을 거치지 않고 직접 밟아 수집되는 경로(플레이어 overlap 즉시 collect)에서도
+    // 생성자의 스폰/부유 트윈 체인을 확실히 정지 (누적 트윈 누수 방지)
+    this.scene.tweens.killTweensOf(this);
 
     const value = this.xpValue;
 
@@ -194,79 +205,6 @@ export class XPGem extends Phaser.Physics.Arcade.Sprite {
     const size = getGemSizeForWave(wave);
     const xpValue = getXPForGemSize(size);
     return new XPGem(scene, x, y, xpValue);
-  }
-}
-
-// Special gem types for drops
-export class HealthGem extends Phaser.Physics.Arcade.Sprite {
-  public healValue: number;
-  private isBeingCollected: boolean = false;
-  private collectTarget: Phaser.Physics.Arcade.Sprite | null = null;
-
-  constructor(scene: Phaser.Scene, x: number, y: number, healValue: number = 10) {
-    super(scene, x, y, GEM_KEYS.health);
-
-    scene.add.existing(this);
-    scene.physics.add.existing(this);
-
-    this.healValue = healValue;
-    this.setScale(1.3);
-    this.setDepth(2);
-
-    const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setSize(this.displayWidth * 0.8, this.displayHeight * 0.8);
-
-    // Spawn animation
-    this.setScale(0);
-    scene.tweens.add({
-      targets: this,
-      scale: 1.3,
-      duration: 200,
-      ease: 'Back.easeOut',
-    });
-
-    // Pulsing animation (health gems pulse red)
-    scene.tweens.add({
-      targets: this,
-      alpha: 0.7,
-      duration: 500,
-      yoyo: true,
-      repeat: -1,
-    });
-  }
-
-  startCollection(target: Phaser.Physics.Arcade.Sprite): void {
-    if (this.isBeingCollected) return;
-    this.isBeingCollected = true;
-    this.collectTarget = target;
-    this.scene.tweens.killTweensOf(this);
-  }
-
-  update(): void {
-    if (this.isBeingCollected && this.collectTarget && this.collectTarget.active) {
-      const angle = Phaser.Math.Angle.Between(this.x, this.y, this.collectTarget.x, this.collectTarget.y);
-      this.setVelocity(Math.cos(angle) * 400, Math.sin(angle) * 400);
-    }
-  }
-
-  collect(): number {
-    if (!this.active) return 0;
-    // XPGem.collect와 동일 — 축소 트윈 동안 재발화 방지
-    this.setActive(false);
-    (this.body as Phaser.Physics.Arcade.Body).enable = false;
-    const value = this.healValue;
-    this.scene.tweens.add({
-      targets: this,
-      scale: 0,
-      alpha: 0,
-      duration: 100,
-      onComplete: () => this.destroy()
-    });
-    return value;
-  }
-
-  isCollecting(): boolean {
-    return this.isBeingCollected;
   }
 }
 
@@ -324,6 +262,8 @@ export class MagnetGem extends Phaser.Physics.Arcade.Sprite {
     // 축소 트윈 동안 재발화 방지 (자석 효과 중복 발동 차단)
     this.setActive(false);
     (this.body as Phaser.Physics.Arcade.Body).enable = false;
+    // 회전 반복 트윈(repeat:-1)이 startCollection 없이 직접 collect되는 경로에서도 반드시 정지
+    this.scene.tweens.killTweensOf(this);
     this.scene.tweens.add({
       targets: this,
       scale: 0,

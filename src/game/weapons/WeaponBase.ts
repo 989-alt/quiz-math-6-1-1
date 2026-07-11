@@ -214,6 +214,11 @@ export abstract class WeaponBase {
     (projectile as any).pierce = this.getPierce();
     (projectile as any).damage = this.getDamage();
 
+    // onHit 콜백 배선 — 전역 충돌 핸들러가 몬스터당 1회 보장 후 호출
+    if (options.onHit) {
+      (projectile as any).onHit = options.onHit;
+    }
+
     // Auto destroy after duration
     const lifespan = options.lifespan ?? this.getDuration();
     this.scene.time.delayedCall(lifespan, () => {
@@ -385,6 +390,13 @@ export abstract class WeaponBase {
 
     const timers: Phaser.Time.TimerEvent[] = [];
 
+    // 존이 예상 밖 경로(예: 게임 리셋의 projectiles.clear)로 조기 파괴되면 아래 loop 타이머들이
+    // 만료 delayedCall(전) 없이 잔존해 계속 틱하는 문제 방지 — 만료/조기파괴 전 경로 안전망
+    zone.once('destroy', () => {
+      timers.forEach((t) => t.destroy());
+      scene.tweens.killTweensOf(zone);
+    });
+
     if (opts.dps) {
       // 500ms 틱 재타격 → 초당 dps 유지
       (zone as any).damage = opts.dps / 2;
@@ -432,6 +444,8 @@ export abstract class WeaponBase {
     // 종료: 페이드 아웃 후 정리 (허공 소멸 금지 규칙)
     scene.time.delayedCall(opts.duration, () => {
       timers.forEach((t) => t.destroy());
+      // 조기 파괴(위 'destroy' 리스너에서 이미 정리됨)된 존에 새 트윈을 재실행하지 않음
+      if (!zone.active) return;
       scene.tweens.add({
         targets: decal ? [zone, decal] : zone,
         alpha: 0,

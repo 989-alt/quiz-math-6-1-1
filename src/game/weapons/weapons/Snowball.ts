@@ -53,7 +53,30 @@ export class Snowball extends WeaponBase {
       'weapon_snowball',
       Math.cos(angle) * speed,
       Math.sin(angle) * speed,
-      { scale: 1.2, lifespan }
+      {
+        scale: 1.2,
+        lifespan,
+        // 전역 충돌 핸들러(pierce 1 → 즉시 destroy)가 자체 overlap보다 먼저 처리돼
+        // 슬로우가 발동하지 못하던 문제 회피 — onHit으로 이전(몬스터당 1회는 전역 __hitMonsters가 보장)
+        onHit: (_snowball, monster) => {
+          const m = monster as any;
+          this.playImpact(m.x, m.y, 'splash');
+
+          // 공용 슬로우 API로 감속 — 만료 자동 복원, 중첩 레이스 없음
+          (m as Monster).applySlow(0.45, 2500);
+
+          const flake = this.scene.add.sprite(m.x, m.y - 10, 'weapon_snowball');
+          flake.setScale(0.5);
+          flake.setDepth(11);
+          this.scene.tweens.add({
+            targets: flake,
+            alpha: 0,
+            y: flake.y - 15,
+            duration: 1000,
+            onComplete: () => flake.destroy(),
+          });
+        },
+      }
     );
 
     const body = snowball.body as Phaser.Physics.Arcade.Body;
@@ -66,34 +89,5 @@ export class Snowball extends WeaponBase {
       duration: lifespan,
       delay: 80,
     });
-
-    // Slow debuff on hit (설명대로 실제 이동속도 저하 적용, 2초간 50%)
-    const hitMonsters = new Set<Phaser.Physics.Arcade.Sprite>();
-    const overlap = this.scene.physics.add.overlap(
-      snowball,
-      this.scene.getMonsters(),
-      (_snowball, monster) => {
-        const m = monster as any;
-        if (!m.active || hitMonsters.has(m)) return;
-        hitMonsters.add(m);
-
-        this.playImpact(m.x, m.y, 'splash');
-
-        // 공용 슬로우 API로 감속 — 만료 자동 복원, 중첩 레이스 없음
-        (m as Monster).applySlow(0.45, 2500);
-
-        const flake = this.scene.add.sprite(m.x, m.y - 10, 'weapon_snowball');
-        flake.setScale(0.5);
-        flake.setDepth(11);
-        this.scene.tweens.add({
-          targets: flake,
-          alpha: 0,
-          y: flake.y - 15,
-          duration: 1000,
-          onComplete: () => flake.destroy(),
-        });
-      }
-    );
-    this.scene.time.delayedCall(lifespan, () => overlap.destroy());
   }
 }

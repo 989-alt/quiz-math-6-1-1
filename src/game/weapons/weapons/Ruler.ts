@@ -25,7 +25,7 @@ export class Ruler extends WeaponBase {
       cooldown: 30000,
       area: 1,
       speed: 0,
-      duration: 300,
+      duration: 0, // (미사용 스탯)
       amount: 1,
       pierce: 999,
       knockback: 0,

@@ -71,9 +71,12 @@ export class EffectManager {
     const sprite = pool[cursor];
     this.cursors.set(animKey, (cursor + 1) % pool.length);
     sprite.setPosition(x, y);
-    sprite.setActive(true).setVisible(true);
-    if (this.scene.anims.exists(animKey)) {
-      sprite.play(animKey);
+    if (!this.scene.anims.exists(animKey)) {
+      // 애니메이션 미등록 — 재생 없이 화면에 영구 잔존하지 않도록 즉시 풀에 반납
+      sprite.setActive(false).setVisible(false);
+      return;
     }
+    sprite.setActive(true).setVisible(true);
+    sprite.play(animKey);
   }
 }
