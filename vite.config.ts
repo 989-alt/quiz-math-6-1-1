@@ -7,4 +7,15 @@ export default defineConfig({
   // 해시 라우팅(#/play)이라 딥링크 경로 문제 없고, Phaser 에셋도 이미 상대경로 로딩.
   base: './',
   plugins: [react(), tailwindcss()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          phaser: ['phaser'],
+          firebase: ['firebase/app', 'firebase/firestore', 'firebase/auth'],
+          react: ['react', 'react-dom'],
+        },
+      },
+    },
+  },
 })

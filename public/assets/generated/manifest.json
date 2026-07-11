@@ -1228,30 +1228,6 @@
    "qa": "pass"
   },
   {
-   "id": "collect_family_1",
-   "group": "collect_family",
-   "file": "xp_gem_mid.png",
-   "kind": "family",
-   "native": 20,
-   "frames": 1,
-   "frame_w": 22,
-   "frame_h": 24,
-   "attempts": 1,
-   "qa": "pass"
-  },
-  {
-   "id": "collect_family_2",
-   "group": "collect_family",
-   "file": "xp_gem_large.png",
-   "kind": "family",
-   "native": 24,
-   "frames": 1,
-   "frame_w": 25,
-   "frame_h": 28,
-   "attempts": 1,
-   "qa": "pass"
-  },
-  {
    "id": "collect_family_3",
    "group": "collect_family",
    "file": "heal_heart.png",
@@ -1264,18 +1240,6 @@
    "qa": "pass"
   },
   {
-   "id": "collect_family_4",
-   "group": "collect_family",
-   "file": "heal_potion.png",
-   "kind": "family",
-   "native": 24,
-   "frames": 1,
-   "frame_w": 22,
-   "frame_h": 28,
-   "attempts": 1,
-   "qa": "pass"
-  },
-  {
    "id": "collect_family_5",
    "group": "collect_family",
    "file": "magnet_item.png",
@@ -1284,24 +1248,6 @@
    "frames": 1,
    "frame_w": 28,
    "frame_h": 27,
-   "attempts": 1,
-   "qa": "pass"
-  },
-  {
-   "id": "keyart_home",
-   "file": "keyart_home.png",
-   "kind": "image",
-   "native": 1672,
-   "frames": 1,
-   "frame_w": 1672,
-   "frame_h": 941,
-   "qa_skip": [
-    "density",
-    "palette",
-    "outline",
-    "transparency",
-    "alignment"
-   ],
    "attempts": 1,
    "qa": "pass"
   },

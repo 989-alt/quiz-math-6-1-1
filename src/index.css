@@ -1,7 +1,5 @@
 @import "tailwindcss";
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
 @theme {
   /* === Clean Dot-Based Color Palette === */
   --color-bg-primary: #0a0a0f;
@@ -380,79 +378,6 @@ canvas {
   border-color: rgba(255, 255, 255, 0.15);
 }
 
-/* Legacy button support */
-.btn-pixel {
-  font-family: inherit;
-  font-weight: 600;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.btn-purple {
-  background: linear-gradient(135deg, #6366f1, #4f46e5);
-  color: white;
-  box-shadow: 0 4px 14px -2px rgba(99, 102, 241, 0.4);
-}
-
-.btn-purple:hover {
-  box-shadow: 0 6px 20px -2px rgba(99, 102, 241, 0.5);
-  transform: translateY(-2px);
-}
-
-.btn-blue {
-  background: linear-gradient(135deg, #0ea5e9, #0284c7);
-  color: white;
-  box-shadow: 0 4px 14px -2px rgba(14, 165, 233, 0.4);
-}
-
-.btn-blue:hover {
-  box-shadow: 0 6px 20px -2px rgba(14, 165, 233, 0.5);
-  transform: translateY(-2px);
-}
-
-.btn-pink {
-  background: linear-gradient(135deg, #f43f5e, #e11d48);
-  color: white;
-  box-shadow: 0 4px 14px -2px rgba(244, 63, 94, 0.4);
-}
-
-.btn-pink:hover {
-  box-shadow: 0 6px 20px -2px rgba(244, 63, 94, 0.5);
-  transform: translateY(-2px);
-}
-
-.btn-green {
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: white;
-  box-shadow: 0 4px 14px -2px rgba(16, 185, 129, 0.4);
-}
-
-.btn-green:hover {
-  box-shadow: 0 6px 20px -2px rgba(16, 185, 129, 0.5);
-  transform: translateY(-2px);
-}
-
-.btn-orange {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: #0a0a0f;
-  box-shadow: 0 4px 14px -2px rgba(245, 158, 11, 0.4);
-}
-
-.btn-red {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  color: white;
-  box-shadow: 0 4px 14px -2px rgba(239, 68, 68, 0.4);
-}
-
-.btn-pixel:disabled,
-.btn-clean:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  transform: none !important;
-}
-
 /* ========== Clean Input ========== */
 .clean-input {
   font-family: inherit;
@@ -477,29 +402,6 @@ canvas {
 .clean-input::placeholder {
   color: rgba(255, 255, 255, 0.25);
   font-weight: 400;
-}
-
-/* Legacy input support */
-.pixel-input {
-  font-family: inherit;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  color: white;
-  padding: 14px 18px;
-  font-size: 14px;
-  transition: all 0.3s ease;
-  outline: none;
-}
-
-.pixel-input:focus {
-  border-color: rgba(99, 102, 241, 0.5);
-  background: rgba(99, 102, 241, 0.05);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-.pixel-input::placeholder {
-  color: rgba(255, 255, 255, 0.25);
 }
 
 /* ========== Progress Bar ========== */
@@ -539,30 +441,6 @@ canvas {
 }
 
 .progress-xp {
-  background: linear-gradient(90deg, #6366f1, #818cf8);
-}
-
-/* Legacy progress support */
-.pixel-progress {
-  height: 100%;
-  border-radius: 999px;
-  transition: width 0.3s ease;
-}
-
-.pixel-progress-hp {
-  background: linear-gradient(90deg, #10b981, #34d399);
-}
-
-.pixel-progress-hp.warning {
-  background: linear-gradient(90deg, #f59e0b, #fbbf24);
-}
-
-.pixel-progress-hp.danger {
-  background: linear-gradient(90deg, #ef4444, #f87171);
-  animation: pulse-soft 0.5s ease-in-out infinite;
-}
-
-.pixel-progress-xp {
   background: linear-gradient(90deg, #6366f1, #818cf8);
 }
 
@@ -621,18 +499,6 @@ canvas {
   color: #fcd34d;
 }
 
-/* Legacy badge support */
-.pixel-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
-}
-
 /* ========== Tab Navigation ========== */
 .clean-tab {
   font-family: inherit;
@@ -657,36 +523,6 @@ canvas {
 }
 
 .clean-tab:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-/* Legacy tab support */
-.pixel-tab {
-  font-family: inherit;
-  padding: 12px 20px;
-  font-size: 13px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.4);
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.pixel-tab:hover {
-  color: rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.pixel-tab.active {
-  color: #fafafa;
-  border-bottom-color: #6366f1;
-  background: rgba(99, 102, 241, 0.05);
-}
-
-.pixel-tab:disabled {
   opacity: 0.3;
   cursor: not-allowed;
 }
@@ -761,46 +597,6 @@ canvas {
   animation: shake 0.4s ease-in-out;
 }
 
-/* Stagger animations */
-.stagger-1 { animation-delay: 0.1s; }
-.stagger-2 { animation-delay: 0.2s; }
-.stagger-3 { animation-delay: 0.3s; }
-.stagger-4 { animation-delay: 0.4s; }
-.stagger-5 { animation-delay: 0.5s; }
-
-/* ========== Legacy Support ========== */
-.pixel-card {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 20px;
-  transition: all 0.3s ease;
-}
-
-.pixel-card:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.12);
-  transform: translateY(-2px);
-  box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.3);
-}
-
-.bg-stars {
-  position: fixed;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 24px 24px;
-  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
-}
-
-.float-icon {
-  position: absolute;
-  opacity: 0.08;
-  pointer-events: none;
-  animation: float 8s ease-in-out infinite;
-}
-
 .font-pixel {
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-weight: 700;
@@ -812,13 +608,16 @@ canvas {
   color: white;
 }
 
-/* ========== Fantasy Background (Unsplash + CSS Aurora + Stars) ========== */
+/* ========== Fantasy Background (CSS-only gradient + vignette + Aurora + Stars) ========== */
+/* 외부 이미지 의존 0 — 오프라인/화이트리스트 학교망에서도 항상 로드됨 */
 .fantasy-bg-image {
   position: fixed;
   inset: 0;
   background-image:
-    linear-gradient(180deg, rgba(10, 10, 15, 0.82) 0%, rgba(10, 10, 15, 0.92) 100%),
-    url('https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1920&q=70&auto=format&fit=crop');
+    radial-gradient(ellipse 120% 80% at 50% -10%, rgba(99, 102, 241, 0.28) 0%, transparent 55%),
+    radial-gradient(ellipse 100% 70% at 100% 100%, rgba(34, 211, 238, 0.16) 0%, transparent 60%),
+    linear-gradient(180deg, #12121f 0%, #0a0a0f 55%, #060609 100%),
+    radial-gradient(ellipse 140% 100% at 50% 50%, transparent 45%, rgba(0, 0, 0, 0.6) 100%);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
