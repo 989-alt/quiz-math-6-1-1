@@ -110,7 +110,7 @@ export const WeaponInfoList: WeaponInfo[] = [
 /** 펫 목록 (전용 슬롯 maxPets=2 — 무기 로스터·클리어 조건과 분리) */
 export const PetInfoList: WeaponInfo[] = [
   { id: 'hamster', name: 'Hamster', nameKo: '햄스터', description: 'Charges at enemies and fetches gems', descriptionKo: '적에게 몸통 돌진! 떨어진 수정도 물어다 줘요', maxLevel: 8, category: 'pet' },
-  { id: 'robot_toy', name: 'Robot Toy', nameKo: '로봇 장난감', description: 'Guard turret that avenges the player', descriptionKo: '멈춰 서서 조준 사격! 내가 맞으면 바로 복수해요', maxLevel: 8, category: 'pet' },
+  { id: 'robot_toy', name: 'Robot Toy', nameKo: '로봇 장난감', description: 'Guard turret that avenges the player', descriptionKo: '멈춰 서서 레이저 발사! 내가 맞으면 바로 복수해요', maxLevel: 8, category: 'pet' },
 ];
 
 /** 대체 보상 카드 (설계 §5.3 — 제안할 강화/신규가 없을 때) */

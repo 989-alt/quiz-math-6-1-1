@@ -8,7 +8,8 @@ type HamsterState = 'IDLE' | 'ALERT' | 'DASH' | 'RETURN' | 'FETCH_GO' | 'FETCH_R
 
 /**
  * 햄스터 펫: 적에게 몸통 돌진 + 떨어진 수정 배달 (설계 T1).
- * - DASH 피해는 임팩트 순간의 1회성 투명 원 히트존(addProjectile, 150ms 소멸)으로만 —
+ * - DASH 피해는 시작 시 생성되는 이동 히트존(addProjectile) 1개가 펫을 추종하며 처리 —
+ *   목표 지점보다 120px 더 파고드는 관통 돌진이라 경로상 몬스터를 훑고 지나간다.
  *   본체 스프라이트는 절대 projectile로 등록하지 않는다.
  * - 젬 배달은 gem.startCollection(펫)으로 끌고 와 플레이어 몸 중심으로 파고들어
  *   기존 player↔xpGems overlap이 collect()를 발화시킨다 (XP 지급 경로 단일화 —
@@ -22,10 +23,11 @@ export class HamsterPet extends PetBase {
   descriptionKo = '적에게 몸통 돌진! 떨어진 수정도 물어다 줘요';
   maxLevel = 8;
 
-  private static readonly DASH_DETECT_RANGE = 220;
+  private static readonly DASH_DETECT_RANGE = 400;
   private static readonly DASH_MIN_COOLDOWN = 1400;
   private static readonly DASH_IMPACT_DIST = 24;
-  private static readonly DASH_MAX_MS = 1200;
+  private static readonly DASH_MAX_MS = 1600;
+  private static readonly DASH_OVERSHOOT = 120; // 관통 돌진: 적 위치보다 더 멀리 파고드는 거리(px)
   private static readonly FETCH_SPEED = 300;
   private static readonly FETCH_PICKUP_DIST = 14;
   private static readonly FETCH_TOTAL_TIMEOUT = 6000;
@@ -70,6 +72,8 @@ export class HamsterPet extends PetBase {
   private dashTarget: Phaser.Physics.Arcade.Sprite | null = null;
   private dashTargetX: number = 0;
   private dashTargetY: number = 0;
+  private dashAngle: number = 0; // ALERT 진입 시 확정되는 돌진 방향(오버슛 계산에 고정 사용)
+  private dashHitZone: Phaser.GameObjects.Arc | null = null; // DASH 중 펫을 추종하는 이동 히트존
   private fetchGem: XPGem | null = null;
   private fetchTotalTimer: number = 0;
   private fetchNearPlayerTimer: number = 0;
@@ -80,7 +84,7 @@ export class HamsterPet extends PetBase {
       damage: 20,
       cooldown: 2500, // 돌진 쿨
       area: 1,
-      speed: 420, // 돌진 속도
+      speed: 520, // 돌진 속도
       duration: 999999,
       amount: 1,
       pierce: 5,
@@ -125,8 +129,10 @@ export class HamsterPet extends PetBase {
           const target = this.findClosestEnemy(HamsterPet.DASH_DETECT_RANGE);
           if (target) {
             this.dashTarget = target;
-            this.dashTargetX = target.x;
-            this.dashTargetY = target.y;
+            // 방향은 ALERT 진입 시점(지금)에 확정 — DASH 중엔 이 방향을 유지한 채 오버슛만 재계산
+            this.dashAngle = Phaser.Math.Angle.Between(this.px, this.py, target.x, target.y);
+            this.dashTargetX = target.x + Math.cos(this.dashAngle) * HamsterPet.DASH_OVERSHOOT;
+            this.dashTargetY = target.y + Math.sin(this.dashAngle) * HamsterPet.DASH_OVERSHOOT;
             this.alertTimer = 0;
             this.petState = 'ALERT';
             this.showEmote('alert');
@@ -152,6 +158,7 @@ export class HamsterPet extends PetBase {
         if (this.alertTimer >= PetBase.ALERT_PAUSE) {
           this.dashTimer = 0;
           this.petState = 'DASH';
+          this.startDashHitZone(); // DASH 시작 시 이동 히트존 1개 생성 (펫을 추종)
         }
         break;
       }
@@ -159,19 +166,26 @@ export class HamsterPet extends PetBase {
       case 'DASH': {
         this.dashTimer += delta;
 
-        // 타깃 생존 중엔 좌표 추적, 죽으면 마지막 좌표 유지
+        // 타깃 생존 중엔 좌표 추적하되, 방향은 ALERT 진입 시 확정된 dashAngle 유지 + 오버슛 재계산
         if (this.dashTarget && this.dashTarget.active) {
-          this.dashTargetX = this.dashTarget.x;
-          this.dashTargetY = this.dashTarget.y;
+          this.dashTargetX = this.dashTarget.x + Math.cos(this.dashAngle) * HamsterPet.DASH_OVERSHOOT;
+          this.dashTargetY = this.dashTarget.y + Math.sin(this.dashAngle) * HamsterPet.DASH_OVERSHOOT;
         }
 
         const remain = this.moveLinear(this.dashTargetX, this.dashTargetY, this.getSpeed(), delta);
 
+        // 이동 히트존을 펫 좌표로 매 프레임 추종
+        if (this.dashHitZone && this.dashHitZone.active) {
+          this.dashHitZone.setPosition(this.px, this.py);
+          const zoneBody = (this.dashHitZone as unknown as { body: Phaser.Physics.Arcade.Body }).body;
+          zoneBody.reset(this.px, this.py);
+        }
+
         if (remain <= HamsterPet.DASH_IMPACT_DIST || remain <= 0.5) {
-          this.dashImpact(this.dashTargetX, this.dashTargetY);
+          this.endDash();
         } else if (this.dashTimer >= HamsterPet.DASH_MAX_MS) {
-          // 세이프티: 제자리 임팩트 후 복귀
-          this.dashImpact(this.px, this.py);
+          // 세이프티: 타임아웃 시 그 자리에서 종료
+          this.endDash();
         }
         break;
       }
@@ -243,24 +257,41 @@ export class HamsterPet extends PetBase {
     }
   }
 
-  /** 돌진 임팩트: 150ms 1회성 투명 원 히트존 (damage||10 폴백 안전 — damage/pierce 명시) */
-  private dashImpact(x: number, y: number): void {
-    const radius = 34 * this.getArea();
-    const zone = this.scene.add.circle(x, y, radius, 0x000000, 0);
+  /**
+   * DASH 시작 시 이동 히트존 1개 생성 (관통 돌진 — damage||10 폴백 안전, damage/pierce 명시).
+   * 자체 __hitMonsters Set을 가져 "돌진당 몬스터 1회 히트"만 보장하고, DASH 동안 매 프레임
+   * setPosition + body.reset으로 펫 좌표를 추종한다.
+   */
+  private startDashHitZone(): void {
+    const radius = 26 * this.getArea();
+    const zone = this.scene.add.circle(this.px, this.py, radius, 0x000000, 0);
     this.scene.physics.add.existing(zone);
     const body = (zone as unknown as { body: Phaser.Physics.Arcade.Body }).body;
     body.setCircle(radius);
 
     (zone as any).damage = this.getDamage();
-    (zone as any).pierce = this.getPierce();
+    (zone as any).pierce = 999;
+    (zone as any).__hitMonsters = new Set<Phaser.Physics.Arcade.Sprite>();
     this.scene.addProjectile(zone as any);
 
-    this.scene.time.delayedCall(150, () => {
-      if (zone.active) zone.destroy();
-    });
+    this.dashHitZone = zone;
+  }
 
-    this.playImpact(x, y, 'hit_small');
-    this.scene.fx.poof(x, y);
+  /** 이동 히트존 제거 (존속 중이면 destroy) — 리셋/DASH 종료 어느 경로에서도 안전하게 호출 가능 */
+  private destroyDashHitZone(): void {
+    if (this.dashHitZone) {
+      if (this.dashHitZone.active) this.dashHitZone.destroy();
+      this.dashHitZone = null;
+    }
+  }
+
+  /** DASH 종료 처리(도달/타임아웃 공통): 이동 히트존 제거 + 도착점 이펙트 + 쿨 리셋 + RETURN 전환
+   *  (기존 dashImpact의 마무리 역할을 대체 — 피해는 DASH 중 이동 히트존이 이미 처리했음) */
+  private endDash(): void {
+    this.destroyDashHitZone();
+
+    this.playImpact(this.px, this.py, 'hit_small');
+    this.scene.fx.poof(this.px, this.py);
 
     this.dashCooldownTimer = 0;
     this.dashTarget = null;
@@ -309,6 +340,7 @@ export class HamsterPet extends PetBase {
     }
     this.fetchGem = null;
     this.dashTarget = null;
+    this.destroyDashHitZone(); // 리셋 중 돌진이었다면 존 잔존 금지
     super.destroy();
   }
 }

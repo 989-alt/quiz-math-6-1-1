@@ -10,14 +10,15 @@ type RobotState = 'IDLE' | 'ALERT' | 'TURRET' | 'RETURN' | 'GUARD_BURST';
  * 로봇 장난감 펫: 멈춰 서서 조준 사격하는 경계 터렛 + 플레이어 피격 시 복수 연사 (설계 T1).
  * - PLAYER_DAMAGE 리스너를 생성자에서 구독 → destroy()에서 반드시 off
  *   (resetGame마다 새 WeaponManager가 생기므로 누수 시 리스너가 누적된다).
- * - 사격은 기존 RobotToy.robotFire 포팅: 머즐 플래시 + 노란 원 탄환 + addProjectile.
+ * - 사격은 관통 레이저(fireLaser): 머즐 플래시 + 빔 비주얼 + 40px 간격 히트존 체인
+ *   (addProjectile, 체인 전체가 같은 __hitMonsters Set을 공유해 몬스터당 1회만 피해).
  */
 export class RobotPet extends PetBase {
   id = 'robot_toy';
   name = 'Robot Toy';
   nameKo = '로봇 장난감';
   description = 'Guard turret that avenges the player';
-  descriptionKo = '멈춰 서서 조준 사격! 내가 맞으면 바로 복수해요';
+  descriptionKo = '멈춰 서서 레이저 발사! 내가 맞으면 바로 복수해요';
   maxLevel = 8;
 
   private static readonly DETECT_RANGE = 340;
@@ -26,7 +27,8 @@ export class RobotPet extends PetBase {
   private static readonly TURRET_PLAYER_DIST_EXIT = 260;
   private static readonly GUARD_AIM_FALLBACK_RANGE = 600;
   private static readonly BURST_SHOT_INTERVAL = 140;
-  private static readonly BULLET_LIFESPAN = 2000;
+  private static readonly LASER_ZONE_SPACING = 40; // 히트존 간격(px)
+  private static readonly LASER_ZONE_LIFESPAN = 150; // 히트존 존속 시간(ms)
 
   protected get followSlot(): { x: number; y: number } {
     return { x: 46, y: 30 };
@@ -48,7 +50,7 @@ export class RobotPet extends PetBase {
     '공격력 +3',
     '경계 사격 3연발 → 4연발',
     '공격력 +3',
-    '탄속 +40',
+    '레이저 사거리 +80',
     '사격 주기 -0.15초',
     '공격력 +4',
     '공격력 +5 · 경계 준비 6초 → 4초',
@@ -76,7 +78,7 @@ export class RobotPet extends PetBase {
       damage: 10,
       cooldown: 1200, // 사격 주기
       area: 1,
-      speed: 330, // 탄속
+      speed: 420, // 레이저 사거리(px) — getSpeed()를 사거리로 재정의해 사용
       duration: 999999,
       amount: 1,
       pierce: 1,
@@ -86,7 +88,7 @@ export class RobotPet extends PetBase {
       { damage: 3 },
       {},
       { damage: 3 },
-      { speed: 40 },
+      { speed: 80 },
       { cooldown: -150 },
       { damage: 4 },
       { damage: 5 },
@@ -175,7 +177,7 @@ export class RobotPet extends PetBase {
           this.fireTimer += delta;
           if (this.fireTimer >= this.getFireInterval()) {
             this.fireTimer = 0;
-            this.fireBullet(target.x, target.y, this.getDamage());
+            this.fireLaser(target.x, target.y, this.getDamage());
           }
         } else {
           this.noEnemyTimer += delta;
@@ -194,7 +196,7 @@ export class RobotPet extends PetBase {
         if (this.burstShotTimer >= RobotPet.BURST_SHOT_INTERVAL) {
           this.burstShotTimer = 0;
           this.burstShotsLeft--;
-          this.fireBullet(this.burstTargetX, this.burstTargetY, Math.floor(this.getDamage() * 1.5));
+          this.fireLaser(this.burstTargetX, this.burstTargetY, Math.floor(this.getDamage() * 1.5));
           if (this.burstShotsLeft <= 0) {
             this.guardCooldownTimer = 0;
             this.petState = this.stateBeforeBurst === 'GUARD_BURST' ? 'IDLE' : this.stateBeforeBurst;
@@ -212,13 +214,17 @@ export class RobotPet extends PetBase {
     }
   }
 
-  /** 기존 RobotToy.robotFire 포팅: 머즐 플래시 + 노란 원 탄환 (damage/pierce 명시) */
-  private fireBullet(tx: number, ty: number, damage: number): void {
+  /**
+   * 탄환 → 관통 레이저로 교체: 즉발 직선 빔 + 40px 간격 히트존 체인.
+   * 체인 전체가 같은 __hitMonsters Set을 공유하므로(엔진 전역 충돌 핸들러 규약),
+   * 경로상 몬스터는 관통해도 딱 1번만 피해를 입는다.
+   */
+  private fireLaser(tx: number, ty: number, damage: number): void {
     const angle = Phaser.Math.Angle.Between(this.px, this.py, tx, ty);
-    const speed = this.getSpeed();
     const area = this.getArea();
+    const range = this.getSpeed(); // getSpeed()를 레이저 사거리(px)로 재정의
 
-    // Muzzle flash (1 frame) — 시각 전용 트윈 허용
+    // Muzzle flash (기존 유지) — 시각 전용 트윈 허용
     const muzzleX = this.px + Math.cos(angle) * 10 * area;
     const muzzleY = this.py + Math.sin(angle) * 10 * area;
     const flash = this.scene.add.circle(muzzleX, muzzleY, 5 * area, 0xffff00, 0.9);
@@ -231,34 +237,67 @@ export class RobotPet extends PetBase {
       onComplete: () => flash.destroy(),
     });
 
-    const bullet = this.scene.add.circle(this.px, this.py, 4 * area, 0xffe066);
-    bullet.setDepth(8);
+    // 레이저 빔 비주얼: 바깥 글로우 + 안쪽 코어, 120ms 페이드 후 소멸
+    const midX = this.px + Math.cos(angle) * range * 0.5;
+    const midY = this.py + Math.sin(angle) * range * 0.5;
+    const glow = this.scene.add.rectangle(midX, midY, range, 10, 0xffaaaa, 0.35);
+    glow.setRotation(angle);
+    glow.setDepth(10);
+    const beam = this.scene.add.rectangle(midX, midY, range, 4, 0xff5566, 1);
+    beam.setRotation(angle);
+    beam.setDepth(10);
+    this.scene.tweens.add({
+      targets: [glow, beam],
+      alpha: 0,
+      duration: 120,
+      onComplete: () => {
+        glow.destroy();
+        beam.destroy();
+      },
+    });
 
-    this.scene.physics.add.existing(bullet);
-    const body = bullet.body as Phaser.Physics.Arcade.Body;
-    body.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+    // 히트존 체인: 레이저 경로를 따라 40px 간격 원(반지름 18×area) 배치,
+    // 전 존에 damage/pierce/공유 hitSet을 직접 할당 후 addProjectile
+    const hitSet = new Set<Phaser.Physics.Arcade.Sprite>();
+    const radius = 18 * area;
+    const zones: Phaser.GameObjects.Arc[] = [];
+    for (let dist = 20; dist <= range; dist += RobotPet.LASER_ZONE_SPACING) {
+      const zx = this.px + Math.cos(angle) * dist;
+      const zy = this.py + Math.sin(angle) * dist;
+      const zone = this.scene.add.circle(zx, zy, radius, 0x000000, 0);
+      this.scene.physics.add.existing(zone);
+      const body = (zone as unknown as { body: Phaser.Physics.Arcade.Body }).body;
+      body.setCircle(radius);
 
-    (bullet as any).damage = damage;
-    (bullet as any).pierce = this.getPierce();
+      (zone as any).damage = damage;
+      (zone as any).pierce = 999;
+      (zone as any).__hitMonsters = hitSet;
+      this.scene.addProjectile(zone as any);
+      zones.push(zone);
+    }
 
-    this.scene.addProjectile(bullet as any);
-    this.attachImpactEffect(bullet as any, 'hit_small');
+    this.attachLaserImpactEffect(zones);
 
-    this.scene.time.delayedCall(RobotPet.BULLET_LIFESPAN, () => {
-      if (bullet.active) bullet.destroy();
+    // 150ms 후 체인 전체 일괄 소멸 (허공 소멸 아님 — 히트 판정용 짧은 생존)
+    this.scene.time.delayedCall(RobotPet.LASER_ZONE_LIFESPAN, () => {
+      zones.forEach((zone) => {
+        if (zone.active) zone.destroy();
+      });
     });
   }
 
-  /** 기존 RobotToy.attachImpactEffect 포팅: Set 중복 방지 + 히트 이펙트 */
-  private attachImpactEffect(sprite: Phaser.Physics.Arcade.Sprite, kind: string): void {
-    const hit = new Set<Phaser.Physics.Arcade.Sprite>();
-    const overlap = this.scene.physics.add.overlap(sprite, this.scene.getMonsters(), (_s, monster) => {
-      const m = monster as Phaser.Physics.Arcade.Sprite;
-      if (hit.has(m)) return;
-      hit.add(m);
-      this.playImpact(m.x, m.y, kind);
+  /** 히트존 체인 공용 임팩트 이펙트: hitSet과 별개의 Set으로 몬스터당 1회만 'hit_small' 재생 */
+  private attachLaserImpactEffect(zones: Phaser.GameObjects.Arc[]): void {
+    const impactHitSet = new Set<Phaser.Physics.Arcade.Sprite>();
+    zones.forEach((zone) => {
+      const overlap = this.scene.physics.add.overlap(zone as any, this.scene.getMonsters(), (_z, monster) => {
+        const m = monster as Phaser.Physics.Arcade.Sprite;
+        if (impactHitSet.has(m)) return;
+        impactHitSet.add(m);
+        this.playImpact(m.x, m.y, 'hit_small');
+      });
+      zone.once('destroy', () => overlap.destroy());
     });
-    sprite.once('destroy', () => overlap.destroy());
   }
 
   destroy(): void {

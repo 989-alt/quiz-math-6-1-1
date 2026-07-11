@@ -95,7 +95,7 @@ const MELEE_WEAPONS: WeaponEntry[] = [
 
 const PET_FRIENDS: WeaponEntry[] = [
   { id: 'hamster', nameKo: '햄스터', desc: '적에게 돌진! 수정도 물어다 줘요' },
-  { id: 'robot_toy', nameKo: '로봇 장난감', desc: '조준 사격! 내가 맞으면 복수해요' },
+  { id: 'robot_toy', nameKo: '로봇 장난감', desc: '관통 레이저! 내가 맞으면 복수해요' },
 ];
 
 const SPECIAL_WEAPONS: WeaponEntry[] = [
