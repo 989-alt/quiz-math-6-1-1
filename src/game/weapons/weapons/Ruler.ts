@@ -3,12 +3,12 @@ import { WeaponBase } from '../WeaponBase';
 import type { GameScene } from '../../scenes/GameScene';
 import type { Player } from '../../entities/Player';
 
-// 텔레그래프/낙하/잔류 타이밍 및 광역 판정 반경 (설계: 손오공 여의봉 내려치기)
+// 텔레그래프/슬램/잔류 타이밍 및 가로 밴드 판정 크기 (설계: 화면 가로 60%+ 를 덮는 자 내려치기, 좌우 랜덤 등장)
+const SWEEP_WIDTH_RATIO = 0.7; // 카메라 폭 대비 밴드 길이 비율
+const BAND_HEIGHT = 90; // 밴드 기본 두께 (×area로 스케일)
 const TELEGRAPH_MS = 450;
-const FALL_MS = 150;
+const SLAM_MS = 180;
 const LINGER_MS = 300;
-const AOE_RADIUS = 150;
-const DROP_HEIGHT = 300;
 
 export class Ruler extends WeaponBase {
   id = 'ruler';
@@ -53,92 +53,107 @@ export class Ruler extends WeaponBase {
   private performSlam(): void {
     // 지연 실행이라 player가 이미 파괴/리셋됐을 수 있음
     if (!this.player.active) return;
+    // 정답 판정 등으로 씬이 이미 종료 처리된 경우 연출/판정 생성 방지
+    if ((this.scene as any).gameFinished) return;
 
+    // 밴드가 위치할 행(y)은 가장 강한 적 → 없으면 가장 가까운 적 → 없으면 플레이어 위치 순으로 결정
     const target = this.findToughestEnemy() ?? this.findClosestEnemy();
-    let tx: number;
-    let ty: number;
-    if (target) {
-      // target은 텔레그래프~낙하 도중 죽을 수 있으므로 좌표를 즉시 확정
-      tx = target.x;
-      ty = target.y;
-    } else {
-      const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
-      const hasVelocity = playerBody.velocity.lengthSq() > 0;
-      const angle = hasVelocity ? playerBody.velocity.angle() : 0;
-      tx = this.player.x + Math.cos(angle) * 120;
-      ty = this.player.y + Math.sin(angle) * 120;
-    }
+    const rowY = target ? target.y : this.player.y;
 
-    this.createSlam(tx, ty);
+    this.createSlam(rowY);
   }
 
-  private createSlam(tx: number, ty: number): void {
+  private createSlam(rowY: number): void {
     const area = this.getArea();
+    const cam = this.scene.cameras.main;
+    const thickness = BAND_HEIGHT * area;
 
-    // 1. 텔레그래프: 축소하는 링 + 확대되는 그림자 타원으로 낙하지점 예고
-    const ring = this.scene.add.circle(tx, ty, AOE_RADIUS * area, 0xffe066, 0);
-    ring.setStrokeStyle(4, 0xffe066, 0.9);
-    ring.setDepth(7);
-    this.scene.tweens.add({
-      targets: ring,
-      scale: 0.15,
-      duration: TELEGRAPH_MS,
-      ease: 'Quad.easeIn',
-    });
+    // 밴드가 화면 안에 온전히 들어오도록 카메라 worldView 기준으로 y를 clamp
+    const minY = cam.worldView.top + thickness / 2;
+    const maxY = cam.worldView.bottom - thickness / 2;
+    const bandY = Phaser.Math.Clamp(rowY, minY, maxY);
 
-    const shadow = this.scene.add.ellipse(tx, ty, 20, 10, 0x000000, 0.35);
-    shadow.setDepth(6);
+    // 밴드 x범위: 카메라 폭의 SWEEP_WIDTH_RATIO만큼, 중심은 카메라 중심
+    const length = cam.worldView.width * SWEEP_WIDTH_RATIO;
+    const centerX = cam.worldView.centerX;
+
+    // 자가 등장하는 방향(좌/우) 랜덤 결정 — 슬램마다 독립적으로 재추첨
+    const pivotLeft = Math.random() < 0.5;
+
+    // 1. 텔레그래프: 밴드 전체를 덮는 사각형 페이드인 + 테두리 라인으로 낙하 위치 예고
+    const telegraphRect = this.scene.add.rectangle(centerX, bandY, length, thickness, 0xffe066, 0);
+    telegraphRect.setDepth(7);
     this.scene.tweens.add({
-      targets: shadow,
-      scaleX: (AOE_RADIUS * area * 1.6) / 20,
-      scaleY: (AOE_RADIUS * area * 0.8) / 10,
+      targets: telegraphRect,
+      fillAlpha: 0.22,
       duration: TELEGRAPH_MS,
       ease: 'Quad.easeOut',
     });
 
+    const telegraphStroke = this.scene.add.rectangle(centerX, bandY, length, thickness, 0xffe066, 0);
+    telegraphStroke.setStrokeStyle(4, 0xffe066, 0.9);
+    telegraphStroke.setDepth(7);
+
     this.scene.time.delayedCall(TELEGRAPH_MS, () => {
-      ring.destroy();
-      shadow.destroy();
-      this.dropRuler(tx, ty, area);
+      telegraphRect.destroy();
+      telegraphStroke.destroy();
+      this.sweepRuler(centerX, bandY, length, area, pivotLeft);
     });
   }
 
-  private dropRuler(tx: number, ty: number, area: number): void {
+  private sweepRuler(centerX: number, bandY: number, length: number, area: number, pivotLeft: boolean): void {
     const hasGiant = this.scene.textures.exists('weapon_ruler_giant');
-    const ruler = this.scene.add.sprite(tx, ty - DROP_HEIGHT, hasGiant ? 'weapon_ruler_giant' : 'weapon_ruler');
+    // 피벗은 밴드의 좌/우 끝단 — 자가 그 지점에서 수평으로 내리쳐짐
+    const pivotX = pivotLeft ? centerX - length / 2 : centerX + length / 2;
+
+    const ruler = this.scene.add.sprite(pivotX, bandY, hasGiant ? 'weapon_ruler_giant' : 'weapon_ruler');
     ruler.setDepth(11);
 
+    let startRotationDeg: number;
+    let endRotationDeg: number;
+
     if (hasGiant) {
-      // 세로로 긴 스프라이트의 아랫부분(끝)이 착지 지점이 되도록 origin 조정
+      // 세로로 긴 스프라이트: origin을 바닥(피벗)에 맞추고, 균일 스케일로 길이를 밴드 길이에 맞춤
       ruler.setOrigin(0.5, 1);
-      const targetScale = (AOE_RADIUS * 1.6 * area) / ruler.height;
+      const targetScale = length / ruler.height;
       ruler.setScale(targetScale);
-      ruler.setRotation(-0.35);
+      // 좌측 피벗=25도→90도, 우측 피벗=-25도→-90도 (쳐들었다가 수평으로 내리침)
+      startRotationDeg = pivotLeft ? 25 : -25;
+      endRotationDeg = pivotLeft ? 90 : -90;
     } else {
-      // weapon_ruler 폴백: 눕혀진 자를 세워서 여의봉처럼 보이게
-      ruler.setOrigin(0.5, 1);
-      ruler.setRotation(-Math.PI / 4 - 0.35);
-      ruler.setScale(1.6 * area);
+      // weapon_ruler 폴백: 가로로 눕혀진 작은 텍스처, 피벗쪽 끝을 origin으로 삼음
+      ruler.setOrigin(pivotLeft ? 0 : 1, 0.5);
+      ruler.setScale(length / ruler.width, (BAND_HEIGHT * area * 0.8) / ruler.height);
+      startRotationDeg = pivotLeft ? -25 : 25;
+      endRotationDeg = 0;
     }
 
-    // 2. 내려치기: 위에서 아래로 낙하
+    ruler.setRotation(Phaser.Math.DegToRad(startRotationDeg));
+
+    // 2. 슬램: 쳐든 자세에서 수평으로 내리치는 회전 트윈
     this.scene.tweens.add({
       targets: ruler,
-      y: ty,
-      rotation: hasGiant ? 0 : -Math.PI / 4,
-      duration: FALL_MS,
+      rotation: Phaser.Math.DegToRad(endRotationDeg),
+      duration: SLAM_MS,
       ease: 'Quad.easeIn',
-      onComplete: () => this.onLand(ruler, tx, ty, area),
+      onComplete: () => this.onLand(ruler, centerX, bandY, length, area),
     });
   }
 
-  // 3. 착지: 임팩트 이펙트 + 카메라 셰이크 + 광역 데미지존
-  private onLand(ruler: Phaser.GameObjects.Sprite, tx: number, ty: number, area: number): void {
+  // 3. 착지: 카메라 셰이크 + 사각 데미지존 + 임팩트 이펙트(3곳) + 흙먼지(밴드 전체 분산)
+  private onLand(ruler: Phaser.GameObjects.Sprite, centerX: number, bandY: number, length: number, area: number): void {
     if (!ruler.active) return;
 
-    this.playSlamFx(tx, ty);
-    this.scene.cameras.main.shake(250, 0.01);
-    this.spawnAoeZone(tx, ty, area);
+    this.scene.cameras.main.shake(250, 0.012);
+    this.spawnDamageZone(centerX, bandY, length, area);
+
+    // 밴드를 3등분한 지점(각 구간의 중심) 3곳에 임팩트 이펙트 재생
+    const thirds = [centerX - length / 3, centerX, centerX + length / 3];
+    for (const x of thirds) {
+      this.playSlamFx(x, bandY);
+    }
+
+    this.spawnBandDust(centerX, bandY, length, BAND_HEIGHT * area);
 
     // 4. 자 잔류 후 페이드 아웃
     this.scene.time.delayedCall(LINGER_MS, () => {
@@ -172,17 +187,22 @@ export class Ruler extends WeaponBase {
         onComplete: () => fallbackRing.destroy(),
       });
     }
+  }
 
-    // 흙먼지 파티클
-    for (let i = 0; i < 6; i++) {
+  private spawnBandDust(centerX: number, bandY: number, length: number, thickness: number): void {
+    // 흙먼지 파티클을 밴드 전체 영역에 랜덤 분산 (8~10개)
+    const count = 8 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < count; i++) {
+      const x = centerX + (Math.random() - 0.5) * length;
+      const y = bandY + (Math.random() - 0.5) * thickness;
       const angle = Math.random() * Math.PI * 2;
       const dist = 20 + Math.random() * 30;
-      const dust = this.scene.add.circle(tx, ty, 4, 0x8a6d4c, 0.7);
+      const dust = this.scene.add.circle(x, y, 4, 0x8a6d4c, 0.7);
       dust.setDepth(11);
       this.scene.tweens.add({
         targets: dust,
-        x: tx + Math.cos(angle) * dist,
-        y: ty + Math.sin(angle) * dist,
+        x: x + Math.cos(angle) * dist,
+        y: y + Math.sin(angle) * dist,
         alpha: 0,
         duration: 300,
         ease: 'Quad.easeOut',
@@ -191,15 +211,15 @@ export class Ruler extends WeaponBase {
     }
   }
 
-  private spawnAoeZone(tx: number, ty: number, area: number): void {
+  private spawnDamageZone(centerX: number, bandY: number, length: number, area: number): void {
     const damage = this.getDamage();
-    const radius = AOE_RADIUS * area;
+    const thickness = BAND_HEIGHT * area;
 
-    const zone = this.scene.add.circle(tx, ty, radius, 0xffe066, 0);
+    const zone = this.scene.add.rectangle(centerX, bandY, length, thickness, 0xffe066, 0);
     zone.setDepth(1);
     this.scene.physics.add.existing(zone);
     const body = (zone as unknown as { body: Phaser.Physics.Arcade.Body }).body;
-    body.setCircle(radius);
+    body.setSize(length, thickness);
 
     (zone as any).damage = damage;
     (zone as any).pierce = 999;
