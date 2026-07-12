@@ -14,7 +14,7 @@ const CARD_ICONS: Record<string, string> = {
   pencil: '✏️', banana: '🍌', acorn: '🌰', paper_plane: '🛩️', marble: '🔮',
   snowball: '⛄', leaf: '🍃', ruler: '📏', eraser: '🧽', crayon: '🖍️',
   lunch_box: '🍱', bubble: '🫧', water_balloon: '🎈', hamster: '🐹', butterfly: '🦋',
-  robot_toy: '🤖', rainbow: '🌈', star: '⭐', magnet: '🧲', magnifying_glass: '🔍',
+  robot_toy: '🤖', paper_storm: '🌪️', star: '⭐', magnet: '🧲', magnifying_glass: '🔍',
   // 패시브 12종
   milk: '🥛', backpack: '🎒', vitamin: '💊', bandage: '🩹', alarm_clock: '⏰',
   reading_glasses: '👓', slingshot: '🪀', sneakers: '👟', magnet_case: '✒️',

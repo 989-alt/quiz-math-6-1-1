@@ -93,7 +93,7 @@ export class Crayon extends WeaponBase {
       trail.setDepth(9);
       trail.setCrop(0, 0, 1, texH); // 리빌 전 초기 크롭(폭 1px): 첫 프레임 전체 스펙트럼 노출 플래시 방지
 
-      // 리빌: t(0→1)에 비례해 crop 폭을 넓혀 크레파스가 지나간 만큼만 보이게 (Rainbow.createSweep 패턴)
+      // 리빌: t(0→1)에 비례해 crop 폭을 넓혀 크레파스가 지나간 만큼만 보이게 (구 Rainbow 무기의 setCrop 리빌 패턴 — 해당 무기는 PaperStorm으로 대체됨)
       const reveal = { t: 0 };
       this.scene.tweens.add({
         targets: reveal,

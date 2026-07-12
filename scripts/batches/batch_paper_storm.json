@@ -1,0 +1,20 @@
+{
+ "batch": "paper-storm",
+ "max_attempts": 3,
+ "anchors": [
+  "B1_pixel_keyvisual.png",
+  "B2_pixel_lineup.png"
+ ],
+ "note": "무지개 대체 궁극기 '쪽지시험 폭풍' 발사체 겸 아이콘: 기울어진 수학 쪽지시험지 낱장 1종. 화면 전체 공격은 이 낱장 수십 장의 스웜으로 구현(고정 풀스크린 아트 폐기 — 화면비 왜곡 원천 차단).",
+ "jobs": [
+  {
+   "id": "weapon_paper_storm",
+   "kind": "single",
+   "cells": 1,
+   "native": 56,
+   "aspect_ratio": "1:1",
+   "outputs": ["weapon_paper_storm.png"],
+   "prompt": "Single pixel art game asset: one slightly tilted white exam paper sheet (a school math pop-quiz page), pale blue ruled lines, a few short gray pencil scribble strokes, one big red circle grading mark and two small red check marks, crisp dark outline around the sheet, one corner slightly folded, single object centered, no hands, no character, ABSOLUTELY no letters, no numbers, no digits, no readable text, no drop shadow."
+  }
+ ]
+}

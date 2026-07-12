@@ -99,7 +99,7 @@ const PET_FRIENDS: WeaponEntry[] = [
 ];
 
 const SPECIAL_WEAPONS: WeaponEntry[] = [
-  { id: 'rainbow', nameKo: '무지개', desc: '무지개 파동으로 화면을 휩쓸어요' },
+  { id: 'paper_storm', nameKo: '쪽지시험 폭풍', desc: '시험지 회오리가 화면을 휩쓸어요' },
   { id: 'star', nameKo: '별', desc: '하늘에서 별똥별이 떨어져요' },
   { id: 'magnifying_glass', nameKo: '돋보기', desc: '햇빛을 모아 적을 태워요' },
 ];

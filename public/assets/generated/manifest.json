@@ -1,5 +1,5 @@
 {
- "batch": "rainbow-sweep",
+ "batch": "paper-storm",
  "batches": [
   "3a",
   "3b-hero",
@@ -22,9 +22,10 @@
   "ruler-slam",
   "weapon-overhaul",
   "pet-system",
-  "rainbow-sweep"
+  "rainbow-sweep",
+  "paper-storm"
  ],
- "generated_at": "2026-07-12T13:22:46+00:00",
+ "generated_at": "2026-07-12T13:37:28+00:00",
  "style_anchors": [
   "B1_pixel_keyvisual.png",
   "B2_pixel_lineup.png"
@@ -1692,18 +1693,6 @@
    "qa": "pass"
   },
   {
-   "id": "weapon_rainbow",
-   "group": "weapon_rainbow",
-   "file": "weapon_rainbow.png",
-   "kind": "single",
-   "native": 512,
-   "frames": 1,
-   "frame_w": 516,
-   "frame_h": 201,
-   "attempts": 2,
-   "qa": "pass"
-  },
-  {
    "id": "weapon_ruler_giant",
    "group": "weapon_ruler_giant",
    "file": "weapon_ruler_giant.png",
@@ -1788,18 +1777,14 @@
    "qa": "pass"
   },
   {
-   "id": "weapon_rainbow_sweep",
-   "group": "weapon_rainbow_sweep",
-   "file": "weapon_rainbow_sweep.png",
+   "id": "weapon_paper_storm",
+   "group": "weapon_paper_storm",
+   "file": "weapon_paper_storm.png",
    "kind": "single",
-   "native": 512,
+   "native": 56,
    "frames": 1,
-   "frame_w": 516,
-   "frame_h": 505,
-   "qa_skip": [
-    "outline",
-    "alignment"
-   ],
+   "frame_w": 55,
+   "frame_h": 60,
    "attempts": 1,
    "qa": "pass"
   }

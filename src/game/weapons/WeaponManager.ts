@@ -18,7 +18,7 @@ import { LunchBox } from './weapons/LunchBox';
 import { Bubble } from './weapons/Bubble';
 import { WaterBalloon } from './weapons/WaterBalloon';
 import { Butterfly } from './weapons/Butterfly';
-import { Rainbow } from './weapons/Rainbow';
+import { PaperStorm } from './weapons/PaperStorm';
 import { Star } from './weapons/Star';
 import { MagnifyingGlass } from './weapons/MagnifyingGlass';
 
@@ -34,7 +34,7 @@ export type WeaponId =
   | 'banana' | 'acorn' | 'pencil' | 'paper_plane' | 'marble'
   | 'snowball' | 'leaf' | 'ruler' | 'eraser' | 'crayon'
   | 'lunch_box' | 'bubble' | 'water_balloon' | 'butterfly'
-  | 'rainbow' | 'star' | 'magnifying_glass';
+  | 'paper_storm' | 'star' | 'magnifying_glass';
 
 export type PetId = 'hamster' | 'robot_toy';
 
@@ -74,7 +74,7 @@ const WeaponRegistry: Record<WeaponId, new (scene: GameScene, player: Player) =>
   bubble: Bubble,
   water_balloon: WaterBalloon,
   butterfly: Butterfly,
-  rainbow: Rainbow,
+  paper_storm: PaperStorm,
   star: Star,
   magnifying_glass: MagnifyingGlass,
 };
@@ -102,7 +102,7 @@ export const WeaponInfoList: WeaponInfo[] = [
   { id: 'bubble', name: 'Bubble', nameKo: '비눗방울', description: 'Orbiting bubbles', descriptionKo: '주위를 도는 비눗방울', maxLevel: 8, category: 'melee' },
   { id: 'water_balloon', name: 'Water Balloon', nameKo: '물풍선', description: 'Splash damage on impact', descriptionKo: '터지면 튀는 물풍선', maxLevel: 8, category: 'melee' },
   // 특수 무기 (Special)
-  { id: 'rainbow', name: 'Rainbow', nameKo: '무지개', description: 'Rainbow wave attack', descriptionKo: '무지개 파동 공격', maxLevel: 8, category: 'special' },
+  { id: 'paper_storm', name: 'Paper Storm', nameKo: '쪽지시험 폭풍', description: 'A storm of quiz papers sweeps the whole screen', descriptionKo: '쪽지시험지 회오리가 화면 전체를 휩쓴다', maxLevel: 8, category: 'special' },
   { id: 'star', name: 'Star', nameKo: '별', description: 'Random lightning strikes', descriptionKo: '무작위 별똥별 공격', maxLevel: 8, category: 'special' },
   { id: 'magnifying_glass', name: 'Magnifying Glass', nameKo: '돋보기', description: 'Focus sunlight to burn enemies', descriptionKo: '햇빛을 모아 적을 태우는 공격', maxLevel: 8, category: 'special' },
 ];
