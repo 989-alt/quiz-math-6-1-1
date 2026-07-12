@@ -1,5 +1,5 @@
 {
- "batch": "pet-system",
+ "batch": "rainbow-sweep",
  "batches": [
   "3a",
   "3b-hero",
@@ -21,9 +21,10 @@
   "crayon-rework",
   "ruler-slam",
   "weapon-overhaul",
-  "pet-system"
+  "pet-system",
+  "rainbow-sweep"
  ],
- "generated_at": "2026-07-10T15:40:17+00:00",
+ "generated_at": "2026-07-12T13:22:46+00:00",
  "style_anchors": [
   "B1_pixel_keyvisual.png",
   "B2_pixel_lineup.png"
@@ -1779,6 +1780,22 @@
    "frames": 1,
    "frame_w": 32,
    "frame_h": 28,
+   "qa_skip": [
+    "outline",
+    "alignment"
+   ],
+   "attempts": 1,
+   "qa": "pass"
+  },
+  {
+   "id": "weapon_rainbow_sweep",
+   "group": "weapon_rainbow_sweep",
+   "file": "weapon_rainbow_sweep.png",
+   "kind": "single",
+   "native": 512,
+   "frames": 1,
+   "frame_w": 516,
+   "frame_h": 505,
    "qa_skip": [
     "outline",
     "alignment"

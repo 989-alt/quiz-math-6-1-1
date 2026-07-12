@@ -50,9 +50,11 @@ export class Rainbow extends WeaponBase {
   // 거대 무지개 아치가 화면 위에 "닦아내듯" 좌→우(또는 우→좌)로 그려지는 연출
   // (설계: 저빈도 초광역, wipe/paint reveal — 날아오는 게 아니라 제자리에서 그려짐).
   //
-  // 시각(wave): weapon_rainbow 아트를 회전 없이 원래 비율 그대로 카메라 폭 x 카메라 높이
-  // 90%로 늘려 화면(플레이어 기준 카메라 앵커 좌표)에 고정 배치한다 — 스프라이트 자체는
-  // 이동하지 않고, setCrop으로 노출 영역만 점진적으로 넓혀 "그려지는" 느낌을 만든다.
+  // 시각(wave): 풀프레임(1:1) weapon_rainbow_sweep 아트를 **균등(cover) 스케일**로 화면에
+  // 고정 배치한다 — 이전의 비균등 스트레치(X/Y 별도 배율)는 도트를 세로로 뭉개 픽셀아트가
+  // 완전히 깨졌다. 균등 배율 하나로 카메라를 덮으면(넘치는 부분은 화면 밖) 도트가 항상
+  // 정사각으로 유지된다. 스프라이트 자체는 이동하지 않고, setCrop으로 노출 영역만
+  // 점진적으로 넓혀 "그려지는" 느낌을 만든다.
   // setCrop 좌표는 스케일이 적용되기 전 텍스처(프레임) 좌표계 기준이므로, wave.width/height
   // (원본 프레임 크기)를 그대로 fullWidth/fullHeight로 사용해 변환한다.
   // - dir>0(좌→우): 왼쪽 끝(x=0)을 고정하고 crop 폭만 키움 → 왼쪽이 앵커, 오른쪽으로 자라남.
@@ -74,9 +76,13 @@ export class Rainbow extends WeaponBase {
     const frontierWidth = 120 * area; // 히트 프론티어 두께(이전 버전의 파동 두께 역할, 범위 업그레이드 반영)
 
     // --- 시각: 카메라 앵커 위치에 고정 배치, 이동 없이 crop만 넓혀간다 ---
-    const wave = this.scene.add.sprite(this.player.x, this.player.y, 'weapon_rainbow');
+    // 풀프레임 커튼 아트(1:1) 우선, 없으면 기존 아치(도감 아이콘용 16:9)로 폴백
+    const texKey = this.scene.textures.exists('weapon_rainbow_sweep') ? 'weapon_rainbow_sweep' : 'weapon_rainbow';
+    const wave = this.scene.add.sprite(this.player.x, this.player.y, texKey);
     wave.setDepth(8);
-    wave.setScale(cam.width / wave.width, sweepHeight / wave.height);
+    // 균등 cover 스케일: 도트 정사각 유지가 최우선 — 큰 쪽 배율 하나로 화면을 덮는다
+    const coverScale = Math.max(cam.width / wave.width, sweepHeight / wave.height);
+    wave.setScale(coverScale);
     wave.setAlpha(0);
 
     const fullWidth = wave.width; // 텍스처 좌표계 기준 원본 프레임 크기 (스케일 적용 전)
