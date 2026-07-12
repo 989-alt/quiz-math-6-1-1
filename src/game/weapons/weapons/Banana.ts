@@ -44,9 +44,11 @@ export class Banana extends WeaponBase {
     const speed = this.getSpeed();
     const area = this.getArea();
 
+    // 발리마다 랜덤 기준각 → amount=1이어도 전방향
+    const baseAngle = Math.random() * Math.PI * 2;
     for (let i = 0; i < amount; i++) {
       // 전방향(360도)으로 균등 분산 + 약간의 랜덤 지터
-      const angle = (i / amount) * Math.PI * 2 + Math.random() * 0.5;
+      const angle = baseAngle + (i / amount) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
       this.createBoomerang(angle, damage, speed, area);
     }
   }

@@ -98,6 +98,23 @@ export class Marble extends WeaponBase {
     const maxRange = 260 * area;
     let hasReversed = false;
 
+    // 반사 횟수 카운트 — 3회째 반사 직후 페이드 소멸 (허공 소멸 금지, 150ms 페이드)
+    let bounceCount = 0;
+    const fadeOutAndDestroy = () => {
+      if (!marble.active) return;
+      bounceTimer.destroy();
+      this.scene.tweens.killTweensOf(marble); // 반짝 트윈 정지
+      this.scene.tweens.add({
+        targets: marble,
+        alpha: 0,
+        scale: targetScale * 0.5,
+        duration: 150,
+        onComplete: () => {
+          if (marble.active) marble.destroy();
+        },
+      });
+    };
+
     // Bounce logic
     const bounceTimer = this.scene.time.addEvent({
       delay: 50,
@@ -112,11 +129,14 @@ export class Marble extends WeaponBase {
           bottom: cam.scrollY + cam.height + padding,
         };
 
+        let bounced = false;
         if (marble.x <= bounds.left || marble.x >= bounds.right) {
           body.setVelocityX(-body.velocity.x);
+          bounced = true;
         }
         if (marble.y <= bounds.top || marble.y >= bounds.bottom) {
           body.setVelocityY(-body.velocity.y);
+          bounced = true;
         }
 
         if (!hasReversed) {
@@ -124,27 +144,22 @@ export class Marble extends WeaponBase {
           if (dist >= maxRange) {
             hasReversed = true;
             body.setVelocity(-body.velocity.x, -body.velocity.y);
+            bounced = true;
+          }
+        }
+
+        if (bounced) {
+          bounceCount++;
+          if (bounceCount >= 3) {
+            fadeOutAndDestroy();
           }
         }
       },
       loop: true,
     });
 
-    // 수명 종료 시 허공 소멸 금지: 페이드로 종결
-    this.scene.time.delayedCall(this.getDuration(), () => {
-      bounceTimer.destroy();
-      if (!marble.active) return;
-      this.scene.tweens.killTweensOf(marble); // 반짝 트윈 정지
-      this.scene.tweens.add({
-        targets: marble,
-        alpha: 0,
-        scale: targetScale * 0.5,
-        duration: 150,
-        onComplete: () => {
-          if (marble.active) marble.destroy();
-        },
-      });
-    });
+    // 수명 종료 시 허공 소멸 금지: 페이드로 종결 (3회 반사로 이미 소멸했으면 fadeOutAndDestroy의 active 가드가 중복 실행을 막는다)
+    this.scene.time.delayedCall(this.getDuration(), fadeOutAndDestroy);
 
     // 관통 소진 등으로 duration 이전에 먼저 destroy되는 경우(pierce 소진, cleanupEntities)를 대비해
     // 타이머·트윈을 즉시 정리
