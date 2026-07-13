@@ -25,12 +25,7 @@ export const DIFFICULTY_CONFIG: Record<Difficulty, DifficultyConfig> = {
     maxActive: 100,
     timeRamp: { speedPerMin: 0.02, hpPerMin: 0.03, cap: 0.2 },
     wrongPenalty: false,
-    descriptions: [
-      '기존 밸런스 그대로',
-      '몬스터 속도·체력 기본',
-      '시간 가속: 약하게',
-      '오답 페널티 없음',
-    ],
+    descriptions: ['입문자용'],
   },
   normal: {
     label: '보통',
@@ -40,12 +35,7 @@ export const DIFFICULTY_CONFIG: Record<Difficulty, DifficultyConfig> = {
     maxActive: 120,
     timeRamp: { speedPerMin: 0.03, hpPerMin: 0.05, cap: 0.35 },
     wrongPenalty: false,
-    descriptions: [
-      '몬스터 체력·속도·공격력 상향',
-      '스폰 간격이 짧아 물량 증가',
-      '시간 가속: 중간',
-      '오답 페널티 없음',
-    ],
+    descriptions: ['몬스터 강화'],
   },
   hard: {
     label: '어려움',
@@ -55,14 +45,7 @@ export const DIFFICULTY_CONFIG: Record<Difficulty, DifficultyConfig> = {
     maxActive: 140,
     timeRamp: { speedPerMin: 0.04, hpPerMin: 0.07, cap: 0.5 },
     wrongPenalty: true,
-    descriptions: [
-      '몬스터 대폭 강화 + 최다 물량',
-      '시간 가속: 강하게',
-      '오답 시 페널티 3종 발동:',
-      '· 체력 -10%',
-      '· 몬스터 광폭화',
-      '· 몬스터 습격',
-    ],
+    descriptions: ['몬스터 강화 및 오답 페널티!'],
   },
 };
 
