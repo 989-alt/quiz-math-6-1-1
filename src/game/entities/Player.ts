@@ -345,10 +345,21 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.y += this.appliedRecoilY;
   }
 
+  // 기본 체력 리젠: 전 난이도 공통 2초마다 +1 (반창고 패시브 hpRegen과 독립 가산).
+  // heal이 maxHp로 클램프하므로 상한 초과 없음. 일시정지 중엔 update 자체가 멈춰 진행 안 됨.
+  private static readonly BASE_REGEN_INTERVAL_MS = 2000;
+  private static readonly BASE_REGEN_AMOUNT = 1;
+  private baseRegenTimer: number = 0;
   private regenTimer: number = 0;
   private handleRegen(): void {
+    const delta = this.scene.game.loop.delta;
+    this.baseRegenTimer += delta;
+    if (this.baseRegenTimer >= Player.BASE_REGEN_INTERVAL_MS) {
+      this.baseRegenTimer = 0;
+      this.heal(Player.BASE_REGEN_AMOUNT, true); // quiet — 2초마다 초록 플래시가 터지면 노이즈
+    }
     if (this.hpRegen > 0) {
-      this.regenTimer += this.scene.game.loop.delta;
+      this.regenTimer += delta;
       if (this.regenTimer >= 1000) {
         this.heal(this.hpRegen);
         this.regenTimer = 0;
@@ -388,16 +399,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
-  heal(amount: number): void {
+  // quiet=true면 초록 플래시 없이 회복 (기본 리젠 틱용 — HUD 갱신 이벤트는 동일하게 발행)
+  heal(amount: number, quiet: boolean = false): void {
     const oldHp = this.currentHp;
     this.currentHp = Math.min(this.maxHp, this.currentHp + amount);
 
     if (this.currentHp > oldHp) {
-      // Green flash for healing
-      this.setTint(0x00ff00);
-      this.scene.time.delayedCall(100, () => {
-        this.clearTint();
-      });
+      if (!quiet) {
+        // Green flash for healing
+        this.setTint(0x00ff00);
+        this.scene.time.delayedCall(100, () => {
+          this.clearTint();
+        });
+      }
 
       EventBus.emit(GameEvents.PLAYER_HEAL, { hp: this.currentHp, maxHp: this.maxHp, healed: this.currentHp - oldHp });
     }
