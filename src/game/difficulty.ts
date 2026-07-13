@@ -13,6 +13,7 @@ export interface DifficultyConfig {
   // 생존 시간 기반 자동 가속 — 분당 증가율(비율)과 상한(비율). cap은 speed/hp 램프에 공통 적용.
   timeRamp: { speedPerMin: number; hpPerMin: number; cap: number };
   wrongPenalty: boolean; // 오답 페널티 발동 여부 (어려움 전용)
+  regenIntervalMs: number; // 기본 체력 리젠 간격 (+1 HP당 ms) — 어려움만 느리게
   descriptions: string[]; // 선택 화면에 표시할 차이점 설명
 }
 
@@ -25,6 +26,7 @@ export const DIFFICULTY_CONFIG: Record<Difficulty, DifficultyConfig> = {
     maxActive: 100,
     timeRamp: { speedPerMin: 0.02, hpPerMin: 0.03, cap: 0.2 },
     wrongPenalty: false,
+    regenIntervalMs: 2000,
     descriptions: ['입문자용'],
   },
   normal: {
@@ -35,6 +37,7 @@ export const DIFFICULTY_CONFIG: Record<Difficulty, DifficultyConfig> = {
     maxActive: 120,
     timeRamp: { speedPerMin: 0.03, hpPerMin: 0.05, cap: 0.35 },
     wrongPenalty: false,
+    regenIntervalMs: 2000,
     descriptions: ['몬스터 강화'],
   },
   hard: {
@@ -45,6 +48,7 @@ export const DIFFICULTY_CONFIG: Record<Difficulty, DifficultyConfig> = {
     maxActive: 140,
     timeRamp: { speedPerMin: 0.04, hpPerMin: 0.07, cap: 0.5 },
     wrongPenalty: true,
+    regenIntervalMs: 3000,
     descriptions: ['몬스터 강화 및 오답 페널티!'],
   },
 };

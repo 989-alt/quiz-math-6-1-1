@@ -157,6 +157,7 @@ export class GameScene extends Phaser.Scene {
     const centerX = this.scale.width / 2;
     const centerY = this.scale.height / 2;
     this.player = new Player(this, centerX, centerY);
+    this.player.baseRegenIntervalMs = DIFFICULTY_CONFIG[this.difficulty].regenIntervalMs;
 
     // Setup camera
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
@@ -777,6 +778,7 @@ export class GameScene extends Phaser.Scene {
     const centerX = this.scale.width / 2;
     const centerY = this.scale.height / 2;
     this.player = new Player(this, centerX, centerY);
+    this.player.baseRegenIntervalMs = DIFFICULTY_CONFIG[this.difficulty].regenIntervalMs;
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
 
     // Recreate weapon manager and starting weapon

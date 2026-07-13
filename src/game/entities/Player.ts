@@ -345,18 +345,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.y += this.appliedRecoilY;
   }
 
-  // 기본 체력 리젠: 전 난이도 공통 2초마다 +1 (반창고 패시브 hpRegen과 독립 가산).
+  // 기본 체력 리젠: 간격마다 +1 (반창고 패시브 hpRegen과 독립 가산). 간격은 난이도별
+  // (DIFFICULTY_CONFIG.regenIntervalMs) — GameScene이 플레이어 생성 직후 주입한다.
   // heal이 maxHp로 클램프하므로 상한 초과 없음. 일시정지 중엔 update 자체가 멈춰 진행 안 됨.
-  private static readonly BASE_REGEN_INTERVAL_MS = 2000;
+  public baseRegenIntervalMs: number = 2000;
   private static readonly BASE_REGEN_AMOUNT = 1;
   private baseRegenTimer: number = 0;
   private regenTimer: number = 0;
   private handleRegen(): void {
     const delta = this.scene.game.loop.delta;
     this.baseRegenTimer += delta;
-    if (this.baseRegenTimer >= Player.BASE_REGEN_INTERVAL_MS) {
+    if (this.baseRegenTimer >= this.baseRegenIntervalMs) {
       this.baseRegenTimer = 0;
-      this.heal(Player.BASE_REGEN_AMOUNT, true); // quiet — 2초마다 초록 플래시가 터지면 노이즈
+      this.heal(Player.BASE_REGEN_AMOUNT, true); // quiet — 리젠마다 초록 플래시가 터지면 노이즈
     }
     if (this.hpRegen > 0) {
       this.regenTimer += delta;
