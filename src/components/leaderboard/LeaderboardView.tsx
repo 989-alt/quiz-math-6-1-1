@@ -7,9 +7,18 @@ import {
   fetchTopScores,
   type ScoreEntryWithMeta,
 } from '../../services/firebase';
+import { DIFFICULTY_CONFIG, type Difficulty } from '../../game/difficulty';
 
 interface LeaderboardViewProps {
   onBack?: () => void;
+}
+
+const DIFFICULTY_TABS: Difficulty[] = ['easy', 'normal', 'hard'];
+
+// 구기록(difficulty 필드 없음) = 기존 밸런스 = '쉬움' 탭으로 분류 (설계 §4)
+function tabOf(entry: ScoreEntryWithMeta): Difficulty {
+  const d = entry.difficulty;
+  return d === 'normal' || d === 'hard' ? d : 'easy';
 }
 
 function formatTime(seconds: number): string {
@@ -20,6 +29,7 @@ function formatTime(seconds: number): string {
 
 export function LeaderboardView({ onBack }: LeaderboardViewProps) {
   const unitId = UNIT.unitId;
+  const [tab, setTab] = useState<Difficulty>('normal');
   const [scores, setScores] = useState<ScoreEntryWithMeta[]>([]);
   const [myBest, setMyBest] = useState<ScoreEntryWithMeta | null>(null);
   const [myUid, setMyUid] = useState<string>('');
@@ -48,7 +58,9 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
       try {
         const [top, mine] = await Promise.all([fetchTopScores(unitId, 100), fetchMyBest(unitId)]);
         if (cancelled) return;
-        setScores(dedupeByNicknameBest(top.scores));
+        // 난이도 탭별로 따로 dedupe해야 하므로(같은 닉네임이 난이도별 최고기록을 각각 가질 수
+        // 있음) 여기서는 원본을 저장하고, 탭 필터링 후 useMemo에서 dedupe한다.
+        setScores(top.scores);
         setMyBest(mine.entry);
         setOffline(top.offline || mine.offline);
       } catch (err) {
@@ -68,17 +80,28 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
     };
   }, [unitId]);
 
+  // 선택된 난이도 탭으로 필터링한 뒤 닉네임당 최고 기록만 남긴다 (탭마다 별도 dedupe 필요 —
+  // 같은 닉네임이 난이도별로 각각 최고 기록을 가질 수 있으므로 전체 dedupe 후 필터링하면 안 됨).
+  const tabScores = useMemo(
+    () => dedupeByNicknameBest(scores.filter((s) => tabOf(s) === tab)),
+    [scores, tab]
+  );
+
+  // myBest는 전체 난이도 통틀어 가중점수가 가장 높은 기록 하나뿐이라(fetchMyBest), 그 기록의
+  // 난이도가 현재 탭과 다르면 이 탭에서는 표시하지 않는다.
+  const myBestForTab = myBest && tabOf(myBest) === tab ? myBest : null;
+
   const myRank = useMemo(() => {
-    if (!myBest) return null;
-    let idx = scores.findIndex((s) => s.docId === myBest.docId);
+    if (!myBestForTab) return null;
+    let idx = tabScores.findIndex((s) => s.docId === myBestForTab.docId);
     if (idx < 0) {
       // docId가 어긋나는 경우(로컬↔원격 소스 불일치 등) 닉네임+점수 일치로 폴백한다.
-      idx = scores.findIndex(
-        (s) => s.nickname === myBest.nickname && s.weightedScore === myBest.weightedScore
+      idx = tabScores.findIndex(
+        (s) => s.nickname === myBestForTab.nickname && s.weightedScore === myBestForTab.weightedScore
       );
     }
     return idx >= 0 ? idx + 1 : null;
-  }, [scores, myBest]);
+  }, [tabScores, myBestForTab]);
 
   return (
     <div
@@ -135,7 +158,7 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
               )}
             </h1>
             <p style={{ fontSize: 13, color: '#71717a', marginTop: 4 }}>
-              상위 {scores.length}명 (가중점수 기준 · 닉네임당 최고 기록)
+              상위 {tabScores.length}명 (가중점수 기준 · 닉네임당 최고 기록)
             </p>
           </div>
           {onBack && (
@@ -158,6 +181,31 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
           }}
         >
           {UNIT.grade}학년 {UNIT.semester}학기 · {UNIT.unitNumber}단원 {UNIT.title}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
+          {DIFFICULTY_TABS.map((d) => {
+            const cfg = DIFFICULTY_CONFIG[d];
+            const active = tab === d;
+            return (
+              <button
+                key={d}
+                onClick={() => setTab(d)}
+                style={{
+                  padding: '10px 8px',
+                  borderRadius: 12,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  color: active ? cfg.badgeColor : '#71717a',
+                  background: active ? `${cfg.badgeColor}1a` : 'rgba(255,255,255,0.03)',
+                  border: active ? `1.5px solid ${cfg.badgeColor}` : '1px solid rgba(255,255,255,0.08)',
+                }}
+              >
+                {cfg.label}
+              </button>
+            );
+          })}
         </div>
 
         {errorMsg && (
@@ -187,7 +235,7 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
           </div>
         ) : (
           <>
-            {myBest && (
+            {myBestForTab && (
               <div
                 className="clean-card"
                 style={{
@@ -203,15 +251,15 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
                       내 최고 기록
                     </div>
                     <div style={{ fontSize: 16, fontWeight: 700, color: '#e4e4e7' }}>
-                      {myBest.nickname} {myRank ? `· Top 100 ${myRank}위` : ''}
+                      {myBestForTab.nickname} {myRank ? `· Top 100 ${myRank}위` : ''}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: 22, fontWeight: 800, color: '#67e8f9' }}>
-                      {myBest.weightedScore.toLocaleString()}
+                      {myBestForTab.weightedScore.toLocaleString()}
                     </div>
                     <div style={{ fontSize: 11, color: '#71717a' }}>
-                      점수 {myBest.score} · {formatTime(myBest.survivalTime)} · Lv.{myBest.level}
+                      점수 {myBestForTab.score} · {formatTime(myBestForTab.survivalTime)} · Lv.{myBestForTab.level}
                     </div>
                   </div>
                 </div>
@@ -219,7 +267,7 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
             )}
 
             <div className="clean-card" style={{ padding: 0, overflow: 'hidden' }}>
-              {scores.length === 0 ? (
+              {tabScores.length === 0 ? (
                 <div style={{ padding: 60, textAlign: 'center', color: '#71717a', fontSize: 14 }}>
                   아직 등록된 기록이 없습니다.
                   <br />
@@ -227,7 +275,7 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
                 </div>
               ) : (
                 <div>
-                  {scores.map((s, i) => {
+                  {tabScores.map((s, i) => {
                     const isMine = s.authUid === myUid;
                     const rank = i + 1;
                     return (
@@ -238,7 +286,7 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
                           gridTemplateColumns: '48px 1fr auto',
                           gap: 12,
                           padding: '12px 16px',
-                          borderBottom: i < scores.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                          borderBottom: i < tabScores.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
                           background: isMine ? 'rgba(34,211,238,0.06)' : 'transparent',
                           alignItems: 'center',
                         }}

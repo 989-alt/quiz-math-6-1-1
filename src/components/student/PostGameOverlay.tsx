@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { UNIT, weightedScore } from '../../data/unit';
 import { retrySubmitScore, submitScore, type ScoreEntry } from '../../services/firebase';
+import type { Difficulty } from '../../game/difficulty';
 
 interface PostGameOverlayProps {
   nickname: string;
+  difficulty: Difficulty;
   finish: { score: number; level: number; survivalTime: number; monstersKilled: number; cleared: boolean };
   onRestart: () => void;
   onExit: () => void;
@@ -15,6 +17,7 @@ type SubmitState = 'idle' | 'submitting' | 'done' | 'offline' | 'error';
 
 export function PostGameOverlay({
   nickname,
+  difficulty,
   finish,
   onRestart,
   onExit,
@@ -37,6 +40,7 @@ export function PostGameOverlay({
     level: finish.level,
     kills: finish.monstersKilled,
     weightedScore: w,
+    difficulty,
   };
 
   useEffect(() => {

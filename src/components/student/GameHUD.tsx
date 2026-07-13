@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { EventBus, GameEvents } from '../../game/utils/EventBus';
 import { getSoundSettings, setSoundSettings } from '../../stores/soundSettings';
+import { DIFFICULTY_CONFIG, type Difficulty } from '../../game/difficulty';
 
 interface PlayerStateData {
   hp: number;
@@ -14,7 +15,11 @@ interface PlayerStateData {
   monstersKilled: number;
 }
 
-export function GameHUD() {
+interface GameHUDProps {
+  difficulty: Difficulty;
+}
+
+export function GameHUD({ difficulty }: GameHUDProps) {
   const [confirmStop, setConfirmStop] = useState(false);
   const confirmStopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [soundSettings, setSoundSettingsState] = useState(() => getSoundSettings());
@@ -173,6 +178,19 @@ export function GameHUD() {
           </div>
           <span style={{ fontSize: 'clamp(11px, 1vw, 14px)', fontWeight: 600, color: '#e4e4e7' }}>
             Wave {state.wave}
+          </span>
+          <span
+            style={{
+              fontSize: 'clamp(9px, 0.85vw, 11px)',
+              fontWeight: 700,
+              padding: '3px 8px',
+              borderRadius: 999,
+              color: DIFFICULTY_CONFIG[difficulty].badgeColor,
+              background: `${DIFFICULTY_CONFIG[difficulty].badgeColor}1a`,
+              border: `1px solid ${DIFFICULTY_CONFIG[difficulty].badgeColor}`,
+            }}
+          >
+            {DIFFICULTY_CONFIG[difficulty].label}
           </span>
         </div>
 

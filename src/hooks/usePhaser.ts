@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import Phaser from 'phaser';
 import { createPhaserConfig } from '../game/config';
 import { EventBus, GameEvents } from '../game/utils/EventBus';
+import type { Difficulty } from '../game/difficulty';
 
 export interface PlayerStateData {
   hp: number;
@@ -40,7 +41,10 @@ export interface GameFinishedData {
   cleared: boolean;
 }
 
-export function usePhaser(containerId: string, options?: { isSolo: boolean; playerName: string; onQuit?: () => void }) {
+export function usePhaser(
+  containerId: string,
+  options?: { isSolo: boolean; playerName: string; difficulty?: Difficulty; onQuit?: () => void }
+) {
   const gameRef = useRef<Phaser.Game | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [playerState, setPlayerState] = useState<PlayerStateData | null>(null);
@@ -65,6 +69,9 @@ export function usePhaser(containerId: string, options?: { isSolo: boolean; play
     // Create game instance
     const phaserConfig = createPhaserConfig(containerId);
     gameRef.current = new Phaser.Game(phaserConfig);
+    // 난이도를 GameScene이 create()에서 읽기 전에 registry에 심어둔다 (BootScene의 비동기
+    // 로딩 이후에 GameScene.create()가 실행되므로 이 동기 호출로 충분히 앞선다).
+    gameRef.current.registry.set('difficulty', options?.difficulty ?? 'normal');
 
     // Setup event listeners
     const handleGameReady = () => {

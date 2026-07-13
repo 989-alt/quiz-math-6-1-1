@@ -4,11 +4,13 @@ service cloud.firestore {
     match /leaderboards/{unitId}/scores/{scoreId} {
       allow read: if true;
 
+      // NOTE(난이도 3단 모드, 2026-07-13): difficulty 필드 검증 추가. 이 파일을 수정한 뒤
+      // Firebase 콘솔(Firestore Database > 규칙)에 반드시 재게시해야 실제로 적용된다.
       allow create: if request.auth != null
         && request.resource.data.keys().hasOnly([
           'nickname', 'unitId', 'grade', 'semester', 'score',
           'survivalTime', 'level', 'kills', 'weightedScore',
-          'authUid', 'createdAt'
+          'difficulty', 'authUid', 'createdAt'
         ])
         && request.resource.data.nickname is string
         && request.resource.data.nickname.size() > 0
@@ -36,6 +38,8 @@ service cloud.firestore {
         && request.resource.data.weightedScore is number
         && request.resource.data.weightedScore >= 0
         && request.resource.data.weightedScore <= 1000000
+        && (!('difficulty' in request.resource.data)
+          || request.resource.data.difficulty in ['easy', 'normal', 'hard'])
         && request.resource.data.authUid == request.auth.uid
         && request.resource.data.createdAt == request.time;
 

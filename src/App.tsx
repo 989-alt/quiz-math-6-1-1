@@ -3,6 +3,7 @@ import { GameContainer } from './components/student/GameContainer';
 import { StartScreen } from './components/student/StartScreen';
 import { LeaderboardView } from './components/leaderboard/LeaderboardView';
 import { UNIT } from './data/unit';
+import type { Difficulty } from './game/difficulty';
 
 type AppView = 'home' | 'play' | 'game' | 'leaderboard';
 
@@ -51,6 +52,7 @@ function DotCluster({
 function App() {
   const [view, setView] = useState<AppView>('home');
   const [nickname, setNickname] = useState<string | null>(null);
+  const [difficulty, setDifficulty] = useState<Difficulty>('normal');
 
   useEffect(() => {
     const handleHash = () => {
@@ -70,8 +72,9 @@ function App() {
     setView('home');
   }, []);
 
-  const handleStartGame = useCallback((name: string) => {
+  const handleStartGame = useCallback((name: string, diff: Difficulty) => {
     setNickname(name);
+    setDifficulty(diff);
     setView('game');
   }, []);
 
@@ -89,6 +92,7 @@ function App() {
     return (
       <GameContainer
         nickname={nickname}
+        difficulty={difficulty}
         onExit={navigateHome}
         onShowLeaderboard={() => setView('leaderboard')}
       />

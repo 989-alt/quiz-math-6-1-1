@@ -10,14 +10,16 @@ import { useQuizStore } from '../../stores/quizStore';
 import { quizTimeLimit } from '../../types/quiz';
 import { EventBus, GameEvents } from '../../game/utils/EventBus';
 import type { UpgradeOption } from '../../types/game';
+import type { Difficulty } from '../../game/difficulty';
 
 interface GameContainerProps {
   nickname: string;
+  difficulty: Difficulty;
   onExit: () => void;
   onShowLeaderboard: () => void;
 }
 
-export function GameContainer({ nickname, onExit, onShowLeaderboard }: GameContainerProps) {
+export function GameContainer({ nickname, difficulty, onExit, onShowLeaderboard }: GameContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showQuiz, setShowQuiz] = useState(false);
   const [filteredUpgrades, setFilteredUpgrades] = useState<UpgradeOption[]>([]);
@@ -38,6 +40,7 @@ export function GameContainer({ nickname, onExit, onShowLeaderboard }: GameConta
   } = usePhaser('game-container', {
     isSolo: true,
     playerName: nickname,
+    difficulty,
   });
 
   const { currentQuiz, streak, loadUnitBank, drawQuiz, submitAnswer, resetQuizSession } =
@@ -153,7 +156,7 @@ export function GameContainer({ nickname, onExit, onShowLeaderboard }: GameConta
         onMouseDown={(e) => e.currentTarget.focus()}
       />
 
-      {isReady && !finishData && <GameHUD />}
+      {isReady && !finishData && <GameHUD difficulty={difficulty} />}
 
       {isMobile && isReady && !levelUpData && !showQuiz && !finishData && (
         <MobileControls onMove={handleJoystickMove} />
@@ -206,6 +209,7 @@ export function GameContainer({ nickname, onExit, onShowLeaderboard }: GameConta
       {finishData && (
         <PostGameOverlay
           nickname={nickname}
+          difficulty={difficulty}
           finish={finishData}
           onRestart={handleRestart}
           onExit={onExit}

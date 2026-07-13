@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { UNIT } from '../../data/unit';
+import { DIFFICULTY_CONFIG, type Difficulty } from '../../game/difficulty';
 import { TutorialBooklet, TutorialPrompt } from './TutorialBooklet';
 
 const NICKNAME_KEY = 'sqb:nickname';
@@ -23,14 +24,18 @@ function safeSetItem(key: string, value: string): void {
 }
 
 interface StartScreenProps {
-  onStart: (nickname: string) => void;
+  onStart: (nickname: string, difficulty: Difficulty) => void;
   onOpenLeaderboard: () => void;
   onBack: () => void;
 }
 
+const DIFFICULTY_ORDER: Difficulty[] = ['easy', 'normal', 'hard'];
+const DIFFICULTY_EMOJI: Record<Difficulty, string> = { easy: '🟢', normal: '🟡', hard: '🔴' };
+
 /** 단일 단원 프로젝트의 시작 화면 — 닉네임만 입력하면 바로 게임 (프로젝트당 1단원 아키텍처) */
 export function StartScreen({ onStart, onOpenLeaderboard, onBack }: StartScreenProps) {
   const [nickname, setNickname] = useState('');
+  const [difficulty, setDifficulty] = useState<Difficulty>('normal');
   const [showPrompt, setShowPrompt] = useState(false);
   const [showBooklet, setShowBooklet] = useState(false);
 
@@ -52,7 +57,7 @@ export function StartScreen({ onStart, onOpenLeaderboard, onBack }: StartScreenP
   const handleStart = () => {
     if (!canStart) return;
     safeSetItem(NICKNAME_KEY, trimmed);
-    onStart(trimmed);
+    onStart(trimmed, difficulty);
   };
 
   return (
@@ -146,6 +151,51 @@ export function StartScreen({ onStart, onOpenLeaderboard, onBack }: StartScreenP
                 outline: 'none',
               }}
             />
+          </div>
+
+          <div style={{ textAlign: 'left', marginBottom: 20 }}>
+            <label
+              style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#a1a1aa', marginBottom: 8 }}
+            >
+              난이도
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              {DIFFICULTY_ORDER.map((d) => {
+                const cfg = DIFFICULTY_CONFIG[d];
+                const selected = difficulty === d;
+                return (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDifficulty(d)}
+                    style={{
+                      textAlign: 'left',
+                      padding: '10px 10px',
+                      borderRadius: 12,
+                      background: selected ? `${cfg.badgeColor}1a` : 'rgba(255,255,255,0.03)',
+                      border: selected ? `1.5px solid ${cfg.badgeColor}` : '1px solid rgba(255,255,255,0.08)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 800,
+                        color: selected ? cfg.badgeColor : '#e4e4e7',
+                        marginBottom: 6,
+                      }}
+                    >
+                      {DIFFICULTY_EMOJI[d]} {cfg.label}
+                    </div>
+                    <div style={{ fontSize: 10, color: '#8a8a94', lineHeight: 1.5 }}>
+                      {cfg.descriptions.map((line, i) => (
+                        <div key={i}>{line}</div>
+                      ))}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <button
