@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
-import { Monster, MonsterTypes, getMonsterConfigForWave, getMonsterConfigForRotation, FULL_ROTATION_LENGTH, SPAWNS_PER_TYPE, ROTATION_LENGTH, getBossConfigForWave, isBossWave } from '../entities/Monster';
+import { Monster, MonsterTypes, getMonsterConfigForWave, getMonsterConfigForRotation, FULL_ROTATION_LENGTH, SPAWNS_PER_TYPE, ROTATION_LENGTH, getBossConfigForWave, isBossWave, type MonsterConfig } from '../entities/Monster';
+import { DIFFICULTY_CONFIG, getDifficultyMods, type Difficulty } from '../difficulty';
 import { XPGem, MagnetGem } from '../entities/XPGem';
 import { WeaponManager, WeaponInfoList, PetInfoList, BonusInfoList } from '../weapons/WeaponManager';
 import { PassiveInfoList } from '../weapons/PassiveManager';
@@ -38,6 +39,8 @@ export class GameScene extends Phaser.Scene {
   public fx!: EffectManager;
 
   private survivalTime: number = 0;
+  // 난이도 (씬 시작·리셋 시 registry에서 1회 읽음, 없으면 쉬움=기존 밸런스). 게임 중 변경 불가.
+  private difficulty: Difficulty = 'easy';
   private currentWave: number = 1;
   private monstersKilled: number = 0;
   private playerLevel: number = 1;
@@ -86,6 +89,22 @@ export class GameScene extends Phaser.Scene {
   private rushVignette: Phaser.GameObjects.Image | null = null;
   private rushBanner: Phaser.GameObjects.Container | null = null;
 
+  // === 어려움 오답 페널티 (설계 §3) — 전부 게임 클럭 기준(일시정지 중 동결) ===
+  // ② 광폭화: survivalTime 기반 만료(wall-clock 금지). 연속 오답 시 만료 시각 리셋(연장 누적 아님).
+  private static readonly ENRAGE_DURATION_SEC = 10;
+  private enrageActive: boolean = false;
+  private enrageUntil: number = 0;             // survivalTime(초) 기준 만료 시각
+  private enrageVignette: Phaser.GameObjects.Image | null = null; // 러시 비네트와 독립(상태 충돌 방지)
+  // ③ 미니 러시: 재개 보호(3·2·1+1.5s 무적) 종료 후 3초간 ~300ms 간격 ~10마리 버스트
+  private static readonly MINI_RUSH_START_DELAY_MS = 1500; // 재개 후 1.5s 무적 창과 정렬
+  private static readonly MINI_RUSH_DURATION_MS = 3000;
+  private static readonly MINI_RUSH_INTERVAL_MS = 300;
+  private static readonly MINI_RUSH_TOTAL = 10;
+  private miniRushPhase: 'idle' | 'delay' | 'active' = 'idle';
+  private miniRushTimer: number = 0;      // delay/active 페이즈 내 경과(ms)
+  private miniRushSpawnTimer: number = 0; // active 페이즈 스폰 간격 누적(ms)
+  private miniRushSpawned: number = 0;
+
   private background!: Phaser.GameObjects.TileSprite;
   // 결정적 청크 장식: "cx,cy" → 그 청크에 배치된 deco 오브젝트들(일반 이미지 + solid 정적 이미지)
   private decoChunks: Map<string, Phaser.GameObjects.GameObject[]> = new Map();
@@ -98,6 +117,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
+    // 난이도 읽기 (StartScreen → registry). 유효하지 않거나 미설정이면 쉬움=기존 밸런스.
+    this.readDifficulty();
+
     // Remove world bounds constraints
     this.physics.world.setBounds(0, 0, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
 
@@ -224,6 +246,11 @@ export class GameScene extends Phaser.Scene {
     if (this.rushVignette) {
       this.rushVignette.setPosition(gameSize.width / 2, gameSize.height / 2);
       this.rushVignette.setDisplaySize(gameSize.width, gameSize.height);
+    }
+    // 광폭화 전용 비네트도 동일하게 갱신
+    if (this.enrageVignette) {
+      this.enrageVignette.setPosition(gameSize.width / 2, gameSize.height / 2);
+      this.enrageVignette.setDisplaySize(gameSize.width, gameSize.height);
     }
   };
 
@@ -714,6 +741,9 @@ export class GameScene extends Phaser.Scene {
     this.decoChunks.clear();
     this.obstacles.clear(true, true);
 
+    // 난이도 재읽기 (재시작 시 StartScreen에서 새로 고를 수 있으므로)
+    this.readDifficulty();
+
     // Reset state
     this.survivalTime = 0;
     this.currentWave = 1;
@@ -737,6 +767,8 @@ export class GameScene extends Phaser.Scene {
 
     // 몬스터 러시 상태 전체 초기화 (비네트/배너 제거, 러시 브금 정지, 첫 러시 임계 복원)
     this.resetRushState();
+    // 어려움 오답 페널티(광폭화·미니 러시) 상태·시각 초기화
+    this.resetWrongPenaltyState();
 
     // Recreate player at center
     if (this.player) {
@@ -781,6 +813,8 @@ export class GameScene extends Phaser.Scene {
     // 단순 stopRushBgm+clearRushVisuals면 rushPhase가 남아, 결과 화면에서 사운드 토글 시
     // 러시 브금이 되살아난다 — resetRushState로 페이즈까지 idle로 되돌린다.
     this.resetRushState();
+    // 어려움 오답 페널티 상태·시각 정리 (광폭화 비네트·틴트 잔존 방지, 미니 러시 중단)
+    this.resetWrongPenaltyState();
     EventBus.emit(GameEvents.GAME_FINISHED, {
       score: this.score,
       level: this.playerLevel,
@@ -885,7 +919,9 @@ export class GameScene extends Phaser.Scene {
       // 리셋된 상태(finalBossTriggered=false)나 이미 집계된 상태면 소환하지 않음
       if (!this.player.active || !this.finalBossTriggered || this.gameFinished) return;
       const bossWave = Math.max(this.currentWave, 3);
-      const base = getBossConfigForWave(bossWave);
+      // 시간 가속(timeRamp)은 배제하고 난이도 statMul만 적용 — 어려움 후반 최종 보스가
+      // 시간 배율로 폭주(×6.3 HP 등)하는 것을 방지 (설계 T2 후속 조정).
+      const base = this.applyDifficulty(getBossConfigForWave(bossWave), 0);
       const config = {
         ...base,
         hp: base.hp * 3,
@@ -983,6 +1019,10 @@ export class GameScene extends Phaser.Scene {
       this.playSfx('sfx_quiz_wrong', 0.45);
       this.quizStreak = 0;
       this.pendingLevelUp = false; // 레벨업 소모 — 레벨·XP는 그대로 유지
+      // 어려움 모드 오답 페널티 3종 (체력 감소 + 광폭화 + 미니 러시)
+      if (DIFFICULTY_CONFIG[this.difficulty].wrongPenalty) {
+        this.applyWrongPenalties();
+      }
       this.emitPlayerState();
       // 큐에 남은 레벨업이 있으면 다음 퀴즈, 없으면 보호 재개
       if (this.levelUpQueue > 0) {
@@ -1052,6 +1092,160 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  // ===================== 어려움 오답 페널티 3종 (설계 §3) =====================
+
+  /** 오답/타임아웃 시 3종 페널티 동시 발동. handleQuizResult 오답 분기에서만 호출(어려움 전용). */
+  private applyWrongPenalties(): void {
+    // ① 체력 -10% (즉시, 최소 1 클램프 — 오답 단독 사망 없음). 무적 소모/발동 없이 직접 감소.
+    const penalty = Math.floor(this.player.maxHp * 0.10);
+    const lost = this.player.loseHpNonLethal(penalty);
+    this.cameras.main.flash(300, 200, 30, 30); // 붉은 카메라 플래시
+    if (lost > 0) this.showPenaltyText(`-${lost} HP`);
+
+    // ② 몬스터 광폭화 (10초, 연속 오답 시 만료 시각 리셋)
+    this.triggerEnrage();
+
+    // ③ 미니 러시 예약 — 재개 보호 종료 후 시작. 실제 러시 진행 중이거나
+    //    이전 미니 러시가 아직 진행 중이면 발동하지 않음.
+    if (this.rushPhase === 'idle' && this.miniRushPhase === 'idle') {
+      this.miniRushPhase = 'delay';
+      this.miniRushTimer = 0;
+      this.miniRushSpawnTimer = 0;
+      this.miniRushSpawned = 0;
+    }
+  }
+
+  /**
+   * 플레이어 위 "-N HP" 부동 텍스트. 페널티 발동 시점엔 씬 클럭·전역 트윈이 일시정지 상태라
+   * (resumeWithProtection 카운트다운과 동일 문제) this.tweens/this.time을 쓰면 멈춘다 —
+   * wall-clock(setTimeout)으로 상승+페이드시킨다. 퀴즈가 닫힌 직후 화면에 보인다.
+   */
+  private showPenaltyText(text: string): void {
+    const startY = this.player.y - 56;
+    const label = this.add
+      .text(this.player.x, startY, text, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '28px',
+        fontStyle: 'bold',
+        color: '#ff5a5a',
+        stroke: '#3a0a0a',
+        strokeThickness: 5,
+      })
+      .setOrigin(0.5)
+      .setDepth(102); // 러시/보스 배너(101) 위
+    const startT = Date.now();
+    const DURATION = 900;
+    const step = (): void => {
+      if (!label.active) return;
+      const t = Math.min(1, (Date.now() - startT) / DURATION);
+      label.y = startY - t * 42;
+      label.setAlpha(1 - t);
+      if (t < 1) window.setTimeout(step, 32);
+      else label.destroy();
+    };
+    step();
+  }
+
+  /**
+   * 광폭화 발동: 전체 활성 몬스터 +25% 속도·붉은 틴트, 붉은 비네트. 만료는 survivalTime 기준
+   * (일시정지 중 진행 안 함). 연속 오답 시 만료 시각을 리셋(연장 누적 아님).
+   */
+  private triggerEnrage(): void {
+    this.enrageUntil = this.survivalTime + GameScene.ENRAGE_DURATION_SEC;
+    if (this.enrageActive) return; // 이미 진행 중이면 만료 시각만 리셋
+    this.enrageActive = true;
+    this.monsters.getChildren().forEach((m) => (m as Monster).setEnraged(true));
+    this.showEnrageVignette();
+  }
+
+  /** 광폭화 종료: 틴트·비네트 해제. 러시 비네트와 독립 오브젝트라 러시 상태를 건드리지 않는다. */
+  private endEnrage(): void {
+    if (!this.enrageActive) return;
+    this.enrageActive = false;
+    this.enrageUntil = 0;
+    this.monsters.getChildren().forEach((m) => (m as Monster).setEnraged(false));
+    this.hideEnrageVignette();
+  }
+
+  /**
+   * 광폭화 전용 반투명 비네트 (러시 비네트 텍스처 재사용, 별도 오브젝트).
+   * 실제 러시(rushPhase!=='idle')와 상태 충돌 금지 — 러시 비네트를 켜거나 끄지 않는다.
+   * 발동 시점엔 트윈이 일시정지 상태라 페이드 대신 알파를 즉시 설정한다.
+   */
+  private showEnrageVignette(): void {
+    this.createRushVignetteTexture();
+    if (!this.enrageVignette) {
+      const cam = this.cameras.main;
+      this.enrageVignette = this.add
+        .image(cam.width / 2, cam.height / 2, GameScene.RUSH_TEXTURE_KEY)
+        .setScrollFactor(0)
+        .setDepth(17) // 러시 비네트(18) 아래
+        .setAlpha(0);
+      this.enrageVignette.setDisplaySize(cam.width, cam.height);
+    }
+    this.tweens.killTweensOf(this.enrageVignette);
+    this.enrageVignette.setAlpha(0.16);
+  }
+
+  private hideEnrageVignette(): void {
+    if (this.enrageVignette) {
+      this.tweens.killTweensOf(this.enrageVignette);
+      this.enrageVignette.destroy();
+      this.enrageVignette = null;
+    }
+  }
+
+  /**
+   * 미니 러시 진행 (delta 누적, 일시정지 안전).
+   * delay: 재개 보호(3·2·1+1.5s 무적) 종료 대기 → active: 3초간 ~300ms 간격 ~10마리 버스트.
+   * 스폰은 기존 러시 경로(spawnRushMonster) 재사용 — 상한 160 체크 포함, WARNING/러시 브금 없음.
+   */
+  private updateMiniRush(delta: number): void {
+    if (this.miniRushPhase === 'idle') return;
+
+    if (this.miniRushPhase === 'delay') {
+      this.miniRushTimer += delta;
+      if (this.miniRushTimer >= GameScene.MINI_RUSH_START_DELAY_MS) {
+        this.miniRushPhase = 'active';
+        this.miniRushTimer = 0;
+        this.miniRushSpawnTimer = 0;
+        this.miniRushSpawned = 0;
+      }
+      return;
+    }
+
+    // active
+    this.miniRushTimer += delta;
+    this.miniRushSpawnTimer += delta;
+    if (
+      this.miniRushSpawnTimer >= GameScene.MINI_RUSH_INTERVAL_MS &&
+      this.miniRushSpawned < GameScene.MINI_RUSH_TOTAL
+    ) {
+      this.miniRushSpawnTimer = 0;
+      this.spawnRushMonster(); // 활성 몬스터가 러시 상한(160) 이상이면 내부에서 스킵
+      this.miniRushSpawned++;
+    }
+    if (
+      this.miniRushTimer >= GameScene.MINI_RUSH_DURATION_MS ||
+      this.miniRushSpawned >= GameScene.MINI_RUSH_TOTAL
+    ) {
+      this.miniRushPhase = 'idle';
+    }
+  }
+
+  /** 어려움 오답 페널티(광폭화·미니 러시) 상태·시각 완전 정리 (리셋/게임오버 — 상태 잔존 방지) */
+  private resetWrongPenaltyState(): void {
+    this.enrageActive = false;
+    this.enrageUntil = 0;
+    this.hideEnrageVignette();
+    // 살아있는 몬스터(그만하기 등)의 붉은 틴트도 해제 — 리셋 시엔 이미 clear라 무해
+    this.monsters.getChildren().forEach((m) => (m as Monster).setEnraged(false));
+    this.miniRushPhase = 'idle';
+    this.miniRushTimer = 0;
+    this.miniRushSpawnTimer = 0;
+    this.miniRushSpawned = 0;
+  }
+
   update(time: number, delta: number): void {
     if (this.isPaused || !this.player.active) return;
 
@@ -1067,9 +1261,17 @@ export class GameScene extends Phaser.Scene {
     // Update player
     this.player.update();
 
+    // 광폭화 만료 판정 (survivalTime 기준 — 일시정지 중엔 update 자체가 중단돼 진행 안 함)
+    if (this.enrageActive && this.survivalTime >= this.enrageUntil) {
+      this.endEnrage();
+    }
+
     // Update monsters (특성 타이머는 delta 누적 방식 — 일시정지 중 자동 동결)
     this.monsters.getChildren().forEach((monster) => {
-      (monster as Monster).update(delta);
+      const m = monster as Monster;
+      // 광폭화 중 신규 스폰 몬스터에도 지연 적용 (모든 스폰 경로 무수정)
+      if (this.enrageActive && !m.isEnraged()) m.setEnraged(true);
+      m.update(delta);
     });
 
     // Update weapons
@@ -1083,6 +1285,9 @@ export class GameScene extends Phaser.Scene {
 
     // 몬스터 러시 이벤트 스케줄/진행 (delta 누적 — 일시정지 중 자동 동결)
     this.updateRushEvent(delta);
+
+    // 어려움 오답 미니 러시 (delta 누적 — 일시정지 중 자동 동결)
+    this.updateMiniRush(delta);
 
     // Cleanup distant entities
     this.cleanupEntities();
@@ -1125,16 +1330,40 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  // registry에서 난이도를 읽어 필드에 저장. 유효하지 않거나 미설정이면 쉬움 폴백.
+  private readDifficulty(): void {
+    const d = this.registry.get('difficulty');
+    this.difficulty = d === 'normal' || d === 'hard' ? d : 'easy';
+  }
+
+  // 스폰 직전 config에 난이도 배율 + 생존 시간 가속을 적용한 새 config 반환.
+  // Monster.ts는 순수 유지하고 여기서만 배율을 곱한다. speed는 float 유지, hp/damage는 floor(최소 1).
+  // survivalTimeOverride=0을 넘기면 시간 가속을 배제하고 statMul만 적용(최종 보스 폭주 방지).
+  private applyDifficulty(config: MonsterConfig, survivalTimeOverride?: number): MonsterConfig {
+    const mods = getDifficultyMods(this.difficulty, survivalTimeOverride ?? this.survivalTime);
+    return {
+      ...config,
+      hp: Math.max(1, Math.floor(config.hp * mods.hpMul)),
+      speed: config.speed * mods.speedMul,
+      damage: Math.max(1, Math.floor(config.damage * mods.damageMul)),
+    };
+  }
+
   private updateMonsterSpawning(delta: number): void {
     this.spawnTimer += delta;
 
-    const spawnInterval = Math.max(200, 1000 - this.currentWave * 50);
+    // 기존식(최소 200ms 바닥)을 유지한 뒤 난이도 배율을 곱하고, 최종 130ms로 클램프
+    const diffCfg = DIFFICULTY_CONFIG[this.difficulty];
+    const spawnInterval = Math.max(
+      130,
+      Math.max(200, 1000 - this.currentWave * 50) * diffCfg.spawnIntervalMul,
+    );
 
     if (this.spawnTimer >= spawnInterval) {
       this.spawnTimer = 0;
       // 평시 천장 도달 시 스폰만 스킵 (로테이션 인덱스/세트 진급은 spawnMonster 내부에서
       // 처리되므로, 여기서 호출 자체를 막아야 인덱스가 소모되지 않는다)
-      if (this.monsters.countActive(true) >= GameScene.NORMAL_SPAWN_MAX_ACTIVE) return;
+      if (this.monsters.countActive(true) >= diffCfg.maxActive) return;
       this.spawnMonster();
     }
   }
@@ -1156,7 +1385,7 @@ export class GameScene extends Phaser.Scene {
 
     // 순차 로테이션 스폰: 로스터(15종)를 약한 종부터 차례로 돌고,
     // 한 세트가 끝날 때마다 세트(=wave) 번호가 올라 전체가 강해진다
-    const config = getMonsterConfigForRotation(this.spawnRotationIndex);
+    const config = this.applyDifficulty(getMonsterConfigForRotation(this.spawnRotationIndex));
     this.spawnRotationIndex++;
 
     const monster = new Monster(this, x, y, config);
@@ -1178,7 +1407,7 @@ export class GameScene extends Phaser.Scene {
     if (this.isPaused || !this.player.active) return;
     if (this.monsters.countActive(true) >= 40) return;
 
-    const base = getMonsterConfigForWave(this.currentWave);
+    const base = this.applyDifficulty(getMonsterConfigForWave(this.currentWave));
     const minion = new Monster(this, x, y, {
       ...base,
       spriteKey: MONSTER_WALK_KEYS[0], // 일반 초록 슬라임
@@ -1260,7 +1489,7 @@ export class GameScene extends Phaser.Scene {
         const y = this.player.y + Math.sin(angle) * dist;
 
         // Get boss config based on current wave
-        const config = getBossConfigForWave(this.currentWave);
+        const config = this.applyDifficulty(getBossConfigForWave(this.currentWave));
 
         const monster = new Monster(this, x, y, config);
         monster.setTarget(this.player);
@@ -1442,7 +1671,7 @@ export class GameScene extends Phaser.Scene {
     // 현재 세트를 유지하는 합성 인덱스로 config 생성 (인덱스 소모 없음 — spawnMinion과 동일한 별도 경로)
     const set0 = Math.floor(this.spawnRotationIndex / FULL_ROTATION_LENGTH); // 0-based 세트
     const synthIndex = set0 * FULL_ROTATION_LENGTH + typeIndex * SPAWNS_PER_TYPE;
-    const config = getMonsterConfigForRotation(synthIndex);
+    const config = this.applyDifficulty(getMonsterConfigForRotation(synthIndex));
 
     const monster = new Monster(this, x, y, config);
     monster.setTarget(this.player);

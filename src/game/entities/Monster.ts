@@ -62,6 +62,12 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   private traitDir: Phaser.Math.Vector2 | null = null; // 이동 방향 오버라이드 (돌진 고정·움찔 후퇴)
   private zigzagTime: number = 0; // 박쥐 사인파 누적 시간(ms)
 
+  // === 어려움 오답 페널티: 광폭화 (GameScene가 setEnraged로 토글) ===
+  // 이동속도 +25% + 붉은 틴트. 스폰 직전 config 배율과 별개인 씬 전역 일시 상태라 별도 필드로 관리.
+  private static readonly ENRAGE_SPEED_MUL = 1.25;
+  private static readonly ENRAGE_TINT = 0xff5555;
+  private enraged: boolean = false;
+
   constructor(scene: Phaser.Scene, x: number, y: number, config: MonsterConfig) {
     super(scene, x, y, config.spriteKey);
 
@@ -199,6 +205,28 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
+  // 광폭화 토글 (어려움 오답 페널티 — GameScene가 전체/신규 몬스터에 적용).
+  // 속도 배율은 update()의 이동 계산에서 반영, 여기선 붉은 틴트만 토글.
+  // 상시 틴트(최종 보스)·멧돼지 텔레그래프가 걸려 있으면 그 틴트를 침범하지 않는다.
+  setEnraged(on: boolean): void {
+    if (this.enraged === on) return;
+    this.enraged = on;
+    if (on) {
+      if (this.persistentTint === null && !this.boarTelegraphActive) {
+        this.setTint(Monster.ENRAGE_TINT);
+      }
+    } else {
+      // 해제: 상시 틴트 → 멧돼지 텔레그래프 → 해제 우선순위로 복원
+      if (this.persistentTint !== null) this.setTint(this.persistentTint);
+      else if (this.boarTelegraphActive) this.setTint(0xffb0b0);
+      else this.clearTint();
+    }
+  }
+
+  isEnraged(): boolean {
+    return this.enraged;
+  }
+
   update(delta: number = 16.7): void {
     if (!this.target || !this.active) return;
 
@@ -241,7 +269,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     const velocity = this.traitDir
       ? this.traitDir.clone()
       : new Phaser.Math.Vector2(Math.cos(angle), Math.sin(angle));
-    velocity.scale(this.speed * this.traitSpeedMul);
+    velocity.scale(this.speed * this.traitSpeedMul * (this.enraged ? Monster.ENRAGE_SPEED_MUL : 1));
 
     // 박쥐: 진행 방향에 수직인 사인파 오프셋으로 지그재그 비행
     if (this.trait === 'bat') {
@@ -416,9 +444,10 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.setTintFill(0xffffff);
     this.scene.time.delayedCall(80, () => {
       if (this.active) {
-        // 상시 틴트(최종 보스) → 멧돼지 텔레그래프 틴트 순으로 현재 상태를 복원, 둘 다 아니면 틴트 해제
+        // 상시 틴트(최종 보스) → 멧돼지 텔레그래프 → 광폭화 붉은 틴트 순으로 복원, 모두 아니면 해제
         if (this.persistentTint !== null) this.setTint(this.persistentTint);
         else if (this.boarTelegraphActive) this.setTint(0xffb0b0);
+        else if (this.enraged) this.setTint(Monster.ENRAGE_TINT);
         else this.clearTint();
       }
     });

@@ -403,6 +403,18 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
+  /**
+   * 무적을 소모/발동하지 않는 직접 체력 감소 (어려움 오답 페널티 §1).
+   * 체력은 최소 1로 클램프 — 오답만으로는 절대 사망하지 않는다. 실제 감소량을 반환.
+   * HUD 갱신은 호출측(GameScene.emitPlayerState)이 담당한다.
+   */
+  loseHpNonLethal(amount: number): number {
+    if (amount <= 0 || !this.active) return 0;
+    const before = this.currentHp;
+    this.currentHp = Math.max(1, this.currentHp - amount);
+    return before - this.currentHp;
+  }
+
   private die(): void {
     // 응원 부적: 부활 1회 (체력 50% + 2초 무적)
     if (this.revivals > 0) {
