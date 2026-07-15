@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { UNIT } from '../../data/unit';
 import { DIFFICULTY_CONFIG, type Difficulty } from '../../game/difficulty';
+import { GAME_MODE_CONFIG, GAME_MODE_ORDER, type GameMode } from '../../game/gameMode';
 import { TutorialBooklet, TutorialPrompt } from './TutorialBooklet';
 
 const NICKNAME_KEY = 'sqb:nickname';
@@ -24,7 +25,7 @@ function safeSetItem(key: string, value: string): void {
 }
 
 interface StartScreenProps {
-  onStart: (nickname: string, difficulty: Difficulty) => void;
+  onStart: (nickname: string, difficulty: Difficulty, mode: GameMode) => void;
   onOpenLeaderboard: () => void;
   onBack: () => void;
 }
@@ -36,6 +37,7 @@ const DIFFICULTY_EMOJI: Record<Difficulty, string> = { easy: '🟢', normal: '�
 export function StartScreen({ onStart, onOpenLeaderboard, onBack }: StartScreenProps) {
   const [nickname, setNickname] = useState('');
   const [difficulty, setDifficulty] = useState<Difficulty>('normal');
+  const [mode, setMode] = useState<GameMode>('adventure');
   const [showPrompt, setShowPrompt] = useState(false);
   const [showBooklet, setShowBooklet] = useState(false);
 
@@ -57,14 +59,13 @@ export function StartScreen({ onStart, onOpenLeaderboard, onBack }: StartScreenP
   const handleStart = () => {
     if (!canStart) return;
     safeSetItem(NICKNAME_KEY, trimmed);
-    onStart(trimmed, difficulty);
+    onStart(trimmed, difficulty, mode);
   };
 
   return (
     <div
+      className="app-viewport"
       style={{
-        width: '100vw',
-        height: '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -192,6 +193,47 @@ export function StartScreen({ onStart, onOpenLeaderboard, onBack }: StartScreenP
                         <div key={i}>{line}</div>
                       ))}
                     </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ textAlign: 'left', marginBottom: 20 }}>
+            <label
+              style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#a1a1aa', marginBottom: 8 }}
+            >
+              모드
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+              {GAME_MODE_ORDER.map((m) => {
+                const cfg = GAME_MODE_CONFIG[m];
+                const selected = mode === m;
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setMode(m)}
+                    style={{
+                      textAlign: 'left',
+                      padding: '10px 10px',
+                      borderRadius: 12,
+                      background: selected ? `${cfg.badgeColor}1a` : 'rgba(255,255,255,0.03)',
+                      border: selected ? `1.5px solid ${cfg.badgeColor}` : '1px solid rgba(255,255,255,0.08)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 800,
+                        color: selected ? cfg.badgeColor : '#e4e4e7',
+                        marginBottom: 6,
+                      }}
+                    >
+                      {cfg.emoji} {cfg.label}
+                    </div>
+                    <div style={{ fontSize: 10, color: '#8a8a94', lineHeight: 1.5 }}>{cfg.description}</div>
                   </button>
                 );
               })}

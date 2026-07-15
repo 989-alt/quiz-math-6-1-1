@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { UNIT, weightedScore } from '../../data/unit';
 import { retrySubmitScore, submitScore, type ScoreEntry } from '../../services/firebase';
 import type { Difficulty } from '../../game/difficulty';
+import type { GameMode } from '../../game/gameMode';
 
 interface PostGameOverlayProps {
   nickname: string;
   difficulty: Difficulty;
+  mode: GameMode;
   finish: { score: number; level: number; survivalTime: number; monstersKilled: number; cleared: boolean };
   onRestart: () => void;
   onExit: () => void;
@@ -18,6 +20,7 @@ type SubmitState = 'idle' | 'submitting' | 'done' | 'offline' | 'error';
 export function PostGameOverlay({
   nickname,
   difficulty,
+  mode,
   finish,
   onRestart,
   onExit,
@@ -41,6 +44,7 @@ export function PostGameOverlay({
     kills: finish.monstersKilled,
     weightedScore: w,
     difficulty,
+    mode,
   };
 
   useEffect(() => {
@@ -122,7 +126,7 @@ export function PostGameOverlay({
         </h2>
         {finish.cleared && (
           <div style={{ fontSize: 13, color: '#fcd34d', fontWeight: 700, marginBottom: 6 }}>
-            무기 완성 + 최종 보스 처치
+            {mode === 'timeAttack' ? '10분 챌린지 클리어!' : '무기 완성 + 최종 보스 처치'}
           </div>
         )}
         <div style={{ fontSize: 12, color: '#71717a', marginBottom: 20 }}>

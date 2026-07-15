@@ -21,6 +21,7 @@ import {
 } from 'firebase/firestore';
 import type { Grade, Semester } from '../data/unit';
 import type { Difficulty } from '../game/difficulty';
+import type { GameMode } from '../game/gameMode';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -93,6 +94,8 @@ export interface ScoreEntry {
   weightedScore: number;
   /** 난이도별 랭킹 분리용 (설계 §4). 필드 부재 = 구기록 = '쉬움'으로 분류 */
   difficulty?: Difficulty;
+  /** 게임 모드별 랭킹 분리용. 필드 부재 = 구기록 = '모험 모드'로 분류 */
+  mode?: GameMode;
 }
 
 export interface ScoreEntryWithMeta extends ScoreEntry {
@@ -158,6 +161,7 @@ function removeLocalScore(unitId: string, docId: string): void {
 }
 
 const VALID_DIFFICULTIES: Difficulty[] = ['easy', 'normal', 'hard'];
+const VALID_MODES: GameMode[] = ['adventure', 'timeAttack'];
 
 async function submitScoreToFirestore(entry: ScoreEntry): Promise<string> {
   const { db } = ensureApp();
@@ -176,6 +180,7 @@ async function submitScoreToFirestore(entry: ScoreEntry): Promise<string> {
     difficulty: VALID_DIFFICULTIES.includes(entry.difficulty as Difficulty)
       ? (entry.difficulty as Difficulty)
       : 'easy',
+    mode: VALID_MODES.includes(entry.mode as GameMode) ? (entry.mode as GameMode) : 'adventure',
     authUid: user.uid,
     createdAt: serverTimestamp(),
   };
@@ -255,6 +260,7 @@ async function fetchTopScoresFromFirestore(unitId: string, top: number): Promise
       kills: data.kills,
       weightedScore: data.weightedScore,
       difficulty: data.difficulty,
+      mode: data.mode,
       authUid: data.authUid,
       createdAt: timestampToMs(data.createdAt),
     } as ScoreEntryWithMeta;
@@ -295,6 +301,7 @@ async function fetchMyBestFromFirestore(unitId: string): Promise<ScoreEntryWithM
       kills: data.kills,
       weightedScore: data.weightedScore,
       difficulty: data.difficulty,
+      mode: data.mode,
       authUid: data.authUid,
       createdAt: timestampToMs(data.createdAt),
     } as ScoreEntryWithMeta;

@@ -8,6 +8,7 @@ import {
   type ScoreEntryWithMeta,
 } from '../../services/firebase';
 import { DIFFICULTY_CONFIG, type Difficulty } from '../../game/difficulty';
+import { GAME_MODE_CONFIG, GAME_MODE_ORDER, type GameMode } from '../../game/gameMode';
 
 interface LeaderboardViewProps {
   onBack?: () => void;
@@ -21,6 +22,11 @@ function tabOf(entry: ScoreEntryWithMeta): Difficulty {
   return d === 'normal' || d === 'hard' ? d : 'easy';
 }
 
+// 구기록(mode 필드 없음) = 모험 모드로 분류
+function modeOf(entry: ScoreEntryWithMeta): GameMode {
+  return entry.mode === 'timeAttack' ? 'timeAttack' : 'adventure';
+}
+
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
@@ -29,6 +35,7 @@ function formatTime(seconds: number): string {
 
 export function LeaderboardView({ onBack }: LeaderboardViewProps) {
   const unitId = UNIT.unitId;
+  const [modeTab, setModeTab] = useState<GameMode>('adventure');
   const [tab, setTab] = useState<Difficulty>('normal');
   const [scores, setScores] = useState<ScoreEntryWithMeta[]>([]);
   const [myBest, setMyBest] = useState<ScoreEntryWithMeta | null>(null);
@@ -80,16 +87,17 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
     };
   }, [unitId]);
 
-  // 선택된 난이도 탭으로 필터링한 뒤 닉네임당 최고 기록만 남긴다 (탭마다 별도 dedupe 필요 —
-  // 같은 닉네임이 난이도별로 각각 최고 기록을 가질 수 있으므로 전체 dedupe 후 필터링하면 안 됨).
+  // 모드로 먼저 거른 뒤 선택된 난이도 탭으로 필터링, 닉네임당 최고 기록만 남긴다 (탭마다 별도
+  // dedupe 필요 — 같은 닉네임이 모드/난이도별로 각각 최고 기록을 가질 수 있으므로 전체 dedupe
+  // 후 필터링하면 안 됨).
   const tabScores = useMemo(
-    () => dedupeByNicknameBest(scores.filter((s) => tabOf(s) === tab)),
-    [scores, tab]
+    () => dedupeByNicknameBest(scores.filter((s) => modeOf(s) === modeTab && tabOf(s) === tab)),
+    [scores, modeTab, tab]
   );
 
-  // myBest는 전체 난이도 통틀어 가중점수가 가장 높은 기록 하나뿐이라(fetchMyBest), 그 기록의
-  // 난이도가 현재 탭과 다르면 이 탭에서는 표시하지 않는다.
-  const myBestForTab = myBest && tabOf(myBest) === tab ? myBest : null;
+  // myBest는 전체 모드/난이도 통틀어 가중점수가 가장 높은 기록 하나뿐이라(fetchMyBest), 그 기록의
+  // 모드나 난이도가 현재 탭과 다르면 이 탭에서는 표시하지 않는다.
+  const myBestForTab = myBest && modeOf(myBest) === modeTab && tabOf(myBest) === tab ? myBest : null;
 
   const myRank = useMemo(() => {
     if (!myBestForTab) return null;
@@ -181,6 +189,31 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
           }}
         >
           {UNIT.grade}학년 {UNIT.semester}학기 · {UNIT.unitNumber}단원 {UNIT.title}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 12 }}>
+          {GAME_MODE_ORDER.map((m) => {
+            const cfg = GAME_MODE_CONFIG[m];
+            const active = modeTab === m;
+            return (
+              <button
+                key={m}
+                onClick={() => setModeTab(m)}
+                style={{
+                  padding: '10px 8px',
+                  borderRadius: 12,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  color: active ? cfg.badgeColor : '#71717a',
+                  background: active ? `${cfg.badgeColor}1a` : 'rgba(255,255,255,0.03)',
+                  border: active ? `1.5px solid ${cfg.badgeColor}` : '1px solid rgba(255,255,255,0.08)',
+                }}
+              >
+                {cfg.emoji} {cfg.label}
+              </button>
+            );
+          })}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
