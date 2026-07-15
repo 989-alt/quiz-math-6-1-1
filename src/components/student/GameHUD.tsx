@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { EventBus, GameEvents } from '../../game/utils/EventBus';
 import { getSoundSettings, setSoundSettings } from '../../stores/soundSettings';
 import { DIFFICULTY_CONFIG, type Difficulty } from '../../game/difficulty';
+import { TIME_ATTACK_DURATION_SEC, type GameMode } from '../../game/gameMode';
 
 interface PlayerStateData {
   hp: number;
@@ -17,13 +18,16 @@ interface PlayerStateData {
 
 interface GameHUDProps {
   difficulty: Difficulty;
+  mode: GameMode;
+  onPause: () => void;
+  /** 터치 기기에서만 전체화면 버튼을 노출 */
+  showFullscreen: boolean;
 }
 
-export function GameHUD({ difficulty }: GameHUDProps) {
-  const [confirmStop, setConfirmStop] = useState(false);
-  const confirmStopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+export function GameHUD({ difficulty, mode, onPause, showFullscreen }: GameHUDProps) {
   const [soundSettings, setSoundSettingsState] = useState(() => getSoundSettings());
   const [isNarrow, setIsNarrow] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [state, setState] = useState<PlayerStateData>({
     hp: 100,
     maxHp: 100,
@@ -48,12 +52,6 @@ export function GameHUD({ difficulty }: GameHUDProps) {
     };
   }, []);
 
-  useEffect(() => {
-    return () => {
-      if (confirmStopTimeoutRef.current) clearTimeout(confirmStopTimeoutRef.current);
-    };
-  }, []);
-
   // 좁은 화면(모바일/작은 태블릿)에서는 중앙 타이머를 절대 중앙 정렬 대신
   // 좌/우 패널 사이 flex 흐름에 끼워 넣어 겹침을 원천 차단한다.
   useEffect(() => {
@@ -64,16 +62,41 @@ export function GameHUD({ difficulty }: GameHUDProps) {
     return () => mq.removeEventListener('change', update);
   }, []);
 
-  const handleStopClick = () => {
-    if (confirmStop) {
-      if (confirmStopTimeoutRef.current) clearTimeout(confirmStopTimeoutRef.current);
-      setConfirmStop(false);
-      EventBus.emit(GameEvents.STOP_GAME);
-    } else {
-      setConfirmStop(true);
-      confirmStopTimeoutRef.current = setTimeout(() => {
-        setConfirmStop(false);
-      }, 2000);
+  // 전체화면 토글 (터치 태블릿 등) — 아이콘 상태를 fullscreenchange로 동기화한다.
+  useEffect(() => {
+    const onChange = () =>
+      setIsFullscreen(
+        !!(document.fullscreenElement || (document as unknown as { webkitFullscreenElement?: Element }).webkitFullscreenElement)
+      );
+    document.addEventListener('fullscreenchange', onChange);
+    document.addEventListener('webkitfullscreenchange', onChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onChange);
+      document.removeEventListener('webkitfullscreenchange', onChange);
+    };
+  }, []);
+
+  const toggleFullscreen = () => {
+    // 일부 인앱 브라우저는 요청을 거부하므로 try/catch로 보호
+    try {
+      const doc = document as unknown as {
+        webkitFullscreenElement?: Element;
+        webkitExitFullscreen?: () => void;
+      };
+      const el = document.documentElement as unknown as {
+        requestFullscreen?: () => Promise<void>;
+        webkitRequestFullscreen?: () => void;
+      };
+      const active = document.fullscreenElement || doc.webkitFullscreenElement;
+      if (!active) {
+        if (el.requestFullscreen) el.requestFullscreen();
+        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
+      }
+    } catch {
+      // 무시 — 전체화면 미지원/거부
     }
   };
 
@@ -99,6 +122,12 @@ export function GameHUD({ difficulty }: GameHUDProps) {
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
+  // 10분 챌린지: 경과 시간 대신 남은 시간을 카운트다운으로 보여주고, 1분 미만이면 강조 색으로 전환
+  const isTimeAttack = mode === 'timeAttack';
+  const remainingSec = Math.max(0, TIME_ATTACK_DURATION_SEC - state.survivalTime);
+  const timerLabel = isTimeAttack ? formatTime(remainingSec) : formatTime(state.survivalTime);
+  const timerColor = isTimeAttack && remainingSec < 60 ? '#ef4444' : '#e4e4e7';
+
   return (
     <div style={{
       position: 'absolute',
@@ -123,7 +152,7 @@ export function GameHUD({ difficulty }: GameHUDProps) {
         fontSize: 'clamp(15px, 4.5vw, 20px)',
         fontWeight: 800,
         letterSpacing: '-0.02em',
-        color: '#e4e4e7',
+        color: timerColor,
         fontVariantNumeric: 'tabular-nums',
         textShadow: '0 2px 8px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.7), 0 1px 2px rgba(0,0,0,0.9)',
       } : {
@@ -135,11 +164,11 @@ export function GameHUD({ difficulty }: GameHUDProps) {
         fontSize: 'clamp(22px, 3vw, 36px)',
         fontWeight: 800,
         letterSpacing: '-0.02em',
-        color: '#e4e4e7',
+        color: timerColor,
         fontVariantNumeric: 'tabular-nums',
         textShadow: '0 2px 8px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.7), 0 1px 2px rgba(0,0,0,0.9)',
       }}>
-        {formatTime(state.survivalTime)}
+        {timerLabel}
       </div>
 
       {/* Left: Player Info */}
@@ -232,25 +261,48 @@ export function GameHUD({ difficulty }: GameHUDProps) {
 
       {/* Right: Stop Button + Score & Stats */}
       <div style={{ order: 3, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {/* 그만하기 버튼 */}
-        <button
-          onClick={handleStopClick}
-          style={{
-            width: '100%',
-            pointerEvents: 'auto',
-            cursor: 'pointer',
-            borderRadius: 16,
-            padding: 'clamp(8px, 1vw, 12px)',
-            background: confirmStop ? 'rgba(244, 63, 94, 0.2)' : 'rgba(10, 10, 15, 0.9)',
-            border: confirmStop ? '1px solid rgba(244, 63, 94, 0.5)' : '1px solid rgba(255, 255, 255, 0.08)',
-            backdropFilter: 'blur(12px)',
-            color: confirmStop ? '#fda4af' : '#e4e4e7',
-            fontSize: 'clamp(11px, 1vw, 13px)',
-            fontWeight: 600,
-          }}
-        >
-          {confirmStop ? '한 번 더 누르면 종료' : '그만하기'}
-        </button>
+        {/* 일시정지 + (터치 기기) 전체화면 버튼 */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={onPause}
+            style={{
+              flex: 1,
+              pointerEvents: 'auto',
+              cursor: 'pointer',
+              borderRadius: 16,
+              padding: 'clamp(8px, 1vw, 12px)',
+              background: 'rgba(10, 10, 15, 0.9)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              backdropFilter: 'blur(12px)',
+              color: '#e4e4e7',
+              fontSize: 'clamp(11px, 1vw, 13px)',
+              fontWeight: 600,
+            }}
+          >
+            ⏸ 일시정지
+          </button>
+          {showFullscreen && (
+            <button
+              onClick={toggleFullscreen}
+              aria-label={isFullscreen ? '전체화면 종료' : '전체화면'}
+              style={{
+                flexShrink: 0,
+                pointerEvents: 'auto',
+                cursor: 'pointer',
+                borderRadius: 16,
+                padding: 'clamp(8px, 1vw, 12px)',
+                background: 'rgba(10, 10, 15, 0.9)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                backdropFilter: 'blur(12px)',
+                color: '#e4e4e7',
+                fontSize: 'clamp(13px, 1.2vw, 16px)',
+                fontWeight: 600,
+              }}
+            >
+              ⛶
+            </button>
+          )}
+        </div>
 
         <div style={{
           borderRadius: 16,

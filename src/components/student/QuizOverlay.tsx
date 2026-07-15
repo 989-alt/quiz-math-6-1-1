@@ -22,9 +22,17 @@ export function QuizOverlay({ quiz, timeLimit, streak = 0, onAnswer }: QuizOverl
   const lockedTimeRef = useRef<number>(0);
   // 정답 시 1.2초 후 onAnswer를 호출하는 setTimeout id — 언마운트 시 정리해 소멸 후 콜백 실행을 방지
   const advanceTimeoutRef = useRef<number | null>(null);
+  // 오버레이가 마운트된 시각 — 직전 화면(게임플레이)에서 넘어온 실수 탭이 곧바로 정답으로
+  // 커밋되는 것을 막기 위해, 마운트 직후 짧은 시간 동안의 탭은 무시한다.
+  // 0은 "아직 마운트 이펙트가 돌지 않음"을 의미 — 렌더 중 impure 호출(performance.now()) 방지.
+  const mountedAtRef = useRef<number>(0);
   useEffect(() => {
     shownAtRef.current = performance.now();
   }, [quiz]);
+
+  useEffect(() => {
+    mountedAtRef.current = performance.now();
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -48,6 +56,9 @@ export function QuizOverlay({ quiz, timeLimit, streak = 0, onAnswer }: QuizOverl
   // 설계 §6: 정답은 1.2초 자동 진행, 오답/타임아웃은 [확인] 버튼까지 해설 유지 (읽기 시간 보장)
   const handleSelect = useCallback((index: number) => {
     if (isAnswered) return;
+    // 마운트 이펙트가 아직 안 돌았으면(0) 준비 안 된 상태로 간주해 무시.
+    // 마운트 직후 300ms 이내의 탭도 실수 탭(게임플레이에서 넘어온 잔여 입력)으로 간주해 무시
+    if (mountedAtRef.current === 0 || performance.now() - mountedAtRef.current < 300) return;
     // 소요 시간은 선택(잠금) 순간에 측정 — 정답 후 1.2초 축하 지연은 포함하지 않음
     const timeSpent = elapsedSeconds();
     lockedTimeRef.current = timeSpent;
@@ -111,17 +122,19 @@ export function QuizOverlay({ quiz, timeLimit, streak = 0, onAnswer }: QuizOverl
       background: 'rgba(10, 10, 15, 0.9)',
       backdropFilter: 'blur(8px)',
       zIndex: 50,
-      padding: 'clamp(16px, 4vw, 48px)',
+      padding: 24,
     }}>
       <div
         className="animate-scale-in"
         style={{
           width: '100%',
-          maxWidth: 'clamp(380px, 55vw, 720px)',
+          maxWidth: 820,
+          maxHeight: '100%',
+          overflowY: 'auto',
         }}
       >
         {/* Timer + Streak */}
-        <div style={{ marginBottom: 'clamp(16px, 2.5vw, 28px)', position: 'relative' }}>
+        <div style={{ marginBottom: 14, position: 'relative' }}>
           <Timer duration={timeLimit} onComplete={handleTimeUp} isRunning={!isAnswered} size="md" />
           {streak >= 2 && (
             <div style={{
@@ -146,22 +159,22 @@ export function QuizOverlay({ quiz, timeLimit, streak = 0, onAnswer }: QuizOverl
         <div
           className="glass-panel"
           style={{
-            padding: 'clamp(20px, 3vw, 32px)',
-            marginBottom: 'clamp(16px, 2.5vw, 28px)',
+            padding: '16px 20px',
+            marginBottom: 14,
           }}
         >
           <h2 style={{
-            fontSize: 'clamp(15px, 1.8vw, 22px)',
+            fontSize: 18,
             fontWeight: 600,
             color: '#fafafa',
-            lineHeight: 1.7,
+            lineHeight: 1.6,
           }}>
             <FracText text={quiz.question} />
           </h2>
         </div>
 
         {/* Options */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
           {quiz.options.map((option, index) => (
             <button
               key={index}
@@ -169,7 +182,7 @@ export function QuizOverlay({ quiz, timeLimit, streak = 0, onAnswer }: QuizOverl
               disabled={isAnswered}
               style={{
                 ...getOptionStyle(index),
-                padding: 'clamp(14px, 2vw, 22px) clamp(18px, 2.5vw, 28px)',
+                padding: '12px 16px',
                 borderRadius: 14,
                 textAlign: 'left',
                 cursor: isAnswered ? 'not-allowed' : 'pointer',
@@ -200,7 +213,7 @@ export function QuizOverlay({ quiz, timeLimit, streak = 0, onAnswer }: QuizOverl
                 </span>
               </div>
               <span style={{
-                fontSize: 'clamp(14px, 1.5vw, 18px)',
+                fontSize: 14,
                 fontWeight: 500,
                 color: '#e4e4e7',
               }}>
@@ -215,8 +228,8 @@ export function QuizOverlay({ quiz, timeLimit, streak = 0, onAnswer }: QuizOverl
           <div
             className="animate-slide-up"
             style={{
-              marginTop: 'clamp(16px, 2.5vw, 28px)',
-              padding: 'clamp(16px, 2vw, 24px)',
+              marginTop: 14,
+              padding: '14px 18px',
               borderRadius: 16,
               textAlign: 'center',
               background: isCorrect
@@ -235,7 +248,7 @@ export function QuizOverlay({ quiz, timeLimit, streak = 0, onAnswer }: QuizOverl
                 background: isCorrect ? '#10b981' : '#f43f5e',
               }} />
               <p style={{
-                fontSize: 'clamp(16px, 2vw, 24px)',
+                fontSize: 18,
                 fontWeight: 700,
                 color: isCorrect ? '#6ee7b7' : '#fda4af',
               }}>
@@ -244,9 +257,9 @@ export function QuizOverlay({ quiz, timeLimit, streak = 0, onAnswer }: QuizOverl
             </div>
             {quiz.explanation && (
               <p style={{
-                fontSize: 'clamp(13px, 1.1vw, 15px)',
+                fontSize: 13,
                 color: '#d4d4d8',
-                lineHeight: 1.8,
+                lineHeight: 1.6,
               }}>
                 <FracText text={quiz.explanation} />
               </p>

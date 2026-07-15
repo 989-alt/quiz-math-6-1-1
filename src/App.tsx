@@ -4,6 +4,7 @@ import { StartScreen } from './components/student/StartScreen';
 import { LeaderboardView } from './components/leaderboard/LeaderboardView';
 import { UNIT } from './data/unit';
 import type { Difficulty } from './game/difficulty';
+import type { GameMode } from './game/gameMode';
 
 type AppView = 'home' | 'play' | 'game' | 'leaderboard';
 
@@ -53,6 +54,7 @@ function App() {
   const [view, setView] = useState<AppView>('home');
   const [nickname, setNickname] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>('normal');
+  const [mode, setMode] = useState<GameMode>('adventure');
 
   useEffect(() => {
     const handleHash = () => {
@@ -72,9 +74,10 @@ function App() {
     setView('home');
   }, []);
 
-  const handleStartGame = useCallback((name: string, diff: Difficulty) => {
+  const handleStartGame = useCallback((name: string, diff: Difficulty, m: GameMode) => {
     setNickname(name);
     setDifficulty(diff);
+    setMode(m);
     setView('game');
   }, []);
 
@@ -93,6 +96,7 @@ function App() {
       <GameContainer
         nickname={nickname}
         difficulty={difficulty}
+        mode={mode}
         onExit={navigateHome}
         onShowLeaderboard={() => setView('leaderboard')}
       />
@@ -105,9 +109,8 @@ function App() {
 
   return (
     <div
+      className="app-viewport"
       style={{
-        width: '100vw',
-        height: '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

@@ -30,14 +30,9 @@ export interface QuizResult {
   timeSpent: number;
 }
 
-/** quiz.type별 제한시간(초) */
-export function quizTimeLimit(type: QuizType): number {
-  switch (type) {
-    case 'word':
-    case 'fact':
-    case 'order':
-      return 20;
-    default:
-      return 15;
-  }
+/** 난이도별 제한시간(초): 하15/중20/상30 + 장문형(word/fact/order) 5초 가산, 상한 35초 */
+export function quizTimeLimit(quiz: Pick<Quiz, 'type' | 'difficulty'>): number {
+  const base = quiz.difficulty === 3 ? 30 : quiz.difficulty === 2 ? 20 : 15;
+  const isLongText = quiz.type === 'word' || quiz.type === 'fact' || quiz.type === 'order';
+  return Math.min(base + (isLongText ? 5 : 0), 35);
 }

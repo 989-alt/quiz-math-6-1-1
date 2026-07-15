@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { usePhaser } from '../../hooks/usePhaser';
 import { QuizOverlay } from './QuizOverlay';
 import { UpgradeSelect } from './UpgradeSelect';
@@ -6,26 +6,36 @@ import { GameHUD } from './GameHUD';
 import { MobileControls } from './MobileControls';
 import { PostGameOverlay } from './PostGameOverlay';
 import { AutoPauseOverlay } from './AutoPauseOverlay';
+import { PauseMenuOverlay } from './PauseMenuOverlay';
+import { StageViewport } from '../shared/StageViewport';
+import { PortraitPrompt } from '../shared/PortraitPrompt';
 import { useQuizStore } from '../../stores/quizStore';
 import { quizTimeLimit } from '../../types/quiz';
 import { EventBus, GameEvents } from '../../game/utils/EventBus';
 import type { UpgradeOption } from '../../types/game';
 import type { Difficulty } from '../../game/difficulty';
+import type { GameMode } from '../../game/gameMode';
 
 interface GameContainerProps {
   nickname: string;
   difficulty: Difficulty;
+  mode: GameMode;
   onExit: () => void;
   onShowLeaderboard: () => void;
 }
 
-export function GameContainer({ nickname, difficulty, onExit, onShowLeaderboard }: GameContainerProps) {
+export function GameContainer({ nickname, difficulty, mode, onExit, onShowLeaderboard }: GameContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showQuiz, setShowQuiz] = useState(false);
   const [filteredUpgrades, setFilteredUpgrades] = useState<UpgradeOption[]>([]);
   const [isMobile, setIsMobile] = useState(false);
   const [bankError, setBankError] = useState(false);
   const [showAutoPauseOverlay, setShowAutoPauseOverlay] = useState(false);
+  const [showPauseMenu, setShowPauseMenu] = useState(false);
+  // 레벨업당 1회 "다시 뽑기" — 새 레벨업이 도착하면 초기화 (levelUpData 변경 effect에서 리셋)
+  const [rerollUsed, setRerollUsed] = useState(false);
+  // 연타로 두 번 emit되는 것을 막기 위한 동기 가드 (state는 리렌더까지 반영이 늦을 수 있음)
+  const rerollUsedRef = useRef(false);
 
   const {
     isReady,
@@ -41,6 +51,7 @@ export function GameContainer({ nickname, difficulty, onExit, onShowLeaderboard 
     isSolo: true,
     playerName: nickname,
     difficulty,
+    mode,
   });
 
   const { currentQuiz, streak, loadUnitBank, drawQuiz, submitAnswer, resetQuizSession } =
@@ -56,10 +67,26 @@ export function GameContainer({ nickname, difficulty, onExit, onShowLeaderboard 
   // 탭/창 이탈 자동 일시정지 (Task 4): GameScene이 실제 활성 플레이 중 탭 이탈을 감지해
   // 복귀 시 이 이벤트를 쏘면 "일시정지" 오버레이를 띄운다 (자동 재개 금지)
   useEffect(() => {
-    const handleAutoPauseShow = () => setShowAutoPauseOverlay(true);
+    // 수동 일시정지 메뉴가 떠 있는 상태에서 탭 이탈이 겹치면 오버레이 두 개가
+    // 동시에 표시되는 것을 막기 위해 자동 일시정지 오버레이로 넘긴다.
+    const handleAutoPauseShow = () => {
+      setShowPauseMenu(false);
+      setShowAutoPauseOverlay(true);
+    };
     EventBus.on(GameEvents.AUTO_PAUSE_SHOW, handleAutoPauseShow);
     return () => {
       EventBus.off(GameEvents.AUTO_PAUSE_SHOW, handleAutoPauseShow);
+    };
+  }, []);
+
+  // "다시 뽑기" 결과 수신 — 카드만 교체 (levelUpData는 건드리지 않아 퀴즈 재출현 없음)
+  useEffect(() => {
+    const handleUpgradesRerolled = (data: { upgrades: UpgradeOption[] }) => {
+      setFilteredUpgrades(data.upgrades as UpgradeOption[]);
+    };
+    EventBus.on(GameEvents.UPGRADES_REROLLED, handleUpgradesRerolled);
+    return () => {
+      EventBus.off(GameEvents.UPGRADES_REROLLED, handleUpgradesRerolled);
     };
   }, []);
 
@@ -86,6 +113,8 @@ export function GameContainer({ nickname, difficulty, onExit, onShowLeaderboard 
   // 레벨업 → 웨이브 기반 난이도로 퀴즈 추첨 (설계 §1.4)
   useEffect(() => {
     if (!levelUpData) return;
+    rerollUsedRef.current = false;
+    setRerollUsed(false);
     const quiz = drawQuiz(playerState?.wave ?? 1);
     if (quiz) {
       setShowQuiz(true);
@@ -111,7 +140,7 @@ export function GameContainer({ nickname, difficulty, onExit, onShowLeaderboard 
     if (isCorrect) {
       // 정답: 업그레이드 3택 (설계 §6) + 빨리 맞힐수록 커지는 스피드 보너스 점수
       if (levelUpData) setFilteredUpgrades(levelUpData.upgrades as UpgradeOption[]);
-      const timeLimit = answered ? quizTimeLimit(answered.type) : timeSpent;
+      const timeLimit = answered ? quizTimeLimit(answered) : timeSpent;
       const speedBonus = Math.max(0, Math.ceil(100 * (1 - timeSpent / timeLimit)));
       EventBus.emit(GameEvents.QUIZ_RESULT, { correct: true, speedBonus });
     } else {
@@ -127,16 +156,30 @@ export function GameContainer({ nickname, difficulty, onExit, onShowLeaderboard 
     setFilteredUpgrades([]);
   };
 
+  // 레벨업당 1회 "다시 뽑기" — ref로 즉시 잠가 연타 시 중복 emit 방지
+  const handleReroll = () => {
+    if (rerollUsedRef.current) return;
+    rerollUsedRef.current = true;
+    setRerollUsed(true);
+    EventBus.emit(GameEvents.REROLL_UPGRADES);
+  };
+
   const handleRestart = () => {
     setShowQuiz(false);
     setFilteredUpgrades([]);
     // 사망 직전 탭 이탈→복귀 레이스로 남을 수 있는 stale 일시정지 오버레이 제거
     setShowAutoPauseOverlay(false);
+    setShowPauseMenu(false);
     resetQuizSession();
     restartGame();
   };
 
-  const handleJoystickMove = (x: number, y: number) => sendJoystickInput(x, y);
+  // sendJoystickInput은 usePhaser에서 참조가 안정화되어 있음 — 여기서도 useCallback으로
+  // 감싸 MobileControls에 매 렌더 새 함수가 전달되지 않게 한다 (조이스틱 끊김 fix)
+  const handleJoystickMove = useCallback(
+    (x: number, y: number) => sendJoystickInput(x, y),
+    [sendJoystickInput]
+  );
 
   // [계속하기]: 오버레이를 닫고 GameScene의 3·2·1 보호 재개로 넘긴다 (포위 즉사 방지)
   const handleAutoPauseResume = () => {
@@ -146,8 +189,39 @@ export function GameContainer({ nickname, difficulty, onExit, onShowLeaderboard 
 
   const showUpgradeSelect = !showQuiz && filteredUpgrades.length > 0;
 
+  // HUD [⏸ 일시정지] 클릭 (P0-2): 퀴즈/업그레이드 선택/게임 종료 화면/자동 일시정지 오버레이가
+  // 이미 떠 있을 때는 무시하고, 그 외에는 GameScene을 즉시 정지시킨 뒤 일시정지 메뉴를 띄운다.
+  const handlePauseClick = () => {
+    if (showQuiz || showUpgradeSelect || finishData || showAutoPauseOverlay || showPauseMenu) return;
+    pauseGame();
+    setShowPauseMenu(true);
+  };
+
+  // [계속하기]: AutoPauseOverlay와 동일하게 3·2·1 보호 재개로 넘긴다 (포위 즉사 방지)
+  const handlePauseMenuResume = () => {
+    setShowPauseMenu(false);
+    EventBus.emit(GameEvents.RESUME_WITH_PROTECTION);
+  };
+
+  // [게임 종료]: 확인 없이 바로 결과 집계로 넘어간다
+  const handlePauseMenuQuit = () => {
+    setShowPauseMenu(false);
+    EventBus.emit(GameEvents.STOP_GAME);
+  };
+
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100vh', background: '#0a0a0f', overflow: 'hidden' }}>
+    <StageViewport
+      outside={
+        <>
+          {/* 조이스틱은 스테이지 배율 밖(뷰포트 기준)에 둔다 — 스케일된 스테이지 안에 두면
+              클라이언트 px 기반 조이스틱 감도가 배율만큼 왜곡되기 때문(폰 s≈0.3에서 과민) */}
+          {isMobile && isReady && !levelUpData && !showQuiz && !finishData && (
+            <MobileControls onMove={handleJoystickMove} />
+          )}
+          <PortraitPrompt enabled={isMobile} />
+        </>
+      }
+    >
       <div
         id="game-container"
         ref={containerRef}
@@ -156,10 +230,8 @@ export function GameContainer({ nickname, difficulty, onExit, onShowLeaderboard 
         onMouseDown={(e) => e.currentTarget.focus()}
       />
 
-      {isReady && !finishData && <GameHUD difficulty={difficulty} />}
-
-      {isMobile && isReady && !levelUpData && !showQuiz && !finishData && (
-        <MobileControls onMove={handleJoystickMove} />
+      {isReady && !finishData && (
+        <GameHUD difficulty={difficulty} mode={mode} onPause={handlePauseClick} showFullscreen={isMobile} />
       )}
 
       {bankError && (
@@ -185,7 +257,7 @@ export function GameContainer({ nickname, difficulty, onExit, onShowLeaderboard 
       {showQuiz && currentQuiz && (
         <QuizOverlay
           quiz={currentQuiz}
-          timeLimit={quizTimeLimit(currentQuiz.type)}
+          timeLimit={quizTimeLimit(currentQuiz)}
           streak={streak}
           onAnswer={handleQuizAnswer}
         />
@@ -199,6 +271,8 @@ export function GameContainer({ nickname, difficulty, onExit, onShowLeaderboard 
             description: (u as any).descriptionKo || u.description,
           }))}
           onSelect={handleUpgradeSelect}
+          rerollUsed={rerollUsed}
+          onReroll={handleReroll}
         />
       )}
 
@@ -206,10 +280,15 @@ export function GameContainer({ nickname, difficulty, onExit, onShowLeaderboard 
         <AutoPauseOverlay onResume={handleAutoPauseResume} />
       )}
 
+      {showPauseMenu && !showQuiz && !showUpgradeSelect && !finishData && !showAutoPauseOverlay && (
+        <PauseMenuOverlay onResume={handlePauseMenuResume} onQuit={handlePauseMenuQuit} />
+      )}
+
       {finishData && (
         <PostGameOverlay
           nickname={nickname}
           difficulty={difficulty}
+          mode={mode}
           finish={finishData}
           onRestart={handleRestart}
           onExit={onExit}
@@ -238,6 +317,6 @@ export function GameContainer({ nickname, difficulty, onExit, onShowLeaderboard 
           <div style={{ color: '#71717a', fontSize: 14, fontWeight: 500 }}>게임 로딩 중...</div>
         </div>
       )}
-    </div>
+    </StageViewport>
   );
 }

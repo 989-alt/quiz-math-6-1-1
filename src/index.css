@@ -99,6 +99,31 @@
   box-sizing: border-box;
 }
 
+/* 뷰포트 전체를 채우되 모바일 주소창 뒤로 늘어나지 않도록 dvh 폴백 사용
+   (vh 먼저 선언 → dvh를 지원하는 브라우저만 덮어씀) */
+.app-viewport {
+  width: 100vw;
+  width: 100dvw;
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* 고정비 1280×720 스테이지의 외곽 래퍼 — 보이는 뷰포트를 채우고 종횡비 불일치는
+   어두운 레터박스로 채운 뒤 중앙에 스테이지를 정렬한다. */
+.stage-outer {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  width: 100dvw;
+  height: 100vh;
+  height: 100dvh;
+  background: #0a0a0f;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 html,
 body,
 #root {

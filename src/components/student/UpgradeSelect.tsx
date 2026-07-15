@@ -6,6 +6,9 @@ type UpgradeCardOption = UpgradeOption & { effectKo?: string };
 interface UpgradeSelectProps {
   upgrades: UpgradeCardOption[];
   onSelect: (type: string, id: string) => void;
+  /** 이번 레벨업에서 "다시 뽑기"를 이미 사용했는지 (레벨업당 1회) */
+  rerollUsed: boolean;
+  onReroll: () => void;
 }
 
 /** 카드 아이콘 (임시 이모지 — Phase 3B에서 픽셀아트 아이콘으로 교체 예정) */
@@ -23,7 +26,7 @@ const CARD_ICONS: Record<string, string> = {
   heal: '💚', score: '💯', magnet_pulse: '💎',
 };
 
-export function UpgradeSelect({ upgrades, onSelect }: UpgradeSelectProps) {
+export function UpgradeSelect({ upgrades, onSelect, rerollUsed, onReroll }: UpgradeSelectProps) {
   const getRarity = (upgrade: UpgradeOption): string => {
     if (upgrade.type === 'bonus') return 'bonus';
     if (upgrade.isEvolution) return 'evolution';
@@ -233,6 +236,39 @@ export function UpgradeSelect({ upgrades, onSelect }: UpgradeSelectProps) {
             );
           })}
         </div>
+
+        {/* 다시 뽑기 — 레벨업당 1회, 카드가 실제로 여러 장일 때만 의미가 있음 */}
+        {upgrades.length > 1 && (
+          <div style={{ marginTop: 28 }}>
+            <button
+              onClick={onReroll}
+              disabled={rerollUsed}
+              style={{
+                padding: '10px 22px',
+                borderRadius: 999,
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                background: rerollUsed ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.08)',
+                color: rerollUsed ? '#52525b' : '#e4e4e7',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: rerollUsed ? 'default' : 'pointer',
+                transition: 'background 0.2s ease, border-color 0.2s ease',
+              }}
+              onMouseEnter={e => {
+                if (rerollUsed) return;
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.14)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+              }}
+              onMouseLeave={e => {
+                if (rerollUsed) return;
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+              }}
+            >
+              {rerollUsed ? '다시 뽑기 사용됨' : '🔄 다시 뽑기'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

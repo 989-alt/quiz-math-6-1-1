@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import Phaser from 'phaser';
 import { createPhaserConfig } from '../game/config';
 import { EventBus, GameEvents } from '../game/utils/EventBus';
 import type { Difficulty } from '../game/difficulty';
+import type { GameMode } from '../game/gameMode';
 
 export interface PlayerStateData {
   hp: number;
@@ -43,7 +44,13 @@ export interface GameFinishedData {
 
 export function usePhaser(
   containerId: string,
-  options?: { isSolo: boolean; playerName: string; difficulty?: Difficulty; onQuit?: () => void }
+  options?: {
+    isSolo: boolean;
+    playerName: string;
+    difficulty?: Difficulty;
+    mode?: GameMode;
+    onQuit?: () => void;
+  }
 ) {
   const gameRef = useRef<Phaser.Game | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -72,6 +79,7 @@ export function usePhaser(
     // 난이도를 GameScene이 create()에서 읽기 전에 registry에 심어둔다 (BootScene의 비동기
     // 로딩 이후에 GameScene.create()가 실행되므로 이 동기 호출로 충분히 앞선다).
     gameRef.current.registry.set('difficulty', options?.difficulty ?? 'normal');
+    gameRef.current.registry.set('mode', options?.mode ?? 'adventure');
 
     // Setup event listeners
     const handleGameReady = () => {
@@ -123,35 +131,38 @@ export function usePhaser(
     };
   }, [containerId]); // Only depend on containerId, not the entire options object
 
-  const selectUpgrade = (type: string, id: string) => {
+  // 아래 함수들은 EventBus.emit / setState setter만 사용해 클로저에 갇힐 값이
+  // 없으므로 useCallback([])으로 참조 안정화 — 자식 컴포넌트(예: MobileControls)에
+  // props로 넘어갈 때 불필요한 재구독을 막기 위함
+  const selectUpgrade = useCallback((type: string, id: string) => {
     EventBus.emit(GameEvents.UPGRADE_SELECTED, { type, id });
     setLevelUpData(null);
-  };
+  }, []);
 
   // 오답 등으로 업그레이드 없이 레벨업 UI를 닫을 때 사용
-  const clearLevelUp = () => {
+  const clearLevelUp = useCallback(() => {
     setLevelUpData(null);
-  };
+  }, []);
 
-  const pauseGame = () => {
+  const pauseGame = useCallback(() => {
     EventBus.emit(GameEvents.PAUSE_GAME);
-  };
+  }, []);
 
-  const resumeGame = () => {
+  const resumeGame = useCallback(() => {
     EventBus.emit(GameEvents.RESUME_GAME);
-  };
+  }, []);
 
-  const restartGame = () => {
+  const restartGame = useCallback(() => {
     setIsGameOver(false);
     setFinishData(null);
     setPlayerState(null);
     setLevelUpData(null);
     EventBus.emit(GameEvents.GAME_START);
-  };
+  }, []);
 
-  const sendJoystickInput = (x: number, y: number) => {
+  const sendJoystickInput = useCallback((x: number, y: number) => {
     EventBus.emit('joystick-move', { x, y });
-  };
+  }, []);
 
   return {
     game: gameRef.current,

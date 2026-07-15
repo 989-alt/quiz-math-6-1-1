@@ -58,23 +58,23 @@ export function Timer({ duration, onComplete, isRunning, size = 'md', showProgre
   const progress = (timeLeft / duration) * 100;
   const isLow = timeLeft < 5;
 
-  const barHeights: Record<string, string> = {
-    sm: 'clamp(4px, 0.4vw, 6px)',
-    md: 'clamp(6px, 0.7vw, 10px)',
-    lg: 'clamp(8px, 1vw, 14px)',
+  const barHeights: Record<string, number> = {
+    sm: 6,
+    md: 8,
+    lg: 14,
   };
 
-  const textSizes: Record<string, string> = {
-    sm: 'clamp(6px, 0.65vw, 8px)',
-    md: 'clamp(8px, 0.9vw, 12px)',
-    lg: 'clamp(10px, 1.2vw, 16px)',
+  const textSizes: Record<string, number> = {
+    sm: 8,
+    md: 12,
+    lg: 16,
   };
 
   const barColor = progress > 50 ? '#00b894' : progress > 25 ? '#fdcb6e' : '#d63031';
 
   return (
     <div style={{ width: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'clamp(2px, 0.3vw, 4px)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
         <span className="font-pixel" style={{
           fontSize: textSizes[size],
           color: isLow ? '#d63031' : '#fff',

@@ -79,7 +79,7 @@ const RANGED_WEAPONS: WeaponEntry[] = [
   { id: 'acorn', nameKo: '도토리', desc: '통통 튕기는 도토리' },
   { id: 'paper_plane', nameKo: '종이비행기', desc: '몬스터를 따라가는 비행기' },
   { id: 'marble', nameKo: '구슬', desc: '벽에 반사되는 구슬' },
-  { id: 'snowball', nameKo: '눈덩이', desc: '맞은 적을 느리게 해요' },
+  { id: 'snowball', nameKo: '눈덩이', desc: '맞은 적을 잠시 완전히 얼려요' },
   { id: 'leaf', nameKo: '나뭇잎', desc: '바람에 흔들리며 날아가요' },
   { id: 'ruler', nameKo: '자', desc: '거대한 자로 넓게 쾅!' },
   { id: 'butterfly', nameKo: '나비', desc: '나비 떼가 적을 쫓아 날아가요' },

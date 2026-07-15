@@ -10,10 +10,14 @@ export function MobileControls({ onMove }: MobileControlsProps) {
   const isDragging = useRef(false);
   const activeTouchId = useRef<number | null>(null);
   const centerPos = useRef({ x: 0, y: 0 });
+  // 최신 onMove를 담아두는 ref — 아래 document 리스너 등록 useEffect를 [] deps로
+  // 고정해 마운트당 1회만 등록하기 위함 (onMove가 매 렌더 바뀌어도 재등록 안 됨)
+  const onMoveRef = useRef(onMove);
+  onMoveRef.current = onMove;
 
   const maxDistance = 40;
 
-  const handleStart = useCallback((clientX: number, clientY: number) => {
+  const handleStart = useCallback(() => {
     if (!joystickRef.current) return;
 
     isDragging.current = true;
@@ -38,11 +42,11 @@ export function MobileControls({ onMove }: MobileControlsProps) {
     if (distance > 0) {
       normalizedX = (deltaX / distance) * clampedDistance;
       normalizedY = (deltaY / distance) * clampedDistance;
-      onMove(normalizedX / maxDistance, normalizedY / maxDistance);
+      onMoveRef.current(normalizedX / maxDistance, normalizedY / maxDistance);
     }
 
     knobRef.current.style.transform = `translate(${normalizedX}px, ${normalizedY}px)`;
-  }, [onMove]);
+  }, []);
 
   const handleEnd = useCallback(() => {
     isDragging.current = false;
@@ -50,8 +54,8 @@ export function MobileControls({ onMove }: MobileControlsProps) {
     if (knobRef.current) {
       knobRef.current.style.transform = 'translate(0px, 0px)';
     }
-    onMove(0, 0);
-  }, [onMove]);
+    onMoveRef.current(0, 0);
+  }, []);
 
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
@@ -61,7 +65,7 @@ export function MobileControls({ onMove }: MobileControlsProps) {
         e.preventDefault();
         const touch = e.changedTouches[0];
         activeTouchId.current = touch.identifier;
-        handleStart(touch.clientX, touch.clientY);
+        handleStart();
       }
     };
 
@@ -109,10 +113,14 @@ export function MobileControls({ onMove }: MobileControlsProps) {
       if (isDragging.current) {
         isDragging.current = false;
         activeTouchId.current = null;
-        onMove(0, 0);
+        onMoveRef.current(0, 0);
       }
     };
-  }, [handleStart, handleMove, handleEnd, onMove]);
+    // handleStart/handleMove/handleEnd는 이제 안정적([] deps)이고 onMove는
+    // ref로 참조하므로 이 effect는 마운트당 1회만 실행 — 재렌더마다 문서
+    // 리스너를 뜯었다 붙이며 진행 중이던 드래그를 강제 정지시키던 버그 fix
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="absolute bottom-8 left-8 pointer-events-auto">
