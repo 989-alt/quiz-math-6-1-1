@@ -39,16 +39,18 @@ export class Eraser extends WeaponBase {
     const area = this.getArea();
     const duration = this.getDuration();
 
-    for (let i = 0; i < amount; i++) {
-      const angle = (i / amount) * Math.PI * 2;
-      const distance = 60 + i * 30;
-      this.createEraserZone(angle, distance, damage, area, duration);
+    // 플레이어 주변 허공 낙하 대신 가까운 몬스터를 직접 타겟팅 (빈 땅 헛치는 문제 피드백 반영)
+    const targets = this.findClosestEnemies(amount);
+    if (targets.length === 0) return; // 사거리 내 몬스터 없음 — 이번 쿨다운은 발동하지 않음
+
+    for (const target of targets) {
+      const offsetX = (Math.random() * 2 - 1) * 20;
+      const offsetY = (Math.random() * 2 - 1) * 20;
+      this.createEraserZone(target.x + offsetX, target.y + offsetY, damage, area, duration);
     }
   }
 
-  private createEraserZone(angle: number, distance: number, damage: number, area: number, duration: number): void {
-    const x = this.player.x + Math.cos(angle) * distance;
-    const y = this.player.y + Math.sin(angle) * distance;
+  private createEraserZone(x: number, y: number, damage: number, area: number, duration: number): void {
     const dropHeight = 200;
 
     // Use actual sprite, dropped in from above

@@ -42,6 +42,10 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   private slowIcon: Phaser.GameObjects.Sprite | null = null;
   private burnFx: Phaser.GameObjects.Sprite | null = null;
   private burnUntil: number = 0;
+  // 빙결(Snowball 전용): 지속 중 완전 정지. 해동 후 재빙결 면역 기간을 둬 연속 빙결(사실상 무한 스턴)을 막는다.
+  private frozenUntil: number = 0;
+  private freezeImmuneUntil: number = 0;
+  private freezeIcon: Phaser.GameObjects.Sprite | null = null;
   // 멧돼지 발구르기(돌진 예고) 틴트가 적용 중인지 — 피격 화이트 플래시 복원 시 이 상태를 참고해
   // 예고 틴트가 지워지지 않게 한다 (persistentTint와 별개, boar 전용 텔레그래프 상태)
   private boarTelegraphActive: boolean = false;
@@ -67,6 +71,19 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   private static readonly ENRAGE_SPEED_MUL = 1.25;
   private static readonly ENRAGE_TINT = 0xff5555;
   private enraged: boolean = false;
+
+  // === 막힘-슬라이드 스티어링(P1-1): 장애물/구석에 끼면 벽을 따라 미끄러져 탈출 ===
+  // 경로탐색 없음 — 프레임당 추가 할당 0, 이웃 스캔 0(O(n²) 분리 안 함).
+  // 유령(passesObstacles)은 애초에 막히지 않아 blocked.none이 항상 참 → 상태가 무해하게 비활성.
+  private static readonly STEER_BLOCKED_MS = 200; // 이 시간 이상 연속 막히면 슬라이드 진입
+  private static readonly STEER_SLIDE_MS = 500;   // 슬라이드 지속 시간(ms)
+  private blockedTime: number = 0;   // 연속 막힘 누적(ms)
+  private slideTime: number = 0;     // 남은 슬라이드 시간(ms), >0이면 슬라이드 중
+  private slideSign: number = 1;     // 슬라이드 수직 방향 부호(+1/-1) — 진입 시 1회 결정
+  private slideAttempts: number = 0; // 재슬라이드 횟수(오목 구석에서 부호 반전 탈출용)
+  // 개체별 고정 헤딩 지터(±10°) — 몬스터 스트림이 한 줄/한 구석으로 겹치지 않게 분산(값싼 declump).
+  // 특성 방향 오버라이드(traitDir) 중엔 미적용, 조준감을 해치지 않게 10° 이내.
+  private headingJitter: number = (Math.random() - 0.5) * Phaser.Math.DegToRad(20);
 
   constructor(scene: Phaser.Scene, x: number, y: number, config: MonsterConfig) {
     super(scene, x, y, config.spriteKey);
@@ -207,24 +224,55 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
 
   // 광폭화 토글 (어려움 오답 페널티 — GameScene가 전체/신규 몬스터에 적용).
   // 속도 배율은 update()의 이동 계산에서 반영, 여기선 붉은 틴트만 토글.
-  // 상시 틴트(최종 보스)·멧돼지 텔레그래프가 걸려 있으면 그 틴트를 침범하지 않는다.
+  // 상시 틴트(최종 보스)·멧돼지 텔레그래프·빙결이 걸려 있으면 그 틴트를 침범하지 않는다 (빙결 우선).
   setEnraged(on: boolean): void {
     if (this.enraged === on) return;
     this.enraged = on;
     if (on) {
-      if (this.persistentTint === null && !this.boarTelegraphActive) {
+      if (this.persistentTint === null && !this.boarTelegraphActive && !this.isFrozen()) {
         this.setTint(Monster.ENRAGE_TINT);
       }
     } else {
-      // 해제: 상시 틴트 → 멧돼지 텔레그래프 → 해제 우선순위로 복원
+      // 해제: 상시 틴트 → 멧돼지 텔레그래프 → 빙결 → 해제 우선순위로 복원
       if (this.persistentTint !== null) this.setTint(this.persistentTint);
       else if (this.boarTelegraphActive) this.setTint(0xffb0b0);
+      else if (this.isFrozen()) this.setTint(0x99ddff);
       else this.clearTint();
     }
   }
 
   isEnraged(): boolean {
     return this.enraged;
+  }
+
+  // 빙결 디버프 (Snowball onHit 전용): durationMs 동안 완전 정지 + 하늘색 틴트.
+  // 재빙결 면역: 해동 시각(frozenUntil) 이후 3초간은 이 호출이 no-op — 연속 피격으로 인한
+  // 무한 스턴(사실상 영구 정지)을 방지. 보스는 CC 내성으로 지속시간을 절반으로 줄인다.
+  applyFreeze(durationMs: number): void {
+    if (!this.active) return;
+    const now = this.scene.time.now;
+    if (now < this.freezeImmuneUntil) return; // 면역 중 — 무시(연속 빙결 불가)
+
+    const duration = this.isBoss || this.isFinalBoss ? durationMs * 0.5 : durationMs;
+    this.frozenUntil = now + duration;
+    this.freezeImmuneUntil = this.frozenUntil + 3000; // 해동 후 3초 재빙결 면역
+
+    this.setVelocity(0, 0);
+    this.setTint(0x99ddff);
+
+    // 빙결 상태 아이콘 — 별도 아이콘 에셋이 없어 슬로우 아이콘(SLOW_ICON_KEY) 재사용
+    if (!this.freezeIcon && this.scene.textures.exists(SLOW_ICON_KEY)) {
+      this.freezeIcon = this.scene.add.sprite(this.x, this.y - this.displayHeight / 2 - 10, SLOW_ICON_KEY);
+      this.freezeIcon.setScale(0.9);
+      this.freezeIcon.setDepth(6);
+      if (this.scene.anims.exists(SLOW_ICON_KEY)) {
+        this.freezeIcon.play(SLOW_ICON_KEY);
+      }
+    }
+  }
+
+  private isFrozen(): boolean {
+    return this.frozenUntil > 0 && this.scene.time.now < this.frozenUntil;
   }
 
   update(delta: number = 16.7): void {
@@ -261,34 +309,70 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
       }
     }
 
-    // 몬스터별 특성 갱신 (traitSpeedMul / traitDir 결정)
-    this.updateTrait(delta);
-
-    // Move towards target (특성이 방향을 고정/오버라이드하면 그 방향 사용)
-    const angle = Phaser.Math.Angle.Between(this.x, this.y, this.target.x, this.target.y);
-    const velocity = this.traitDir
-      ? this.traitDir.clone()
-      : new Phaser.Math.Vector2(Math.cos(angle), Math.sin(angle));
-    velocity.scale(this.speed * this.traitSpeedMul * (this.enraged ? Monster.ENRAGE_SPEED_MUL : 1));
-
-    // 박쥐: 진행 방향에 수직인 사인파 오프셋으로 지그재그 비행
-    if (this.trait === 'bat') {
-      this.zigzagTime += delta;
-      const sway = Math.sin(this.zigzagTime * 0.006) * this.speed * 0.7;
-      velocity.x += -Math.sin(angle) * sway;
-      velocity.y += Math.cos(angle) * sway;
+    // 빙결 만료(해동) 판정 — 상시 틴트 → 멧돼지 텔레그래프 → 광폭화 → 해제 우선순위로 틴트 복원
+    if (this.frozenUntil > 0 && this.scene.time.now > this.frozenUntil) {
+      this.frozenUntil = 0;
+      if (this.persistentTint !== null) this.setTint(this.persistentTint);
+      else if (this.boarTelegraphActive) this.setTint(0xffb0b0);
+      else if (this.enraged) this.setTint(Monster.ENRAGE_TINT);
+      else this.clearTint();
     }
 
-    this.setVelocity(velocity.x, velocity.y);
-
-    // 스프라이트는 정면(카메라) 기준 아트. 보스는 뒤집으면 거울처럼 보여 어색하므로
-    // 항상 정면(플레이어를 바라봄) 유지. 일반 몬스터만 이동 방향으로 좌우 반전 + wobble.
-    if (!this.isBoss) {
-      // 정지 상태(멧돼지 발구르기 등)에선 특성 연출의 flip을 덮어쓰지 않음
-      if (Math.abs(velocity.x) > 0.5) {
-        this.setFlipX(velocity.x < 0);
+    // 빙결 아이콘: 만료됐으면 제거, 아니면 몬스터 위치를 따라 이동
+    if (this.freezeIcon) {
+      if (this.frozenUntil > 0) {
+        this.freezeIcon.setPosition(this.x, this.y - this.displayHeight / 2 - 10);
+      } else {
+        this.freezeIcon.destroy();
+        this.freezeIcon = null;
       }
-      this.updateWobble();
+    }
+
+    // 빙결 중엔 특성/스티어링/이동 계산을 전부 건너뛰고 완전 정지 — 특성 타이머(delta 누적)도
+    // 함께 동결된다(멧돼지 발구르기·벌 윈드업 등이 해동 후 이어서 재개).
+    if (this.frozenUntil > 0) {
+      this.setVelocity(0, 0);
+    } else {
+      // 몬스터별 특성 갱신 (traitSpeedMul / traitDir 결정)
+      this.updateTrait(delta);
+
+      // Move towards target (특성이 방향을 고정/오버라이드하면 그 방향 사용)
+      const angle = Phaser.Math.Angle.Between(this.x, this.y, this.target.x, this.target.y);
+      let velocity: Phaser.Math.Vector2;
+      if (this.traitDir) {
+        // 특성 방향 오버라이드(돌진·후퇴 등) 중엔 스티어링·지터를 적용하지 않는다
+        velocity = this.traitDir.clone();
+      } else {
+        // 개체별 헤딩 지터로 물량이 한 줄/한 구석으로 뭉치지 않게 살짝 분산
+        let moveAngle = angle + this.headingJitter;
+        // 막힘-슬라이드 스티어링: 장애물에 계속 끼어 있으면 벽에 수직으로 미끄러져 빠져나온다
+        this.updateSteering(delta, moveAngle);
+        if (this.slideTime > 0) {
+          moveAngle += this.slideSign * Math.PI * 0.5;
+        }
+        velocity = new Phaser.Math.Vector2(Math.cos(moveAngle), Math.sin(moveAngle));
+      }
+      velocity.scale(this.speed * this.traitSpeedMul * (this.enraged ? Monster.ENRAGE_SPEED_MUL : 1));
+
+      // 박쥐: 진행 방향에 수직인 사인파 오프셋으로 지그재그 비행
+      if (this.trait === 'bat') {
+        this.zigzagTime += delta;
+        const sway = Math.sin(this.zigzagTime * 0.006) * this.speed * 0.7;
+        velocity.x += -Math.sin(angle) * sway;
+        velocity.y += Math.cos(angle) * sway;
+      }
+
+      this.setVelocity(velocity.x, velocity.y);
+
+      // 스프라이트는 정면(카메라) 기준 아트. 보스는 뒤집으면 거울처럼 보여 어색하므로
+      // 항상 정면(플레이어를 바라봄) 유지. 일반 몬스터만 이동 방향으로 좌우 반전 + wobble.
+      if (!this.isBoss) {
+        // 정지 상태(멧돼지 발구르기 등)에선 특성 연출의 flip을 덮어쓰지 않음
+        if (Math.abs(velocity.x) > 0.5) {
+          this.setFlipX(velocity.x < 0);
+        }
+        this.updateWobble();
+      }
     }
 
     if (this.shadow) {
@@ -413,6 +497,62 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
+  // 막힘-슬라이드 스티어링 상태머신 (delta 누적이라 퀴즈 일시정지 중엔 자동 동결).
+  // seekAngle: 이번 프레임의 조준 방향(지터 포함). 슬라이드 중이면 이 방향에 ±90°로 이동.
+  private updateSteering(delta: number, seekAngle: number): void {
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    const free = body.blocked.none; // 이번 프레임 어느 면도 막히지 않았는가
+
+    if (this.slideTime > 0) {
+      // 슬라이드 진행 중
+      this.slideTime -= delta;
+      if (free) {
+        // 벽을 벗어남 → 즉시 시크 복귀, 재시도 카운트 리셋
+        this.slideTime = 0;
+        this.blockedTime = 0;
+        this.slideAttempts = 0;
+      } else if (this.slideTime <= 0) {
+        // 슬라이드가 끝났는데 아직 막힘 → 부호를 뒤집어 재슬라이드(오목 구석 탈출)
+        this.slideAttempts++;
+        this.slideSign = -this.slideSign;
+        this.slideTime = Monster.STEER_SLIDE_MS;
+      }
+      return;
+    }
+
+    if (free) {
+      // 자유 이동: 막힘 누적 리셋
+      this.blockedTime = 0;
+      return;
+    }
+
+    // 막힘 지속 누적 — 임계 시간 넘으면 슬라이드 진입
+    this.blockedTime += delta;
+    if (this.blockedTime >= Monster.STEER_BLOCKED_MS) {
+      this.blockedTime = 0;
+      this.slideAttempts = 0;
+      this.slideSign = this.chooseSlideSign(seekAngle);
+      this.slideTime = Monster.STEER_SLIDE_MS;
+    }
+  }
+
+  // 슬라이드 부호(+1/-1) 결정: 조준 방향 × 막힘 법선의 교차곱으로 벽을 따라 나아가는 쪽 선택.
+  // 정면 충돌(교차곱 0)이면 개체별 지터 부호로 갈라 한쪽으로 몰리지 않게 한다.
+  private chooseSlideSign(seekAngle: number): number {
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    // 막힘 법선(장애물 반대편, 자유 공간 방향). 화면 좌표라 y는 아래가 +.
+    let nx = 0;
+    let ny = 0;
+    if (body.blocked.left) nx += 1;
+    if (body.blocked.right) nx -= 1;
+    if (body.blocked.up) ny += 1;
+    if (body.blocked.down) ny -= 1;
+    const cross = Math.cos(seekAngle) * ny - Math.sin(seekAngle) * nx;
+    if (cross > 1e-4) return 1;
+    if (cross < -1e-4) return -1;
+    return this.headingJitter >= 0 ? 1 : -1;
+  }
+
   // 공용 몬스터 wobble: 회전 ±4°, 개체별 위상차 (설계 §3.2 — 물량이어도 살아 움직이는 느낌)
   private updateWobble(): void {
     const wobble = Phaser.Math.DegToRad(4) * Math.sin(this.scene.time.now * 0.0078 + this.wobblePhase);
@@ -444,9 +584,10 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.setTintFill(0xffffff);
     this.scene.time.delayedCall(80, () => {
       if (this.active) {
-        // 상시 틴트(최종 보스) → 멧돼지 텔레그래프 → 광폭화 붉은 틴트 순으로 복원, 모두 아니면 해제
+        // 상시 틴트(최종 보스) → 멧돼지 텔레그래프 → 빙결 → 광폭화 붉은 틴트 순으로 복원, 모두 아니면 해제
         if (this.persistentTint !== null) this.setTint(this.persistentTint);
         else if (this.boarTelegraphActive) this.setTint(0xffb0b0);
+        else if (this.isFrozen()) this.setTint(0x99ddff);
         else if (this.enraged) this.setTint(Monster.ENRAGE_TINT);
         else this.clearTint();
       }
@@ -506,6 +647,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     );
     text.setOrigin(0.5);
     text.setDepth(20);
+    text.setData('transientFx', true); // resetGame()의 킬-스윕 대상 (tween onComplete 파괴 의존)
 
     this.scene.tweens.add({
       targets: text,
@@ -579,6 +721,10 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
       this.burnFx.destroy();
       this.burnFx = null;
     }
+    if (this.freezeIcon) {
+      this.freezeIcon.destroy();
+      this.freezeIcon = null;
+    }
 
     // death_poof 이펙트
     (this.scene as any).fx?.poof(this.x, this.y);
@@ -631,6 +777,10 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     if (this.burnFx) {
       this.burnFx.destroy();
       this.burnFx = null;
+    }
+    if (this.freezeIcon) {
+      this.freezeIcon.destroy();
+      this.freezeIcon = null;
     }
     super.destroy(fromScene);
   }

@@ -8,6 +8,9 @@ export const GameEvents = {
   // Level up events
   LEVEL_UP: 'level-up',
   UPGRADE_SELECTED: 'upgrade-selected',
+  // 레벨업당 1회 "다시 뽑기": 요청 (React → GameScene) / 결과로 받은 새 카드 (GameScene → React)
+  REROLL_UPGRADES: 'reroll-upgrades',
+  UPGRADES_REROLLED: 'upgrades-rerolled',
 
   // Game state events
   PAUSE_GAME: 'pause-game',
@@ -62,6 +65,22 @@ export interface LevelUpPayload {
     name: string;
     description: string;
     icon: string;
+    currentLevel: number;
+    maxLevel: number;
+    isNew: boolean;
+    isEvolution?: boolean;
+  }>;
+}
+
+// 다시 뽑기 결과로 GameScene이 돌려주는 새 업그레이드 3장 (LevelUpPayload와 동일한 카드 shape)
+export interface UpgradesRerolledPayload {
+  upgrades: Array<{
+    type: 'weapon' | 'passive' | 'bonus' | 'pet';
+    id: string;
+    name: string;
+    nameKo: string;
+    description: string;
+    descriptionKo: string;
     currentLevel: number;
     maxLevel: number;
     isNew: boolean;

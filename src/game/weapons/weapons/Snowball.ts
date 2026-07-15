@@ -8,7 +8,7 @@ export class Snowball extends WeaponBase {
   name = 'Snowball';
   nameKo = '눈덩이';
   description = 'Slows enemies';
-  descriptionKo = '적을 느리게 만드는 눈덩이';
+  descriptionKo = '맞은 적을 잠시 완전히 얼려버리는 눈덩이';
   maxLevel = 8;
 
   constructor(scene: GameScene, player: Player) {
@@ -62,8 +62,9 @@ export class Snowball extends WeaponBase {
           const m = monster as any;
           this.playImpact(m.x, m.y, 'splash');
 
-          // 공용 슬로우 API로 감속 — 만료 자동 복원, 중첩 레이스 없음
-          (m as Monster).applySlow(0.45, 2500);
+          // 빙결: 1초간 완전 정지 (해동 후 3초간 재빙결 면역 — 연속 피격으로 인한 무한 스턴 방지).
+          // WaterBalloon의 지속 슬로우 장판과 역할이 겹치던 기존 applySlow(0.45, 2500)를 대체.
+          (m as Monster).applyFreeze(1000);
 
           const flake = this.scene.add.sprite(m.x, m.y - 10, 'weapon_snowball');
           flake.setScale(0.5);

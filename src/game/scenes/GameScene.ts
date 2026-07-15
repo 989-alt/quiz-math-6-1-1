@@ -2,11 +2,12 @@ import Phaser from 'phaser';
 import { Player } from '../entities/Player';
 import { Monster, MonsterTypes, getMonsterConfigForWave, getMonsterConfigForRotation, FULL_ROTATION_LENGTH, SPAWNS_PER_TYPE, ROTATION_LENGTH, getBossConfigForWave, isBossWave, type MonsterConfig } from '../entities/Monster';
 import { DIFFICULTY_CONFIG, getDifficultyMods, type Difficulty } from '../difficulty';
+import { TIME_ATTACK_DURATION_SEC, type GameMode } from '../gameMode';
 import { XPGem, MagnetGem } from '../entities/XPGem';
 import { WeaponManager, WeaponInfoList, PetInfoList, BonusInfoList } from '../weapons/WeaponManager';
 import { PassiveInfoList } from '../weapons/PassiveManager';
 import { EventBus, GameEvents } from '../utils/EventBus';
-import { GAME_CONFIG } from '../config';
+import { GAME_CONFIG, xpRequiredForLevel } from '../config';
 import { GROUND_TILE_KEY, MONSTER_WALK_KEYS } from '../assetKeys';
 import { EffectManager } from '../effects/EffectManager';
 import { getSoundSettings } from '../../stores/soundSettings';
@@ -41,11 +42,13 @@ export class GameScene extends Phaser.Scene {
   private survivalTime: number = 0;
   // 난이도 (씬 시작·리셋 시 registry에서 1회 읽음, 없으면 쉬움=기존 밸런스). 게임 중 변경 불가.
   private difficulty: Difficulty = 'easy';
+  // 게임 모드 (난이도와 동일 패턴으로 registry에서 1회 읽음). 게임 중 변경 불가.
+  private mode: GameMode = 'adventure';
   private currentWave: number = 1;
   private monstersKilled: number = 0;
   private playerLevel: number = 1;
   private playerXp: number = 0;
-  private xpToNextLevel: number = GAME_CONFIG.xp.baseToLevel;
+  private xpToNextLevel: number = xpRequiredForLevel(1);
   private score: number = 0;
   private quizStreak: number = 0; // 연속 정답 (XP 배율 +5%/스택, 최대 +25%)
 
@@ -119,6 +122,8 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     // 난이도 읽기 (StartScreen → registry). 유효하지 않거나 미설정이면 쉬움=기존 밸런스.
     this.readDifficulty();
+    // 게임 모드 읽기 (StartScreen → registry). 유효하지 않거나 미설정이면 모험 모드.
+    this.readMode();
 
     // Remove world bounds constraints
     this.physics.world.setBounds(0, 0, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
@@ -565,6 +570,8 @@ export class GameScene extends Phaser.Scene {
     _player: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile,
     monster: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile
   ): void {
+    // 퀴즈/강화 중(physics.pause()) 같은 스텝에 큐잉된 overlap 쌍이 레이스로 통과하는 것 방지
+    if (this.isPaused) return;
     const m = monster as Monster;
     if (!m.active || !this.player.active) return;
 
@@ -693,6 +700,8 @@ export class GameScene extends Phaser.Scene {
     EventBus.on(GameEvents.SOUND_SETTINGS_CHANGED, this.handleSoundSettingsChanged, this);
     // 탭 이탈 자동 일시정지 복귀: React 일시정지 오버레이 [계속하기] → 3·2·1 보호 재개
     EventBus.on(GameEvents.RESUME_WITH_PROTECTION, this.resumeWithProtection, this);
+    // 레벨업당 1회 "다시 뽑기": React 버튼 클릭 → 새 카드 3장 뽑아 돌려줌
+    EventBus.on(GameEvents.REROLL_UPGRADES, this.handleRerollUpgrades, this);
   }
 
   private handleBankExhausted(): void {
@@ -725,6 +734,16 @@ export class GameScene extends Phaser.Scene {
     this.time.paused = false;
     this.time.removeAllEvents();
     this.tweens.killAll();
+    // killAll()은 TweenManager.paused 플래그를 해제하지 않는다 — 게임오버(pauseAll)
+    // 이후 재시작하면 이후 추가되는 모든 트윈(몬스터 스폰 스케일, 데미지 숫자, XP젬 등)이
+    // 일시정지 상태로 등록돼 재생되지 않는다(몬스터가 scale 0인 채 안 보이는 원인).
+    this.tweens.resumeAll();
+
+    // killAll()로 onComplete 없이 죽은 트윈이 남긴 고아 트랜지언트(데미지 숫자, 배너 등)
+    // 일괄 제거 — 그렇지 않으면 이전 판의 시각 요소가 새 판 화면에 그대로 남는다.
+    this.children.list
+      .filter((o: any) => o.getData?.('transientFx'))
+      .forEach((o) => o.destroy());
 
     // 이전 판 무기의 자체 관리 리소스 정리 (예: RobotToy가 그룹 밖에서 직접 들고 있는 로봇 스프라이트)
     this.weaponManager?.destroyAll();
@@ -744,6 +763,8 @@ export class GameScene extends Phaser.Scene {
 
     // 난이도 재읽기 (재시작 시 StartScreen에서 새로 고를 수 있으므로)
     this.readDifficulty();
+    // 게임 모드 재읽기 (재시작 시 StartScreen에서 새로 고를 수 있으므로)
+    this.readMode();
 
     // Reset state
     this.survivalTime = 0;
@@ -751,7 +772,7 @@ export class GameScene extends Phaser.Scene {
     this.monstersKilled = 0;
     this.playerLevel = 1;
     this.playerXp = 0;
-    this.xpToNextLevel = GAME_CONFIG.xp.baseToLevel;
+    this.xpToNextLevel = xpRequiredForLevel(1);
     this.score = 0;
     this.spawnTimer = 0;
     this.spawnRotationIndex = 0;
@@ -834,6 +855,9 @@ export class GameScene extends Phaser.Scene {
     // 소모된다. UI 흐름 타이머는 wall-clock(setTimeout)으로 분리돼 이 동결의 영향을 안 받는다.
     this.time.paused = true;
     this.tweens.pauseAll();
+    // 이중 방어: physics.pause()를 같은 프레임에 레이스하는 overlap 쌍이 있을 수 있어
+    // 짧은 무적 창을 함께 건다 (resumeWithProtection과 동일한 API).
+    if (this.player?.active) this.player.setTemporaryInvincible(500);
   }
 
   private resumeGame(): void {
@@ -964,6 +988,7 @@ export class GameScene extends Phaser.Scene {
       .setDepth(101)
       .setAlpha(0)
       .setScale(0.6);
+    banner.setData('transientFx', true); // resetGame()의 킬-스윕 대상 (tween onComplete 파괴 의존)
 
     this.tweens.add({
       targets: banner,
@@ -1016,6 +1041,8 @@ export class GameScene extends Phaser.Scene {
       this.pendingLevelUp = false;
       this.playSfx('sfx_quiz_correct', 0.45);
       this.playSfx('sfx_levelup', 0.5);
+      // 정답 시 광폭화 즉시 해제 — 벌은 오답에서, 구제는 정답에서.
+      if (this.enrageActive) this.endEnrage();
       // 다음 처리는 handleUpgradeSelected에서 (업그레이드 선택 후)
     } else {
       this.playSfx('sfx_quiz_wrong', 0.45);
@@ -1254,6 +1281,14 @@ export class GameScene extends Phaser.Scene {
     // Update survival time
     this.survivalTime += delta / 1000;
 
+    // 10분 챌린지: 목표 생존 시간 도달 시 자동 클리어 (사망 전 도달하면 즉시 승리 처리).
+    // 무기 만렙→최종 보스 처치 흐름은 이 시간 안에 발생해도 handleGameOver가 gameFinished로
+    // 중복 집계를 막아주므로 그대로 공존한다.
+    if (this.mode === 'timeAttack' && this.survivalTime >= TIME_ATTACK_DURATION_SEC && !this.gameFinished) {
+      this.handleGameOver(true);
+      return;
+    }
+
     // Update background scroll position based on camera
     this.background.setTilePosition(this.cameras.main.scrollX, this.cameras.main.scrollY);
 
@@ -1336,6 +1371,12 @@ export class GameScene extends Phaser.Scene {
   private readDifficulty(): void {
     const d = this.registry.get('difficulty');
     this.difficulty = d === 'normal' || d === 'hard' ? d : 'easy';
+  }
+
+  // registry에서 게임 모드를 읽어 필드에 저장. 유효하지 않거나 미설정이면 모험 모드로 폴백.
+  private readMode(): void {
+    const m = this.registry.get('mode');
+    this.mode = m === 'timeAttack' ? 'timeAttack' : 'adventure';
   }
 
   // 스폰 직전 config에 난이도 배율 + 생존 시간 가속을 적용한 새 config 반환.
@@ -1520,6 +1561,7 @@ export class GameScene extends Phaser.Scene {
       .setDepth(101)
       .setAlpha(0)
       .setScale(0.6);
+    banner.setData('transientFx', true); // resetGame()의 킬-스윕 대상 (tween onComplete 파괴 의존)
 
     this.tweens.add({
       targets: banner,
@@ -1747,6 +1789,7 @@ export class GameScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(101)
       .setAlpha(0);
+    banner.setData('transientFx', true); // resetGame()의 킬-스윕 대상 (tween onComplete 파괴 의존)
     this.rushBanner = banner;
 
     // 슬라이드 인(위→목표) + 페이드
@@ -1844,9 +1887,7 @@ export class GameScene extends Phaser.Scene {
       this.playerLevel++;
       // 완만한 지수 곡선: 20 × 1.085^(level-1). baseToLevel·multiplier는 젬 소득 곡선에
       // 맞춰 튜닝됨(퀴즈 간격 25~75초, 25분 내 스킬 플레이 시 50레벨 달성) — config.ts 주석 참고.
-      this.xpToNextLevel = Math.floor(
-        GAME_CONFIG.xp.baseToLevel * Math.pow(GAME_CONFIG.xp.multiplier, this.playerLevel - 1)
-      );
+      this.xpToNextLevel = xpRequiredForLevel(this.playerLevel);
       this.levelUpQueue++;
     }
 
@@ -1879,6 +1920,24 @@ export class GameScene extends Phaser.Scene {
 
     EventBus.emit(GameEvents.LEVEL_UP, {
       level: this.playerLevel,
+      upgrades: upgrades.map((u) => ({
+        ...u,
+        ...this.getUpgradeInfo(u.type, u.id),
+      })),
+    });
+  }
+
+  /**
+   * 레벨업당 1회 "다시 뽑기": 카드 3장을 새로 뽑아 돌려줄 뿐, 레벨업 큐/pendingLevelUp 등
+   * 진행 상태는 건드리지 않는다(부작용 없음). LEVEL_UP을 재발행하면 React의 levelUpData
+   * 변경 감지 useEffect가 퀴즈를 다시 열어버리므로, 전용 이벤트로 카드만 교체한다.
+   * 게임이 종료됐거나 일시정지(퀴즈/강화 흐름) 중이 아니면 잘못 도착한 요청으로 보고 무시.
+   */
+  private handleRerollUpgrades(): void {
+    if (this.gameFinished || this.finalBossDefeated || !this.isPaused) return;
+
+    const upgrades = this.weaponManager.getAvailableUpgrades(3);
+    EventBus.emit(GameEvents.UPGRADES_REROLLED, {
       upgrades: upgrades.map((u) => ({
         ...u,
         ...this.getUpgradeInfo(u.type, u.id),
@@ -2042,6 +2101,7 @@ export class GameScene extends Phaser.Scene {
     EventBus.off(GameEvents.QUIZ_BANK_EXHAUSTED, this.handleBankExhausted, this);
     EventBus.off(GameEvents.SOUND_SETTINGS_CHANGED, this.handleSoundSettingsChanged, this);
     EventBus.off(GameEvents.RESUME_WITH_PROTECTION, this.resumeWithProtection, this);
+    EventBus.off(GameEvents.REROLL_UPGRADES, this.handleRerollUpgrades, this);
     document.removeEventListener('visibilitychange', this.handleVisibilityChange);
     // 리사이즈 리스너 해제 (씬 종료 후 잔존 방지)
     this.scale.off('resize', this.handleResize);

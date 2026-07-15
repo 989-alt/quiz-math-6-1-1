@@ -91,7 +91,7 @@ export const WeaponInfoList: WeaponInfo[] = [
   { id: 'acorn', name: 'Acorn', nameKo: '도토리', description: 'Bouncing acorns', descriptionKo: '튕기는 도토리', maxLevel: 8, category: 'ranged' },
   { id: 'paper_plane', name: 'Paper Plane', nameKo: '종이비행기', description: 'Paper plane that explodes on impact', descriptionKo: '명중하면 폭발하는 종이비행기', maxLevel: 8, category: 'ranged' },
   { id: 'marble', name: 'Marble', nameKo: '구슬', description: 'Bounces off walls', descriptionKo: '벽에 반사되는 구슬', maxLevel: 8, category: 'ranged' },
-  { id: 'snowball', name: 'Snowball', nameKo: '눈덩이', description: 'Slows enemies', descriptionKo: '적을 느리게 만드는 눈덩이', maxLevel: 8, category: 'ranged' },
+  { id: 'snowball', name: 'Snowball', nameKo: '눈덩이', description: 'Slows enemies', descriptionKo: '맞은 적을 잠시 완전히 얼려버리는 눈덩이', maxLevel: 8, category: 'ranged' },
   { id: 'leaf', name: 'Leaf', nameKo: '나뭇잎', description: 'Drifting leaf projectile', descriptionKo: '바람에 흔들리는 나뭇잎', maxLevel: 8, category: 'ranged' },
   { id: 'ruler', name: 'Ruler', nameKo: '자', description: 'Giant ruler slams down for area damage', descriptionKo: '거대한 자로 내려쳐 넓은 범위를 강타', maxLevel: 8, category: 'ranged' },
   { id: 'butterfly', name: 'Butterfly', nameKo: '나비', description: 'Multiple weak homing butterflies', descriptionKo: '여러 마리가 날아가는 나비 떼', maxLevel: 8, category: 'ranged' },

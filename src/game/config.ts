@@ -18,6 +18,9 @@ export const GAME_CONFIG = {
     // 1.085^49 ≈ 54배로 그 상승폭을 추종 → 퀴즈(레벨업) 간격이 25~75초 밴드에 머문다.
     // (기존 1.7은 Lv7→8=603, Lv15→16=42,094 XP로 폭증해 퀴즈가 사실상 사라졌음 — 시뮬레이션 xp_sim.py 참고)
     multiplier: 1.085,
+    // 지수의 상한 — 레벨 41부터는 지수를 더 키우지 않고 레벨40 값에 고정해
+    // 후반 퀴즈 간격이 계속 팽창하는 꼬리를 억제한다.
+    levelCapExponent: 39,
     gemAttractionRange: 130,
     gemAttractionSpeed: 400,
   },
@@ -53,14 +56,25 @@ export const GAME_CONFIG = {
   },
 };
 
+// 레벨업에 필요한 XP 계산 — 지수를 levelCapExponent로 캡해 후반(Lv41+) 퀴즈 간격 팽창을 억제한다.
+// GameScene.addXp의 xpToNextLevel 공식이 이 헬퍼를 쓰도록 전환 예정 (config.ts 값과 항상 일치 보장).
+export function xpRequiredForLevel(level: number): number {
+  const exponent = Math.min(level - 1, GAME_CONFIG.xp.levelCapExponent);
+  return Math.floor(GAME_CONFIG.xp.baseToLevel * Math.pow(GAME_CONFIG.xp.multiplier, exponent));
+}
+
 export const createPhaserConfig = (parent: string): Phaser.Types.Core.GameConfig => ({
   type: Phaser.AUTO,
   parent,
   backgroundColor: '#0a0a0f',
   scale: {
-    mode: Phaser.Scale.RESIZE,
-    width: '100%',
-    height: '100%',
+    // 고정 1280×720 디자인 스테이지 — 부모(#game-container)가 CSS transform으로 스케일되는
+    // 고정비 스테이지 안에 있으므로 Phaser는 스케일하지 않는다(NONE). 캔버스는 항상 1280×720
+    // 픽셀로 유지되고 기기별 축소/확대는 상위 스테이지의 transform이 담당한다.
+    // (FIT은 부모 getBoundingClientRect가 transform 적용 크기를 반환해 이중 스케일되므로 사용 불가)
+    mode: Phaser.Scale.NONE,
+    width: 1280,
+    height: 720,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   physics: {
