@@ -24,11 +24,20 @@ interface GameContainerProps {
   onShowLeaderboard: () => void;
 }
 
+// 주 포인터가 터치인 기기(폰/태블릿) 판정 — 터치스크린 노트북/키보드 유저는 PC로 취급.
+// Phaser 스케일 모드가 게임 생성 시점(첫 렌더)에 정해져야 하므로 동기 판정으로 초기값을 잡는다.
+function detectMobile(): boolean {
+  const q = window.matchMedia?.('(pointer: coarse)');
+  if (q) return q.matches;
+  return window.innerWidth < 768 || 'ontouchstart' in window;
+}
+
 export function GameContainer({ nickname, difficulty, mode, onExit, onShowLeaderboard }: GameContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showQuiz, setShowQuiz] = useState(false);
   const [filteredUpgrades, setFilteredUpgrades] = useState<UpgradeOption[]>([]);
-  const [isMobile, setIsMobile] = useState(false);
+  // 게임(Phaser) 생성 시점에 스케일 모드가 확정되도록 동기 판정으로 초기화한다.
+  const [isMobile, setIsMobile] = useState<boolean>(detectMobile);
   const [bankError, setBankError] = useState(false);
   const [showAutoPauseOverlay, setShowAutoPauseOverlay] = useState(false);
   const [showPauseMenu, setShowPauseMenu] = useState(false);
@@ -52,6 +61,7 @@ export function GameContainer({ nickname, difficulty, mode, onExit, onShowLeader
     playerName: nickname,
     difficulty,
     mode,
+    isMobile,
   });
 
   const { currentQuiz, streak, loadUnitBank, drawQuiz, submitAnswer, resetQuizSession } =
@@ -211,10 +221,100 @@ export function GameContainer({ nickname, difficulty, mode, onExit, onShowLeader
 
   return (
     <StageViewport
+      isMobile={isMobile}
       outside={
+        // HUD·모든 오버레이는 스테이지 밖(디바이스 실제 크기)에 렌더한다 — 폰에서 텍스트 UI가
+        // 스테이지 배율만큼 작아지지 않도록. position:absolute; inset:0이라 뷰포트를 덮는다.
+        // 조이스틱도 여기 둔다 — 스케일된 스테이지 안에 두면 px 기반 조이스틱 감도가 왜곡됨.
         <>
-          {/* 조이스틱은 스테이지 배율 밖(뷰포트 기준)에 둔다 — 스케일된 스테이지 안에 두면
-              클라이언트 px 기반 조이스틱 감도가 배율만큼 왜곡되기 때문(폰 s≈0.3에서 과민) */}
+          {isReady && !finishData && (
+            <GameHUD difficulty={difficulty} mode={mode} onPause={handlePauseClick} showFullscreen={isMobile} />
+          )}
+
+          {bankError && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 16,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                padding: '10px 20px',
+                borderRadius: 12,
+                background: 'rgba(244,63,94,0.15)',
+                border: '1px solid rgba(244,63,94,0.4)',
+                color: '#fda4af',
+                fontSize: 13,
+                zIndex: 60,
+              }}
+            >
+              문제은행을 불러오지 못했습니다 — 퀴즈 없이 진행됩니다
+            </div>
+          )}
+
+          {showQuiz && currentQuiz && (
+            <QuizOverlay
+              quiz={currentQuiz}
+              timeLimit={quizTimeLimit(currentQuiz)}
+              streak={streak}
+              onAnswer={handleQuizAnswer}
+            />
+          )}
+
+          {showUpgradeSelect && !finishData && (
+            <UpgradeSelect
+              upgrades={filteredUpgrades.map((u) => ({
+                ...u,
+                name: (u as any).nameKo || u.name,
+                description: (u as any).descriptionKo || u.description,
+              }))}
+              onSelect={handleUpgradeSelect}
+              rerollUsed={rerollUsed}
+              onReroll={handleReroll}
+            />
+          )}
+
+          {showAutoPauseOverlay && !showQuiz && !showUpgradeSelect && !finishData && (
+            <AutoPauseOverlay onResume={handleAutoPauseResume} />
+          )}
+
+          {showPauseMenu && !showQuiz && !showUpgradeSelect && !finishData && !showAutoPauseOverlay && (
+            <PauseMenuOverlay onResume={handlePauseMenuResume} onQuit={handlePauseMenuQuit} />
+          )}
+
+          {finishData && (
+            <PostGameOverlay
+              nickname={nickname}
+              difficulty={difficulty}
+              mode={mode}
+              finish={finishData}
+              onRestart={handleRestart}
+              onExit={onExit}
+              onShowLeaderboard={onShowLeaderboard}
+            />
+          )}
+
+          {!isReady && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#0a0a0f',
+                gap: 24,
+              }}
+            >
+              <div className="dot-spinner">
+                <div className="dot" />
+                <div className="dot" />
+                <div className="dot" />
+              </div>
+              <div style={{ color: '#71717a', fontSize: 14, fontWeight: 500 }}>게임 로딩 중...</div>
+            </div>
+          )}
+
           {isMobile && isReady && !levelUpData && !showQuiz && !finishData && (
             <MobileControls onMove={handleJoystickMove} />
           )}
@@ -229,94 +329,6 @@ export function GameContainer({ nickname, difficulty, mode, onExit, onShowLeader
         style={{ width: '100%', height: '100%', outline: 'none' }}
         onMouseDown={(e) => e.currentTarget.focus()}
       />
-
-      {isReady && !finishData && (
-        <GameHUD difficulty={difficulty} mode={mode} onPause={handlePauseClick} showFullscreen={isMobile} />
-      )}
-
-      {bankError && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 16,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            padding: '10px 20px',
-            borderRadius: 12,
-            background: 'rgba(244,63,94,0.15)',
-            border: '1px solid rgba(244,63,94,0.4)',
-            color: '#fda4af',
-            fontSize: 13,
-            zIndex: 60,
-          }}
-        >
-          문제은행을 불러오지 못했습니다 — 퀴즈 없이 진행됩니다
-        </div>
-      )}
-
-      {showQuiz && currentQuiz && (
-        <QuizOverlay
-          quiz={currentQuiz}
-          timeLimit={quizTimeLimit(currentQuiz)}
-          streak={streak}
-          onAnswer={handleQuizAnswer}
-        />
-      )}
-
-      {showUpgradeSelect && !finishData && (
-        <UpgradeSelect
-          upgrades={filteredUpgrades.map((u) => ({
-            ...u,
-            name: (u as any).nameKo || u.name,
-            description: (u as any).descriptionKo || u.description,
-          }))}
-          onSelect={handleUpgradeSelect}
-          rerollUsed={rerollUsed}
-          onReroll={handleReroll}
-        />
-      )}
-
-      {showAutoPauseOverlay && !showQuiz && !showUpgradeSelect && !finishData && (
-        <AutoPauseOverlay onResume={handleAutoPauseResume} />
-      )}
-
-      {showPauseMenu && !showQuiz && !showUpgradeSelect && !finishData && !showAutoPauseOverlay && (
-        <PauseMenuOverlay onResume={handlePauseMenuResume} onQuit={handlePauseMenuQuit} />
-      )}
-
-      {finishData && (
-        <PostGameOverlay
-          nickname={nickname}
-          difficulty={difficulty}
-          mode={mode}
-          finish={finishData}
-          onRestart={handleRestart}
-          onExit={onExit}
-          onShowLeaderboard={onShowLeaderboard}
-        />
-      )}
-
-      {!isReady && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: '#0a0a0f',
-            gap: 24,
-          }}
-        >
-          <div className="dot-spinner">
-            <div className="dot" />
-            <div className="dot" />
-            <div className="dot" />
-          </div>
-          <div style={{ color: '#71717a', fontSize: 14, fontWeight: 500 }}>게임 로딩 중...</div>
-        </div>
-      )}
     </StageViewport>
   );
 }
