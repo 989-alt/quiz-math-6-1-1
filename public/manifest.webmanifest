@@ -1,0 +1,25 @@
+{
+  "name": "Quiz Survivor: 분수의 나눗셈",
+  "short_name": "Quiz Survivor",
+  "description": "수학 6-1 분수의 나눗셈 퀴즈를 풀며 생존하는 교육용 게임",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "start_url": "./",
+  "scope": "./",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0a0a0f",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -49,7 +49,8 @@ export function usePhaser(
     playerName: string;
     difficulty?: Difficulty;
     mode?: GameMode;
-    /** 터치 기기 여부 — Phaser 스케일 모드 분기(PC=RESIZE, 모바일=1920×1080 NONE)에 사용 */
+    /** 터치 기기 여부 — Phaser 스케일 설정에는 더 이상 쓰이지 않음(PC/모바일 동일 RESIZE).
+     *  GameContainer가 이 옵션 객체 형태를 그대로 넘기므로 타입 호환을 위해 필드만 유지. */
     isMobile?: boolean;
     onQuit?: () => void;
   }
@@ -76,7 +77,7 @@ export function usePhaser(
     if (gameRef.current) return;
 
     // Create game instance
-    const phaserConfig = createPhaserConfig(containerId, options?.isMobile ?? false);
+    const phaserConfig = createPhaserConfig(containerId);
     gameRef.current = new Phaser.Game(phaserConfig);
     // 난이도를 GameScene이 create()에서 읽기 전에 registry에 심어둔다 (BootScene의 비동기
     // 로딩 이후에 GameScene.create()가 실행되므로 이 동기 호출로 충분히 앞선다).

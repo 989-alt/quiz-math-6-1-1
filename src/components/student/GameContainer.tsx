@@ -32,12 +32,36 @@ function detectMobile(): boolean {
   return window.innerWidth < 768 || 'ontouchstart' in window;
 }
 
+const JOYSTICK_SIDE_KEY = 'sqb:joystickSide';
+
+/** 쿠키/사이트데이터 차단 브라우저 등에서 localStorage 접근이 예외를 던져도 크래시하지 않도록 보호 */
+function safeGetItem(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSetItem(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // 저장 실패는 무시(다음 세션에 값이 유지되지 않을 뿐)
+  }
+}
+
+function detectJoystickSide(): 'left' | 'right' {
+  return safeGetItem(JOYSTICK_SIDE_KEY) === 'right' ? 'right' : 'left';
+}
+
 export function GameContainer({ nickname, difficulty, mode, onExit, onShowLeaderboard }: GameContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showQuiz, setShowQuiz] = useState(false);
   const [filteredUpgrades, setFilteredUpgrades] = useState<UpgradeOption[]>([]);
   // 게임(Phaser) 생성 시점에 스케일 모드가 확정되도록 동기 판정으로 초기화한다.
   const [isMobile, setIsMobile] = useState<boolean>(detectMobile);
+  const [joystickSide, setJoystickSideState] = useState<'left' | 'right'>(detectJoystickSide);
   const [bankError, setBankError] = useState(false);
   const [showAutoPauseOverlay, setShowAutoPauseOverlay] = useState(false);
   const [showPauseMenu, setShowPauseMenu] = useState(false);
@@ -219,6 +243,12 @@ export function GameContainer({ nickname, difficulty, mode, onExit, onShowLeader
     EventBus.emit(GameEvents.STOP_GAME);
   };
 
+  // 일시정지 메뉴의 "조이스틱 위치" 설정 — 다음 세션에도 유지되도록 저장한다
+  const handleSetJoystickSide = (side: 'left' | 'right') => {
+    setJoystickSideState(side);
+    safeSetItem(JOYSTICK_SIDE_KEY, side);
+  };
+
   return (
     <StageViewport
       isMobile={isMobile}
@@ -228,7 +258,7 @@ export function GameContainer({ nickname, difficulty, mode, onExit, onShowLeader
         // 조이스틱도 여기 둔다 — 스케일된 스테이지 안에 두면 px 기반 조이스틱 감도가 왜곡됨.
         <>
           {isReady && !finishData && (
-            <GameHUD difficulty={difficulty} mode={mode} onPause={handlePauseClick} showFullscreen={isMobile} />
+            <GameHUD difficulty={difficulty} mode={mode} onPause={handlePauseClick} showFullscreen={isMobile} isMobile={isMobile} />
           )}
 
           {bankError && (
@@ -278,7 +308,12 @@ export function GameContainer({ nickname, difficulty, mode, onExit, onShowLeader
           )}
 
           {showPauseMenu && !showQuiz && !showUpgradeSelect && !finishData && !showAutoPauseOverlay && (
-            <PauseMenuOverlay onResume={handlePauseMenuResume} onQuit={handlePauseMenuQuit} />
+            <PauseMenuOverlay
+              onResume={handlePauseMenuResume}
+              onQuit={handlePauseMenuQuit}
+              joystickSide={joystickSide}
+              onSetJoystickSide={handleSetJoystickSide}
+            />
           )}
 
           {finishData && (
@@ -316,7 +351,7 @@ export function GameContainer({ nickname, difficulty, mode, onExit, onShowLeader
           )}
 
           {isMobile && isReady && !levelUpData && !showQuiz && !finishData && (
-            <MobileControls onMove={handleJoystickMove} />
+            <MobileControls onMove={handleJoystickMove} side={joystickSide} />
           )}
           <PortraitPrompt enabled={isMobile} />
         </>

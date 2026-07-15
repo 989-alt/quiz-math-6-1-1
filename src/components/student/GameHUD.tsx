@@ -22,9 +22,11 @@ interface GameHUDProps {
   onPause: () => void;
   /** 터치 기기에서만 전체화면 버튼을 노출 */
   showFullscreen: boolean;
+  /** 모바일(터치) 기기 여부 — true면 화면을 덜 가리는 축소 HUD를 렌더한다 */
+  isMobile: boolean;
 }
 
-export function GameHUD({ difficulty, mode, onPause, showFullscreen }: GameHUDProps) {
+export function GameHUD({ difficulty, mode, onPause, showFullscreen, isMobile }: GameHUDProps) {
   const [soundSettings, setSoundSettingsState] = useState(() => getSoundSettings());
   const [isNarrow, setIsNarrow] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -49,6 +51,18 @@ export function GameHUD({ difficulty, mode, onPause, showFullscreen }: GameHUDPr
 
     return () => {
       EventBus.off(GameEvents.PLAYER_STATE_UPDATE, handleStateUpdate);
+    };
+  }, []);
+
+  // 일시정지 메뉴(모바일)의 브금/효과음 토글과 같은 저장소를 공유하므로,
+  // 그쪽에서 바뀐 값도 여기 반영해 두 UI가 어긋나지 않게 한다.
+  useEffect(() => {
+    const handleSoundChange = (data: { bgm: boolean; sfx: boolean }) => {
+      setSoundSettingsState(data);
+    };
+    EventBus.on(GameEvents.SOUND_SETTINGS_CHANGED, handleSoundChange);
+    return () => {
+      EventBus.off(GameEvents.SOUND_SETTINGS_CHANGED, handleSoundChange);
     };
   }, []);
 
@@ -127,6 +141,139 @@ export function GameHUD({ difficulty, mode, onPause, showFullscreen }: GameHUDPr
   const remainingSec = Math.max(0, TIME_ATTACK_DURATION_SEC - state.survivalTime);
   const timerLabel = isTimeAttack ? formatTime(remainingSec) : formatTime(state.survivalTime);
   const timerColor = isTimeAttack && remainingSec < 60 ? '#ef4444' : '#e4e4e7';
+
+  // 모바일: 화면을 덜 가리는 축소 HUD. 브금/효과음 토글은 일시정지 메뉴로 이동한다.
+  if (isMobile) {
+    return (
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        padding: '8px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        gap: 6,
+        pointerEvents: 'none',
+      }}>
+        {/* Left: 축소 상태 스트립 */}
+        <div style={{
+          order: 1,
+          borderRadius: 10,
+          padding: '6px 8px',
+          maxWidth: 148,
+          background: 'rgba(10, 10, 15, 0.85)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          backdropFilter: 'blur(6px)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: '#fff' }}>
+              Lv.{state.level}·W{state.wave}
+            </span>
+            <div
+              title={DIFFICULTY_CONFIG[difficulty].label}
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: DIFFICULTY_CONFIG[difficulty].badgeColor,
+                flexShrink: 0,
+              }}
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+            <div style={{ width: 120, height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.15)', overflow: 'hidden' }}>
+              <div
+                className={`progress-bar progress-hp ${hpPercent <= 50 ? (hpPercent <= 25 ? 'danger' : 'warning') : ''}`}
+                style={{ width: `${hpPercent}%`, height: '100%' }}
+              />
+            </div>
+            <span style={{ fontSize: 9, color: '#e4e4e7', fontWeight: 600, flexShrink: 0 }}>
+              {Math.floor(state.hp)}
+            </span>
+          </div>
+          <div style={{ width: 120, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.15)', overflow: 'hidden' }}>
+            <div className="progress-bar progress-xp" style={{ width: `${xpPercent}%`, height: '100%' }} />
+          </div>
+        </div>
+
+        {/* Center: 타이머 (축소) */}
+        <div style={{
+          order: 2,
+          flexShrink: 0,
+          fontSize: 'clamp(9px, 2.8vw, 12px)',
+          fontWeight: 800,
+          letterSpacing: '-0.02em',
+          color: timerColor,
+          fontVariantNumeric: 'tabular-nums',
+          textShadow: '0 2px 8px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.7), 0 1px 2px rgba(0,0,0,0.9)',
+        }}>
+          {timerLabel}
+        </div>
+
+        {/* Right: 일시정지/전체화면 + 점수 (축소, 브금/효과음은 일시정지 메뉴로 이동) */}
+        <div style={{ order: 3, display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              onClick={onPause}
+              aria-label="일시정지"
+              style={{
+                pointerEvents: 'auto',
+                cursor: 'pointer',
+                width: 34,
+                height: 34,
+                borderRadius: 10,
+                background: 'rgba(10, 10, 15, 0.85)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                color: '#e4e4e7',
+                fontSize: 15,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              ⏸
+            </button>
+            {showFullscreen && (
+              <button
+                onClick={toggleFullscreen}
+                aria-label={isFullscreen ? '전체화면 종료' : '전체화면'}
+                style={{
+                  pointerEvents: 'auto',
+                  cursor: 'pointer',
+                  width: 34,
+                  height: 34,
+                  borderRadius: 10,
+                  background: 'rgba(10, 10, 15, 0.85)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  color: '#e4e4e7',
+                  fontSize: 15,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                ⛶
+              </button>
+            )}
+          </div>
+          <div style={{
+            padding: '4px 10px',
+            borderRadius: 999,
+            background: 'rgba(10, 10, 15, 0.85)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            whiteSpace: 'nowrap',
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 700 }}>
+              <span className="gradient-text-amber">{state.score.toLocaleString()}</span>
+              <span style={{ color: '#71717a', fontWeight: 500 }}> · {state.monstersKilled}킬</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{

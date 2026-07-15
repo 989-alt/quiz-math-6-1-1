@@ -24,6 +24,38 @@ function safeSetItem(key: string, value: string): void {
   }
 }
 
+// 주 포인터가 터치인 기기(폰/태블릿) 판정 — GameContainer.detectMobile()과 동일 로직
+function isTouchDevice(): boolean {
+  const q = window.matchMedia?.('(pointer: coarse)');
+  if (q) return q.matches;
+  return window.innerWidth < 768 || 'ontouchstart' in window;
+}
+
+/** [게임 시작] 클릭(사용자 제스처) 안에서 호출 — 설치된 앱처럼 전체화면 진입 후 가로 모드 고정을
+ *  시도한다. 카카오톡 등 인앱 브라우저는 요청 자체를 거부하므로 실패는 조용히 무시한다. */
+function enterFullscreenAndLockLandscape(): void {
+  try {
+    const el = document.documentElement as unknown as {
+      requestFullscreen?: () => Promise<void>;
+      webkitRequestFullscreen?: () => void;
+    };
+    const lockLandscape = () => {
+      const orientation = screen.orientation as unknown as {
+        lock?: (orientation: string) => Promise<void>;
+      };
+      orientation.lock?.('landscape')?.catch(() => {});
+    };
+    if (el.requestFullscreen) {
+      el.requestFullscreen().then(lockLandscape).catch(() => {});
+    } else if (el.webkitRequestFullscreen) {
+      el.webkitRequestFullscreen();
+      lockLandscape();
+    }
+  } catch {
+    // 전체화면 미지원/거부 — 무시
+  }
+}
+
 interface StartScreenProps {
   onStart: (nickname: string, difficulty: Difficulty, mode: GameMode) => void;
   onOpenLeaderboard: () => void;
@@ -59,6 +91,9 @@ export function StartScreen({ onStart, onOpenLeaderboard, onBack }: StartScreenP
   const handleStart = () => {
     if (!canStart) return;
     safeSetItem(NICKNAME_KEY, trimmed);
+    if (isTouchDevice()) {
+      enterFullscreenAndLockLandscape();
+    }
     onStart(trimmed, difficulty, mode);
   };
 

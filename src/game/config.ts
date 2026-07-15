@@ -63,32 +63,18 @@ export function xpRequiredForLevel(level: number): number {
   return Math.floor(GAME_CONFIG.xp.baseToLevel * Math.pow(GAME_CONFIG.xp.multiplier, exponent));
 }
 
-export const createPhaserConfig = (
-  parent: string,
-  isMobile: boolean
-): Phaser.Types.Core.GameConfig => ({
+export const createPhaserConfig = (parent: string): Phaser.Types.Core.GameConfig => ({
   type: Phaser.AUTO,
   parent,
   backgroundColor: '#0a0a0f',
-  scale: isMobile
-    ? {
-        // 모바일/태블릿(터치): 고정 1920×1080 디자인 스테이지. 부모(#game-container)가 CSS
-        // transform으로 축소·레터박스되는 고정비 스테이지 안에 있으므로 Phaser는 스케일하지
-        // 않는다(NONE). 캔버스는 항상 1920×1080 픽셀로 유지되어 PC와 동일한 월드 범위를 보되,
-        // 스프라이트는 상위 스테이지 transform만큼 작아진다.
-        mode: Phaser.Scale.NONE,
-        width: 1920,
-        height: 1080,
-        autoCenter: Phaser.Scale.CENTER_BOTH,
-      }
-    : {
-        // PC(비터치): 원본 동작 — 창 크기를 그대로 추종한다. 1 월드 유닛 = 1 CSS 픽셀이라
-        // 스프라이트가 원래 크기로 표시된다(확대·레터박스 없음). 카메라 = 창 크기.
-        mode: Phaser.Scale.RESIZE,
-        width: '100%',
-        height: '100%',
-        autoCenter: Phaser.Scale.CENTER_BOTH,
-      },
+  // PC/모바일 동일 동작 — 창(뷰포트) 크기를 그대로 추종한다. 1 월드 유닛 = 1 CSS 픽셀이라
+  // 스프라이트가 원래 크기로 표시된다(축소·레터박스 없음). 카메라 = 뷰포트 크기.
+  scale: {
+    mode: Phaser.Scale.RESIZE,
+    width: '100%',
+    height: '100%',
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+  },
   physics: {
     default: 'arcade',
     arcade: {

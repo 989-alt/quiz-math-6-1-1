@@ -2,9 +2,11 @@ import React, { useEffect, useRef, useCallback } from 'react';
 
 interface MobileControlsProps {
   onMove: (x: number, y: number) => void;
+  /** 조이스틱을 화면 좌/우 중 어느 쪽에 고정할지 — 터치 핸들링은 document 레벨이라 위치만 바뀐다 */
+  side: 'left' | 'right';
 }
 
-export function MobileControls({ onMove }: MobileControlsProps) {
+export function MobileControls({ onMove, side }: MobileControlsProps) {
   const joystickRef = useRef<HTMLDivElement>(null);
   const knobRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
@@ -123,7 +125,7 @@ export function MobileControls({ onMove }: MobileControlsProps) {
   }, []);
 
   return (
-    <div className="absolute bottom-8 left-8 pointer-events-auto">
+    <div className={`absolute bottom-8 ${side === 'right' ? 'right-8' : 'left-8'} pointer-events-auto`}>
       <div
         ref={joystickRef}
         className="w-32 h-32 rounded-full flex items-center justify-center"
