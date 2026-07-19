@@ -134,7 +134,7 @@ export function getLocalScores(unitId: string): ScoreEntryWithMeta[] {
     const raw = localStorage.getItem(LOCAL_SCORE_KEY_PREFIX + unitId);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as ScoreEntryWithMeta[];
-    return parsed.sort((a, b) => b.weightedScore - a.weightedScore);
+    return parsed.sort((a, b) => b.score - a.score);
   } catch {
     return [];
   }
@@ -150,7 +150,7 @@ function saveLocalScore(entry: ScoreEntry): ScoreEntryWithMeta {
   const existing = getLocalScores(entry.unitId);
   existing.push(saved);
 
-  // (난이도, 모드) 그룹별 weightedScore 상위 LOCAL_TOP_N개만 남긴다. 구기록 호환을 위해
+  // (난이도, 모드) 그룹별 score 상위 LOCAL_TOP_N개만 남긴다. 구기록 호환을 위해
   // difficulty/mode 필드가 없으면 각각 'easy'/'adventure'로 분류한다.
   const groups = new Map<string, ScoreEntryWithMeta[]>();
   for (const s of existing) {
@@ -161,7 +161,7 @@ function saveLocalScore(entry: ScoreEntry): ScoreEntryWithMeta {
   }
   const trimmed: ScoreEntryWithMeta[] = [];
   for (const group of groups.values()) {
-    group.sort((a, b) => b.weightedScore - a.weightedScore);
+    group.sort((a, b) => b.score - a.score);
     trimmed.push(...group.slice(0, LOCAL_TOP_N));
   }
 

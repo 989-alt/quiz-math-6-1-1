@@ -144,14 +144,13 @@ export function PostGameOverlay({
             marginBottom: 20,
           }}
         >
-          <div style={{ fontSize: 11, color: '#a5b4fc', fontWeight: 700, marginBottom: 6 }}>가중 점수</div>
+          <div style={{ fontSize: 11, color: '#a5b4fc', fontWeight: 700, marginBottom: 6 }}>점수</div>
           <div style={{ fontSize: 'clamp(32px, 6vw, 48px)', fontWeight: 800, color: '#a5b4fc', lineHeight: 1 }}>
-            {w.toLocaleString()}
+            {finish.score.toLocaleString()}
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 20 }}>
-          <Stat label="점수" value={finish.score.toLocaleString()} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
           <Stat label="생존" value={formatTime(finish.survivalTime)} />
           <Stat label="레벨" value={`Lv.${finish.level}`} />
           <Stat label="처치" value={`${finish.monstersKilled}`} />

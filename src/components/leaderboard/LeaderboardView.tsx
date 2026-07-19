@@ -95,7 +95,7 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
               <span className="gradient-text">내 기록</span>
             </h1>
             <p style={{ fontSize: 13, color: '#71717a', marginTop: 4 }}>
-              이 기기에 저장된 내 최고 기록 · 최대 {MY_RECORDS_TOP_N}개 (가중점수 기준)
+              이 기기에 저장된 내 최고 기록 · 최대 {MY_RECORDS_TOP_N}개 (점수 기준)
             </p>
           </div>
           {onBack && (
@@ -189,12 +189,12 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
                   {best.nickname}
                 </div>
                 <div style={{ fontSize: 13, color: '#a1a1aa' }}>
-                  점수 {best.score.toLocaleString()} · 생존 {formatTime(best.survivalTime)} · Lv.{best.level} · 처치 {best.kills}
+                  생존 {formatTime(best.survivalTime)} · Lv.{best.level} · 처치 {best.kills}
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 28, fontWeight: 800, color: '#fbbf24' }}>
-                  {best.weightedScore.toLocaleString()}
+                  {best.score.toLocaleString()}
                 </div>
                 <div style={{ fontSize: 11, color: '#71717a' }}>{formatDateTime(best.createdAt)} 달성</div>
               </div>
@@ -257,11 +257,11 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
                         {s.nickname}
                       </div>
                       <div style={{ fontSize: 11, color: '#71717a', marginTop: 2 }}>
-                        {formatDateTime(s.createdAt)} · 점수 {s.score.toLocaleString()} · 생존 {formatTime(s.survivalTime)} · Lv.{s.level} · 처치 {s.kills}
+                        {formatDateTime(s.createdAt)} · 생존 {formatTime(s.survivalTime)} · Lv.{s.level} · 처치 {s.kills}
                       </div>
                     </div>
                     <div style={{ fontSize: 16, fontWeight: 800, color: '#a5b4fc' }}>
-                      {s.weightedScore.toLocaleString()}
+                      {s.score.toLocaleString()}
                     </div>
                   </div>
                 );
