@@ -1,8 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { EventBus, GameEvents } from '../../game/utils/EventBus';
 import { getSoundSettings, setSoundSettings } from '../../stores/soundSettings';
 import { DIFFICULTY_CONFIG, type Difficulty } from '../../game/difficulty';
 import { TIME_ATTACK_DURATION_SEC, type GameMode } from '../../game/gameMode';
+import { getLocalScores } from '../../services/firebase';
+import { UNIT, weightedScore } from '../../data/unit';
+
+// 추월한 과거 기록의 순위별 메달
+function medalOf(rank: number): string {
+  return rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '🎯';
+}
 
 interface PlayerStateData {
   hp: number;
@@ -41,6 +48,30 @@ export function GameHUD({ difficulty, mode, onPause, showFullscreen, isMobile }:
     wave: 1,
     monstersKilled: 0,
   });
+
+  // 고스트 추격: 게임 시작 시 이 모드·난이도의 과거 종합점수를 오름차순 타깃으로 로드한다
+  // (한 기기 = 한 학생이므로 localStorage 기록이 곧 '과거의 나'다).
+  const [ghostTargets, setGhostTargets] = useState<number[]>([]);
+  const [flash, setFlash] = useState<string | null>(null);
+  const prevPassedRef = useRef(0);
+  const flashTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const targets = getLocalScores(UNIT.unitId)
+      .filter((s) => {
+        const m = s.mode === 'timeAttack' ? 'timeAttack' : 'adventure';
+        const d = s.difficulty === 'normal' || s.difficulty === 'hard' ? s.difficulty : 'easy';
+        return m === mode && d === difficulty;
+      })
+      .map((s) => s.weightedScore)
+      .sort((a, b) => a - b);
+    setGhostTargets(targets);
+    prevPassedRef.current = 0;
+  }, [mode, difficulty]);
+
+  useEffect(() => () => {
+    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+  }, []);
 
   useEffect(() => {
     const handleStateUpdate = (data: PlayerStateData) => {
@@ -141,6 +172,34 @@ export function GameHUD({ difficulty, mode, onPause, showFullscreen, isMobile }:
   const remainingSec = Math.max(0, TIME_ATTACK_DURATION_SEC - state.survivalTime);
   const timerLabel = isTimeAttack ? formatTime(remainingSec) : formatTime(state.survivalTime);
   const timerColor = isTimeAttack && remainingSec < 60 ? '#ef4444' : '#e4e4e7';
+
+  // 고스트 추격 계산: 실시간 종합점수(랭킹과 동일 메트릭)로 '바로 위 기록까지의 격차'를 구한다.
+  const liveWeighted = weightedScore(state.score, state.survivalTime, state.level);
+  const totalGhosts = ghostTargets.length;
+  const passedCount = ghostTargets.filter((t) => liveWeighted >= t).length;
+  const nextTarget = ghostTargets.find((t) => t > liveWeighted); // undefined = 전부 추월(신기록 페이스)
+  const nextRank = nextTarget !== undefined ? totalGhosts - passedCount : 0; // 1 = 역대 최고
+  const gap = nextTarget !== undefined ? nextTarget - liveWeighted : 0;
+  const prevTarget = passedCount > 0 ? ghostTargets[passedCount - 1] : 0;
+  const chasePct =
+    nextTarget !== undefined
+      ? Math.max(0, Math.min(100, ((liveWeighted - prevTarget) / (nextTarget - prevTarget)) * 100))
+      : 100;
+
+  // 과거 기록을 새로 추월한 순간 0.8초 플래시로 알린다.
+  useEffect(() => {
+    if (totalGhosts === 0) {
+      prevPassedRef.current = 0;
+      return;
+    }
+    if (passedCount > prevPassedRef.current) {
+      const rankPassed = totalGhosts - (passedCount - 1); // 방금 넘어선 기록 중 최상위
+      setFlash(`${medalOf(rankPassed)} ${rankPassed}위 기록 추월!`);
+      if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+      flashTimerRef.current = window.setTimeout(() => setFlash(null), 1200);
+    }
+    prevPassedRef.current = passedCount;
+  }, [passedCount, totalGhosts]);
 
   // 모바일: 화면을 덜 가리는 축소 HUD. 브금/효과음 토글은 일시정지 메뉴로 이동한다.
   if (isMobile) {
@@ -270,6 +329,29 @@ export function GameHUD({ difficulty, mode, onPause, showFullscreen, isMobile }:
               <span style={{ color: '#71717a', fontWeight: 500 }}> · {state.monstersKilled}킬</span>
             </span>
           </div>
+
+          {/* 고스트 추격 (모바일 축소) */}
+          {(totalGhosts > 0 || flash) && (
+            <div style={{
+              padding: '3px 10px',
+              borderRadius: 999,
+              background: flash ? 'rgba(251,191,36,0.2)' : 'rgba(10, 10, 15, 0.85)',
+              border: flash ? '1px solid rgba(251,191,36,0.5)' : '1px solid rgba(255, 255, 255, 0.08)',
+              whiteSpace: 'nowrap',
+            }}>
+              <span style={{
+                fontSize: 10,
+                fontWeight: 700,
+                color: flash || nextTarget === undefined ? '#fbbf24' : '#67e8f9',
+              }}>
+                {flash
+                  ? flash
+                  : nextTarget === undefined
+                  ? '🏆 신기록!'
+                  : `${medalOf(nextRank)} ${nextRank}위까지 ▲${gap.toLocaleString()}`}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -478,6 +560,50 @@ export function GameHUD({ difficulty, mode, onPause, showFullscreen, isMobile }:
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#f43f5e' }} />
             </div>
           </div>
+        </div>
+
+        {/* 고스트 추격 지표: 과거의 나(종합점수)를 실시간으로 따라잡는 순위 경쟁 */}
+        <div style={{
+          borderRadius: 16,
+          padding: 'clamp(10px, 1.2vw, 14px)',
+          background: flash ? 'rgba(251,191,36,0.18)' : 'rgba(10, 10, 15, 0.9)',
+          border: flash ? '1px solid rgba(251,191,36,0.6)' : '1px solid rgba(255, 255, 255, 0.08)',
+          backdropFilter: 'blur(12px)',
+          transition: 'background 0.2s, border-color 0.2s',
+        }}>
+          {flash ? (
+            <div style={{ fontSize: 'clamp(12px, 1.1vw, 15px)', fontWeight: 800, color: '#fbbf24', textAlign: 'right' }}>
+              {flash}
+            </div>
+          ) : totalGhosts === 0 ? (
+            <div style={{ fontSize: 'clamp(11px, 1vw, 13px)', fontWeight: 700, color: '#a5b4fc', textAlign: 'right' }}>
+              ✨ 첫 기록에 도전 중!
+            </div>
+          ) : nextTarget === undefined ? (
+            <div style={{ fontSize: 'clamp(12px, 1.1vw, 15px)', fontWeight: 800, color: '#fbbf24', textAlign: 'right' }}>
+              🏆 신기록 페이스!
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'baseline', gap: 6, marginBottom: 6 }}>
+                <span style={{ fontSize: 'clamp(10px, 0.9vw, 12px)', color: '#a1a1aa', fontWeight: 600 }}>
+                  {medalOf(nextRank)} {nextRank}위 기록까지
+                </span>
+                <span style={{ fontSize: 'clamp(13px, 1.3vw, 17px)', fontWeight: 800, color: '#67e8f9' }}>
+                  ▲{gap.toLocaleString()}
+                </span>
+              </div>
+              <div style={{ height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.12)', overflow: 'hidden' }}>
+                <div style={{
+                  width: `${chasePct}%`,
+                  height: '100%',
+                  borderRadius: 3,
+                  background: 'linear-gradient(90deg, #22d3ee, #67e8f9)',
+                  transition: 'width 0.2s',
+                }} />
+              </div>
+            </>
+          )}
         </div>
 
         {/* 브금/효과음 토글 */}

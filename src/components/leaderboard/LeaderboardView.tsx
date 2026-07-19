@@ -28,10 +28,12 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-// 내 기록이므로 닉네임 대신 '언제 세운 기록인지'를 보여준다.
-function formatDate(ms: number): string {
+// 하루에 여러 판 할 수 있으므로 날짜만이 아니라 시:분까지 보여 기록을 구분한다.
+function formatDateTime(ms: number): string {
   const d = new Date(ms);
-  return `${d.getMonth() + 1}/${d.getDate()}`;
+  const hh = d.getHours().toString().padStart(2, '0');
+  const mm = d.getMinutes().toString().padStart(2, '0');
+  return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
 }
 
 export function LeaderboardView({ onBack }: LeaderboardViewProps) {
@@ -183,6 +185,9 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
                 <div style={{ fontSize: 11, color: '#fbbf24', fontWeight: 700, marginBottom: 4 }}>
                   🏆 역대 최고 기록
                 </div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#e4e4e7', marginBottom: 2 }}>
+                  {best.nickname}
+                </div>
                 <div style={{ fontSize: 13, color: '#a1a1aa' }}>
                   점수 {best.score.toLocaleString()} · 생존 {formatTime(best.survivalTime)} · Lv.{best.level} · 처치 {best.kills}
                 </div>
@@ -191,7 +196,7 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
                 <div style={{ fontSize: 28, fontWeight: 800, color: '#fbbf24' }}>
                   {best.weightedScore.toLocaleString()}
                 </div>
-                <div style={{ fontSize: 11, color: '#71717a' }}>{formatDate(best.createdAt)} 달성</div>
+                <div style={{ fontSize: 11, color: '#71717a' }}>{formatDateTime(best.createdAt)} 달성</div>
               </div>
             </div>
           </div>
@@ -239,11 +244,20 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
                       {rank}
                     </div>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: '#e4e4e7' }}>
-                        {formatDate(s.createdAt)} 기록
+                      <div
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: '#e4e4e7',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {s.nickname}
                       </div>
                       <div style={{ fontSize: 11, color: '#71717a', marginTop: 2 }}>
-                        점수 {s.score.toLocaleString()} · 생존 {formatTime(s.survivalTime)} · Lv.{s.level} · 처치 {s.kills}
+                        {formatDateTime(s.createdAt)} · 점수 {s.score.toLocaleString()} · 생존 {formatTime(s.survivalTime)} · Lv.{s.level} · 처치 {s.kills}
                       </div>
                     </div>
                     <div style={{ fontSize: 16, fontWeight: 800, color: '#a5b4fc' }}>
