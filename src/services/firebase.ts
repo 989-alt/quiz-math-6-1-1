@@ -116,6 +116,7 @@ export interface ScoreResult {
 
 const RANKING_TIMEOUT_MS = 8000;
 const LOCAL_SCORE_KEY_PREFIX = 'sqb:scores:';
+const LOCAL_TOP_N = 10;
 
 function withTimeout<T>(promise: Promise<T>, ms = RANKING_TIMEOUT_MS): Promise<T> {
   return Promise.race([
@@ -146,8 +147,24 @@ function saveLocalScore(entry: ScoreEntry): ScoreEntryWithMeta {
   };
   const existing = getLocalScores(entry.unitId);
   existing.push(saved);
+
+  // (난이도, 모드) 그룹별 weightedScore 상위 LOCAL_TOP_N개만 남긴다. 구기록 호환을 위해
+  // difficulty/mode 필드가 없으면 각각 'easy'/'adventure'로 분류한다.
+  const groups = new Map<string, ScoreEntryWithMeta[]>();
+  for (const s of existing) {
+    const key = `${s.difficulty ?? 'easy'}:${s.mode ?? 'adventure'}`;
+    const group = groups.get(key);
+    if (group) group.push(s);
+    else groups.set(key, [s]);
+  }
+  const trimmed: ScoreEntryWithMeta[] = [];
+  for (const group of groups.values()) {
+    group.sort((a, b) => b.weightedScore - a.weightedScore);
+    trimmed.push(...group.slice(0, LOCAL_TOP_N));
+  }
+
   // localStorage 접근 자체가 실패할 수 있어(용량 초과, 프라이빗 모드 등) 호출자가 처리하도록 그대로 던진다.
-  localStorage.setItem(LOCAL_SCORE_KEY_PREFIX + entry.unitId, JSON.stringify(existing));
+  localStorage.setItem(LOCAL_SCORE_KEY_PREFIX + entry.unitId, JSON.stringify(trimmed));
   return saved;
 }
 

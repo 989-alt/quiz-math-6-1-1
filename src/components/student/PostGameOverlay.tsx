@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { UNIT, weightedScore } from '../../data/unit';
-import { retrySubmitScore, submitScore, type ScoreEntry } from '../../services/firebase';
+import { isFirebaseConfigured, retrySubmitScore, submitScore, type ScoreEntry } from '../../services/firebase';
 import type { Difficulty } from '../../game/difficulty';
 import type { GameMode } from '../../game/gameMode';
 
@@ -28,6 +28,8 @@ export function PostGameOverlay({
 }: PostGameOverlayProps) {
   const unit = UNIT;
   const w = weightedScore(finish.score, finish.survivalTime, finish.level);
+  // Firebase 미설정(영구 로컬 전용)이면 오프라인 상태가 정상 상태이므로 재시도 UI를 숨긴다.
+  const firebaseConfigured = isFirebaseConfigured();
   const [state, setState] = useState<SubmitState>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [localDocId, setLocalDocId] = useState<string | null>(null);
@@ -173,11 +175,14 @@ export function PostGameOverlay({
           {state === 'submitting' && '랭킹 등록 중...'}
           {state === 'done' && '✓ 랭킹 등록 완료'}
           {state === 'error' && `등록 실패: ${errorMsg} (기기 저장도 실패했습니다)`}
-          {state === 'offline' && '기기에 저장됨 - 인터넷 연결 시 다시 시도해주세요'}
+          {state === 'offline' &&
+            (firebaseConfigured
+              ? '기기에 저장됨 - 인터넷 연결 시 다시 시도해주세요'
+              : '🏆 기록이 저장되었습니다!')}
           {state === 'idle' && ' '}
         </div>
 
-        {(state === 'offline' || state === 'error') && (
+        {(state === 'error' || (state === 'offline' && firebaseConfigured)) && (
           <button
             onClick={handleRetry}
             className="btn-clean btn-ghost"

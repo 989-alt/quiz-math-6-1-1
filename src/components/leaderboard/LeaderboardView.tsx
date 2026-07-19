@@ -5,6 +5,7 @@ import {
   ensureAnonymousAuth,
   fetchMyBest,
   fetchTopScores,
+  isFirebaseConfigured,
   type ScoreEntryWithMeta,
 } from '../../services/firebase';
 import { DIFFICULTY_CONFIG, type Difficulty } from '../../game/difficulty';
@@ -147,7 +148,7 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
               }}
             >
               <span className="gradient-text">랭킹</span>
-              {offline && (
+              {offline && isFirebaseConfigured() && (
                 <span
                   style={{
                     marginLeft: 10,
