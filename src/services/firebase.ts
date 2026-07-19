@@ -127,7 +127,9 @@ function withTimeout<T>(promise: Promise<T>, ms = RANKING_TIMEOUT_MS): Promise<T
   ]);
 }
 
-function getLocalScores(unitId: string): ScoreEntryWithMeta[] {
+// 한 기기 = 한 학생 전제에서 이 기기에 저장된 기록은 곧 '내 기록'이다.
+// '내 기록' 화면(LeaderboardView)이 직접 읽을 수 있도록 노출한다.
+export function getLocalScores(unitId: string): ScoreEntryWithMeta[] {
   try {
     const raw = localStorage.getItem(LOCAL_SCORE_KEY_PREFIX + unitId);
     if (!raw) return [];

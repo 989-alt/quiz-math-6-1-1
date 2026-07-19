@@ -1,13 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { UNIT } from '../../data/unit';
-import {
-  dedupeByNicknameBest,
-  ensureAnonymousAuth,
-  fetchMyBest,
-  fetchTopScores,
-  isFirebaseConfigured,
-  type ScoreEntryWithMeta,
-} from '../../services/firebase';
+import { getLocalScores, type ScoreEntryWithMeta } from '../../services/firebase';
 import { DIFFICULTY_CONFIG, type Difficulty } from '../../game/difficulty';
 import { GAME_MODE_CONFIG, GAME_MODE_ORDER, type GameMode } from '../../game/gameMode';
 
@@ -16,8 +9,9 @@ interface LeaderboardViewProps {
 }
 
 const DIFFICULTY_TABS: Difficulty[] = ['easy', 'normal', 'hard'];
+const MY_RECORDS_TOP_N = 10;
 
-// 구기록(difficulty 필드 없음) = 기존 밸런스 = '쉬움' 탭으로 분류 (설계 §4)
+// 구기록(difficulty 필드 없음) = 기존 밸런스 = '쉬움' 탭으로 분류
 function tabOf(entry: ScoreEntryWithMeta): Difficulty {
   const d = entry.difficulty;
   return d === 'normal' || d === 'hard' ? d : 'easy';
@@ -34,83 +28,32 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+// 내 기록이므로 닉네임 대신 '언제 세운 기록인지'를 보여준다.
+function formatDate(ms: number): string {
+  const d = new Date(ms);
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
 export function LeaderboardView({ onBack }: LeaderboardViewProps) {
   const unitId = UNIT.unitId;
   const [modeTab, setModeTab] = useState<GameMode>('adventure');
   const [tab, setTab] = useState<Difficulty>('normal');
-  const [scores, setScores] = useState<ScoreEntryWithMeta[]>([]);
-  const [myBest, setMyBest] = useState<ScoreEntryWithMeta | null>(null);
-  const [myUid, setMyUid] = useState<string>('');
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [offline, setOffline] = useState(false);
 
-  useEffect(() => {
-    // Firebase 미설정이어도 fetchTopScores/fetchMyBest가 내부적으로 localStorage 폴백을
-    // 처리하므로, 여기서 조기 반환하지 않고 그대로 진행해 오프라인 기록을 보여준다.
-    let cancelled = false;
-    setLoading(true);
-    setErrorMsg(null);
+  // 한 기기 = 한 학생 전제. localStorage에 쌓인 기록이 곧 내 기록이므로 동기로 읽는다
+  // (원격 조회·인증·로딩 스피너 불필요).
+  const allRecords = useMemo(() => getLocalScores(unitId), [unitId]);
 
-    (async () => {
-      // 인증 실패는 원격 랭킹 조회 자체를 막는 사유가 아니다 — fetchTopScores/fetchMyBest는
-      // 각자 내부에서 오프라인(localStorage) 폴백을 처리하므로, 인증 실패와 별개로 계속 진행한다.
-      try {
-        const user = await ensureAnonymousAuth();
-        if (!cancelled) setMyUid(user.uid);
-      } catch (err) {
-        console.error('[LeaderboardView] 인증 실패, 오프라인 모드로 계속 진행:', err);
-      }
-      if (cancelled) return;
-
-      try {
-        const [top, mine] = await Promise.all([fetchTopScores(unitId, 100), fetchMyBest(unitId)]);
-        if (cancelled) return;
-        // 난이도 탭별로 따로 dedupe해야 하므로(같은 닉네임이 난이도별 최고기록을 각각 가질 수
-        // 있음) 여기서는 원본을 저장하고, 탭 필터링 후 useMemo에서 dedupe한다.
-        setScores(top.scores);
-        setMyBest(mine.entry);
-        setOffline(top.offline || mine.offline);
-      } catch (err) {
-        if (cancelled) return;
-        const msg = err instanceof Error ? err.message : '랭킹을 불러오지 못했습니다.';
-        console.error('[LeaderboardView] 랭킹 조회 실패:', err);
-        setErrorMsg(msg);
-        setScores([]);
-        setMyBest(null);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [unitId]);
-
-  // 모드로 먼저 거른 뒤 선택된 난이도 탭으로 필터링, 닉네임당 최고 기록만 남긴다 (탭마다 별도
-  // dedupe 필요 — 같은 닉네임이 모드/난이도별로 각각 최고 기록을 가질 수 있으므로 전체 dedupe
-  // 후 필터링하면 안 됨).
-  const tabScores = useMemo(
-    () => dedupeByNicknameBest(scores.filter((s) => modeOf(s) === modeTab && tabOf(s) === tab)),
-    [scores, modeTab, tab]
+  // 선택된 모드·난이도로 필터링 후 가중점수 상위 N개. getLocalScores가 이미 가중점수
+  // 내림차순으로 정렬해 돌려주므로 추가 정렬 없이 앞에서 N개만 자른다.
+  const myRecords = useMemo(
+    () =>
+      allRecords
+        .filter((s) => modeOf(s) === modeTab && tabOf(s) === tab)
+        .slice(0, MY_RECORDS_TOP_N),
+    [allRecords, modeTab, tab]
   );
 
-  // myBest는 전체 모드/난이도 통틀어 가중점수가 가장 높은 기록 하나뿐이라(fetchMyBest), 그 기록의
-  // 모드나 난이도가 현재 탭과 다르면 이 탭에서는 표시하지 않는다.
-  const myBestForTab = myBest && modeOf(myBest) === modeTab && tabOf(myBest) === tab ? myBest : null;
-
-  const myRank = useMemo(() => {
-    if (!myBestForTab) return null;
-    let idx = tabScores.findIndex((s) => s.docId === myBestForTab.docId);
-    if (idx < 0) {
-      // docId가 어긋나는 경우(로컬↔원격 소스 불일치 등) 닉네임+점수 일치로 폴백한다.
-      idx = tabScores.findIndex(
-        (s) => s.nickname === myBestForTab.nickname && s.weightedScore === myBestForTab.weightedScore
-      );
-    }
-    return idx >= 0 ? idx + 1 : null;
-  }, [tabScores, myBestForTab]);
+  const best = myRecords[0] ?? null;
 
   return (
     <div
@@ -147,27 +90,10 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
                 color: '#fafafa',
               }}
             >
-              <span className="gradient-text">랭킹</span>
-              {offline && isFirebaseConfigured() && (
-                <span
-                  style={{
-                    marginLeft: 10,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: '#fbbf24',
-                    background: 'rgba(251,191,36,0.12)',
-                    border: '1px solid rgba(251,191,36,0.3)',
-                    borderRadius: 999,
-                    padding: '3px 10px',
-                    verticalAlign: 'middle',
-                  }}
-                >
-                  오프라인 기록
-                </span>
-              )}
+              <span className="gradient-text">내 기록</span>
             </h1>
             <p style={{ fontSize: 13, color: '#71717a', marginTop: 4 }}>
-              상위 {tabScores.length}명 (가중점수 기준 · 닉네임당 최고 기록)
+              이 기기에 저장된 내 최고 기록 · 최대 {MY_RECORDS_TOP_N}개 (가중점수 기준)
             </p>
           </div>
           {onBack && (
@@ -242,135 +168,93 @@ export function LeaderboardView({ onBack }: LeaderboardViewProps) {
           })}
         </div>
 
-        {errorMsg && (
+        {best && (
           <div
+            className="clean-card"
             style={{
-              padding: '14px 16px',
-              borderRadius: 12,
-              background: 'rgba(244,63,94,0.08)',
-              border: '1px solid rgba(244,63,94,0.25)',
-              color: '#fda4af',
-              fontSize: 13,
+              padding: 16,
               marginBottom: 16,
+              border: '1px solid rgba(251,191,36,0.35)',
+              background: 'rgba(251,191,36,0.06)',
             }}
           >
-            {errorMsg}
-          </div>
-        )}
-
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: 60, color: '#71717a' }}>
-            <div className="dot-spinner" style={{ display: 'inline-flex' }}>
-              <div className="dot" />
-              <div className="dot" />
-              <div className="dot" />
-            </div>
-            <div style={{ marginTop: 16, fontSize: 13 }}>불러오는 중...</div>
-          </div>
-        ) : (
-          <>
-            {myBestForTab && (
-              <div
-                className="clean-card"
-                style={{
-                  padding: 16,
-                  marginBottom: 16,
-                  border: '1px solid rgba(34,211,238,0.3)',
-                  background: 'rgba(34,211,238,0.05)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                  <div>
-                    <div style={{ fontSize: 11, color: '#67e8f9', fontWeight: 700, marginBottom: 4 }}>
-                      내 최고 기록
-                    </div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: '#e4e4e7' }}>
-                      {myBestForTab.nickname} {myRank ? `· Top 100 ${myRank}위` : ''}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: '#67e8f9' }}>
-                      {myBestForTab.weightedScore.toLocaleString()}
-                    </div>
-                    <div style={{ fontSize: 11, color: '#71717a' }}>
-                      점수 {myBestForTab.score} · {formatTime(myBestForTab.survivalTime)} · Lv.{myBestForTab.level}
-                    </div>
-                  </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <div>
+                <div style={{ fontSize: 11, color: '#fbbf24', fontWeight: 700, marginBottom: 4 }}>
+                  🏆 역대 최고 기록
+                </div>
+                <div style={{ fontSize: 13, color: '#a1a1aa' }}>
+                  점수 {best.score.toLocaleString()} · 생존 {formatTime(best.survivalTime)} · Lv.{best.level} · 처치 {best.kills}
                 </div>
               </div>
-            )}
-
-            <div className="clean-card" style={{ padding: 0, overflow: 'hidden' }}>
-              {tabScores.length === 0 ? (
-                <div style={{ padding: 60, textAlign: 'center', color: '#71717a', fontSize: 14 }}>
-                  아직 등록된 기록이 없습니다.
-                  <br />
-                  <span style={{ fontSize: 12, color: '#52525b' }}>첫 도전자가 되어보세요!</span>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 28, fontWeight: 800, color: '#fbbf24' }}>
+                  {best.weightedScore.toLocaleString()}
                 </div>
-              ) : (
-                <div>
-                  {tabScores.map((s, i) => {
-                    const isMine = s.authUid === myUid;
-                    const rank = i + 1;
-                    return (
-                      <div
-                        key={s.docId}
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: '48px 1fr auto',
-                          gap: 12,
-                          padding: '12px 16px',
-                          borderBottom: i < tabScores.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
-                          background: isMine ? 'rgba(34,211,238,0.06)' : 'transparent',
-                          alignItems: 'center',
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: rank <= 3 ? 22 : 14,
-                            fontWeight: 800,
-                            color:
-                              rank === 1
-                                ? '#fbbf24'
-                                : rank === 2
-                                ? '#cbd5e1'
-                                : rank === 3
-                                ? '#fb923c'
-                                : '#52525b',
-                            textAlign: 'center',
-                          }}
-                        >
-                          {rank}
-                        </div>
-                        <div style={{ minWidth: 0 }}>
-                          <div
-                            style={{
-                              fontSize: 14,
-                              fontWeight: 700,
-                              color: isMine ? '#67e8f9' : '#e4e4e7',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            {s.nickname}
-                            {isMine && <span style={{ marginLeft: 8, fontSize: 10, color: '#67e8f9' }}>(나)</span>}
-                          </div>
-                          <div style={{ fontSize: 11, color: '#71717a', marginTop: 2 }}>
-                            점수 {s.score.toLocaleString()} · 생존 {formatTime(s.survivalTime)} · Lv.{s.level} · 처치 {s.kills}
-                          </div>
-                        </div>
-                        <div style={{ fontSize: 16, fontWeight: 800, color: '#a5b4fc' }}>
-                          {s.weightedScore.toLocaleString()}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                <div style={{ fontSize: 11, color: '#71717a' }}>{formatDate(best.createdAt)} 달성</div>
+              </div>
             </div>
-          </>
+          </div>
         )}
+
+        <div className="clean-card" style={{ padding: 0, overflow: 'hidden' }}>
+          {myRecords.length === 0 ? (
+            <div style={{ padding: 60, textAlign: 'center', color: '#71717a', fontSize: 14 }}>
+              아직 기록이 없어요.
+              <br />
+              <span style={{ fontSize: 12, color: '#52525b' }}>첫 도전을 시작해보세요!</span>
+            </div>
+          ) : (
+            <div>
+              {myRecords.map((s, i) => {
+                const rank = i + 1;
+                return (
+                  <div
+                    key={s.docId}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '48px 1fr auto',
+                      gap: 12,
+                      padding: '12px 16px',
+                      borderBottom: i < myRecords.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                      background: rank === 1 ? 'rgba(251,191,36,0.05)' : 'transparent',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: rank <= 3 ? 22 : 14,
+                        fontWeight: 800,
+                        color:
+                          rank === 1
+                            ? '#fbbf24'
+                            : rank === 2
+                            ? '#cbd5e1'
+                            : rank === 3
+                            ? '#fb923c'
+                            : '#52525b',
+                        textAlign: 'center',
+                      }}
+                    >
+                      {rank}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#e4e4e7' }}>
+                        {formatDate(s.createdAt)} 기록
+                      </div>
+                      <div style={{ fontSize: 11, color: '#71717a', marginTop: 2 }}>
+                        점수 {s.score.toLocaleString()} · 생존 {formatTime(s.survivalTime)} · Lv.{s.level} · 처치 {s.kills}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: '#a5b4fc' }}>
+                      {s.weightedScore.toLocaleString()}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

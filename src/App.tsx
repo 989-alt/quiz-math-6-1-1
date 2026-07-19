@@ -327,7 +327,7 @@ function App() {
                 marginBottom: 'clamp(6px, 1vh, 12px)',
               }}
             >
-              랭킹 보기
+              내 기록
             </div>
             <div
               style={{
@@ -337,9 +337,9 @@ function App() {
                 fontWeight: 500,
               }}
             >
-              Top 100
+              내 최고 기록
               <br />
-              내 등수 확인
+              TOP 10
             </div>
           </button>
         </div>

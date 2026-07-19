@@ -306,7 +306,7 @@ export function StartScreen({ onStart, onOpenLeaderboard, onBack }: StartScreenP
               className="btn-clean btn-cyan"
               style={{ padding: '12px', fontSize: 13, fontWeight: 700 }}
             >
-              랭킹 보기
+              내 기록
             </button>
             <button
               onClick={onBack}
