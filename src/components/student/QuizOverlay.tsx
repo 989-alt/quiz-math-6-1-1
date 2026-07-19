@@ -128,13 +128,13 @@ export function QuizOverlay({ quiz, timeLimit, streak = 0, onAnswer }: QuizOverl
         className="animate-scale-in"
         style={{
           width: '100%',
-          maxWidth: 820,
+          maxWidth: 'min(900px, 92vw)',
           maxHeight: '100%',
           overflowY: 'auto',
         }}
       >
         {/* Timer + Streak */}
-        <div style={{ marginBottom: 14, position: 'relative' }}>
+        <div style={{ marginBottom: 'clamp(12px, 2vh, 22px)', position: 'relative' }}>
           <Timer duration={timeLimit} onComplete={handleTimeUp} isRunning={!isAnswered} size="md" />
           {streak >= 2 && (
             <div style={{
@@ -159,22 +159,23 @@ export function QuizOverlay({ quiz, timeLimit, streak = 0, onAnswer }: QuizOverl
         <div
           className="glass-panel"
           style={{
-            padding: '16px 20px',
-            marginBottom: 14,
+            padding: 'clamp(20px, 3vw, 40px)',
+            marginBottom: 'clamp(12px, 2vh, 22px)',
           }}
         >
           <h2 style={{
-            fontSize: 18,
+            fontSize: 'clamp(18px, 2.1vw, 26px)',
             fontWeight: 600,
             color: '#fafafa',
             lineHeight: 1.6,
+            textAlign: 'center',
           }}>
             <FracText text={quiz.question} />
           </h2>
         </div>
 
         {/* Options */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 'clamp(10px, 1.5vh, 16px)' }}>
           {quiz.options.map((option, index) => (
             <button
               key={index}
@@ -182,20 +183,19 @@ export function QuizOverlay({ quiz, timeLimit, streak = 0, onAnswer }: QuizOverl
               disabled={isAnswered}
               style={{
                 ...getOptionStyle(index),
-                padding: '12px 16px',
+                padding: 'clamp(14px, 1.6vw, 22px)',
                 borderRadius: 14,
-                textAlign: 'left',
                 cursor: isAnswered ? 'not-allowed' : 'pointer',
                 transition: 'all 0.25s ease',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 14,
+                gap: 'clamp(12px, 1.4vw, 18px)',
               }}
             >
               {/* Option dot indicator */}
               <div style={{
-                width: 28,
-                height: 28,
+                width: 'clamp(30px, 2.4vw, 38px)',
+                height: 'clamp(30px, 2.4vw, 38px)',
                 borderRadius: 8,
                 background: `${optionColors[index]}20`,
                 border: `2px solid ${optionColors[index]}50`,
@@ -205,20 +205,25 @@ export function QuizOverlay({ quiz, timeLimit, streak = 0, onAnswer }: QuizOverl
                 flexShrink: 0,
               }}>
                 <span style={{
-                  fontSize: 12,
+                  fontSize: 'clamp(12px, 1.1vw, 15px)',
                   fontWeight: 700,
                   color: optionColors[index],
                 }}>
                   {optionLabels[index]}
                 </span>
               </div>
+              {/* 텍스트는 남는 공간 중앙 정렬 (A/B/C/D 뱃지는 좌측 정렬 유지) */}
               <span style={{
-                fontSize: 14,
+                flex: 1,
+                textAlign: 'center',
+                fontSize: 'clamp(15px, 1.7vw, 21px)',
                 fontWeight: 500,
                 color: '#e4e4e7',
               }}>
                 <FracText text={option} />
               </span>
+              {/* 뱃지 폭만큼 우측 스페이서 → 텍스트가 버튼 정중앙에 오게 균형 */}
+              <div style={{ width: 'clamp(30px, 2.4vw, 38px)', flexShrink: 0 }} aria-hidden />
             </button>
           ))}
         </div>

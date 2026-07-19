@@ -4,7 +4,7 @@ import { getSoundSettings, setSoundSettings } from '../../stores/soundSettings';
 import { DIFFICULTY_CONFIG, type Difficulty } from '../../game/difficulty';
 import { TIME_ATTACK_DURATION_SEC, type GameMode } from '../../game/gameMode';
 import { getLocalScores } from '../../services/firebase';
-import { UNIT, weightedScore } from '../../data/unit';
+import { UNIT } from '../../data/unit';
 
 // 추월한 과거 기록의 순위별 메달
 function medalOf(rank: number): string {
@@ -49,7 +49,7 @@ export function GameHUD({ difficulty, mode, onPause, showFullscreen, isMobile }:
     monstersKilled: 0,
   });
 
-  // 고스트 추격: 게임 시작 시 이 모드·난이도의 과거 종합점수를 오름차순 타깃으로 로드한다
+  // 고스트 추격: 게임 시작 시 이 모드·난이도의 과거 획득 점수(score)를 오름차순 타깃으로 로드한다
   // (한 기기 = 한 학생이므로 localStorage 기록이 곧 '과거의 나'다).
   const [ghostTargets, setGhostTargets] = useState<number[]>([]);
   const [flash, setFlash] = useState<string | null>(null);
@@ -63,7 +63,7 @@ export function GameHUD({ difficulty, mode, onPause, showFullscreen, isMobile }:
         const d = s.difficulty === 'normal' || s.difficulty === 'hard' ? s.difficulty : 'easy';
         return m === mode && d === difficulty;
       })
-      .map((s) => s.weightedScore)
+      .map((s) => s.score)
       .sort((a, b) => a - b);
     setGhostTargets(targets);
     prevPassedRef.current = 0;
@@ -173,17 +173,18 @@ export function GameHUD({ difficulty, mode, onPause, showFullscreen, isMobile }:
   const timerLabel = isTimeAttack ? formatTime(remainingSec) : formatTime(state.survivalTime);
   const timerColor = isTimeAttack && remainingSec < 60 ? '#ef4444' : '#e4e4e7';
 
-  // 고스트 추격 계산: 실시간 종합점수(랭킹과 동일 메트릭)로 '바로 위 기록까지의 격차'를 구한다.
-  const liveWeighted = weightedScore(state.score, state.survivalTime, state.level);
+  // 고스트 추격 계산: 실제 획득 점수(score)로 '바로 위 기록까지의 격차'를 구한다. 생존 시간이
+  // 아니라 플레이어가 포인트를 얻을 때만 격차가 줄도록 raw score를 기준으로 삼는다.
+  const livePoints = state.score;
   const totalGhosts = ghostTargets.length;
-  const passedCount = ghostTargets.filter((t) => liveWeighted >= t).length;
-  const nextTarget = ghostTargets.find((t) => t > liveWeighted); // undefined = 전부 추월(신기록 페이스)
+  const passedCount = ghostTargets.filter((t) => livePoints >= t).length;
+  const nextTarget = ghostTargets.find((t) => t > livePoints); // undefined = 전부 추월(신기록 페이스)
   const nextRank = nextTarget !== undefined ? totalGhosts - passedCount : 0; // 1 = 역대 최고
-  const gap = nextTarget !== undefined ? nextTarget - liveWeighted : 0;
+  const gap = nextTarget !== undefined ? nextTarget - livePoints : 0;
   const prevTarget = passedCount > 0 ? ghostTargets[passedCount - 1] : 0;
   const chasePct =
     nextTarget !== undefined
-      ? Math.max(0, Math.min(100, ((liveWeighted - prevTarget) / (nextTarget - prevTarget)) * 100))
+      ? Math.max(0, Math.min(100, ((livePoints - prevTarget) / (nextTarget - prevTarget)) * 100))
       : 100;
 
   // 과거 기록을 새로 추월한 순간 0.8초 플래시로 알린다.
