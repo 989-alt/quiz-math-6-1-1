@@ -72,7 +72,6 @@ export function GameContainer({ nickname, difficulty, mode, onExit, onShowLeader
 
   const {
     isReady,
-    playerState,
     levelUpData,
     finishData,
     selectUpgrade,
@@ -144,12 +143,13 @@ export function GameContainer({ nickname, difficulty, mode, onExit, onShowLeader
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // 레벨업 → 웨이브 기반 난이도로 퀴즈 추첨 (설계 §1.4)
+  // 레벨업 → 퀴즈 추첨 (완전 랜덤 — 문제 순서·보기 순서 모두 셔플. 설계 §1.4 웨이브 난이도
+  // 페이싱은 2026-07-21 추가 스펙 7로 폐기됨)
   useEffect(() => {
     if (!levelUpData) return;
     rerollUsedRef.current = false;
     setRerollUsed(false);
-    const quiz = drawQuiz(playerState?.wave ?? 1);
+    const quiz = drawQuiz();
     if (quiz) {
       setShowQuiz(true);
       pauseGame();

@@ -27,6 +27,15 @@
 | `src/components/student/GameContainer.tsx` | `handleReroll(index)`로 시그니처 변경, `rerollUsed` 상태·레벨업 시 리셋 로직은 유지 |
 | `src/components/student/UpgradeSelect.tsx` | 하단 단일 버튼 제거 → 카드별 하단 버튼. `rerollUsed`면 3개 모두 회색(`#52525b` 텍스트, 커서 default)·disabled. 교체된 카드는 `animate-scale-in` 재적용 |
 
+## 추가 스펙: 출제 완전 랜덤화 (2026-07-21 추가 요청)
+
+7. **문제 순서 완전 랜덤**: `quizStore.drawQuiz`의 웨이브 기반 난이도 가중(`difficultyWeights`)을 제거하고,
+   셔플된 remaining 풀에서 순서대로(=균등 랜덤) 뽑는다. 무중복 소진·최근 20문 제외 재셔플 로직은 유지.
+   (난이도 페이싱 설계 §1.4는 이 요청으로 폐기됨)
+8. **보기 순서 랜덤**: 문제를 화면에 낼 때마다 4개 보기를 셔플하고 `correctIndex`를 리매핑한다.
+   `drawQuiz`에서 셔플된 사본을 `currentQuiz`로 저장해 QuizOverlay·submitAnswer는 무변경으로 동작하게 한다.
+   원본 뱅크 데이터는 변형하지 않는다.
+
 ## 검증
 
 - 자동: `npm run lint` + `npm run build` (tsc) 통과. 저장소에 단위테스트 인프라 없음 — 도입하지 않는다(YAGNI).

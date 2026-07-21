@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Quiz, QuizDifficulty, QuizResult, UnitBank } from '../types/quiz';
+import type { Quiz, QuizResult, UnitBank } from '../types/quiz';
 import { loadBank } from '../data/unit';
 
 function shuffle<T>(arr: T[]): T[] {
@@ -11,11 +11,14 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-/** 웨이브 진행도 → 난이도 가중치 (설계 §1.4 난이도 페이싱) */
-function difficultyWeights(wave: number): Record<QuizDifficulty, number> {
-  if (wave <= 3) return { 1: 0.7, 2: 0.25, 3: 0.05 };
-  if (wave <= 8) return { 1: 0.3, 2: 0.5, 3: 0.2 };
-  return { 1: 0.15, 2: 0.45, 3: 0.4 };
+/** 4개 보기를 셔플하고 correctIndex를 리매핑한 사본을 만든다 (원본 뱅크 데이터는 변형하지 않음) */
+function shuffleOptions(quiz: Quiz): Quiz {
+  const order = shuffle(quiz.options.map((_, i) => i));
+  return {
+    ...quiz,
+    options: order.map((i) => quiz.options[i]),
+    correctIndex: order.indexOf(quiz.correctIndex),
+  };
 }
 
 const RECENT_EXCLUDE = 20;
@@ -29,7 +32,7 @@ interface QuizState {
   streak: number;
 
   loadUnitBank: () => Promise<boolean>;
-  drawQuiz: (wave: number) => Quiz | null;
+  drawQuiz: () => Quiz | null;
   submitAnswer: (selectedIndex: number, timeSpent: number) => boolean;
   resetQuizSession: () => void;
 }
@@ -56,8 +59,8 @@ export const useQuizStore = create<QuizState>()((set, get) => ({
     return true;
   },
 
-  /** 한 판 무중복 소진 + 웨이브 기반 난이도 가중 추첨. 소진 시 최근 20문 제외 재셔플 */
-  drawQuiz: (wave: number) => {
+  /** 한 판 무중복 소진 + 완전 랜덤 추첨(셔플된 풀 맨 앞). 소진 시 최근 20문 제외 재셔플 */
+  drawQuiz: () => {
     const { bank, remaining, recentIds } = get();
     if (!bank) return null;
 
@@ -68,23 +71,15 @@ export const useQuizStore = create<QuizState>()((set, get) => ({
       if (pool.length === 0) pool = shuffle(bank.quizzes);
     }
 
-    const weights = difficultyWeights(wave);
-    const roll = Math.random();
-    let targetDiff: QuizDifficulty = 1;
-    if (roll < weights[3]) targetDiff = 3;
-    else if (roll < weights[3] + weights[2]) targetDiff = 2;
-
-    let idx = pool.findIndex((q) => q.difficulty === targetDiff);
-    if (idx < 0) idx = 0; // 해당 난이도 소진 시 아무거나
-
-    const quiz = pool[idx];
-    const nextRemaining = pool.slice(0, idx).concat(pool.slice(idx + 1));
+    const quiz = pool[0];
+    const nextRemaining = pool.slice(1);
+    const displayQuiz = shuffleOptions(quiz);
     set({
       remaining: nextRemaining,
-      currentQuiz: quiz,
+      currentQuiz: displayQuiz,
       recentIds: [...get().recentIds, quiz.id].slice(-RECENT_EXCLUDE * 2),
     });
-    return quiz;
+    return displayQuiz;
   },
 
   submitAnswer: (selectedIndex: number, timeSpent: number) => {
