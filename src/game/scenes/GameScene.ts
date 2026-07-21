@@ -5,8 +5,10 @@ import { DIFFICULTY_CONFIG, getDifficultyMods, type Difficulty } from '../diffic
 import { TIME_ATTACK_DURATION_SEC, type GameMode } from '../gameMode';
 import { XPGem, MagnetGem } from '../entities/XPGem';
 import { WeaponManager, WeaponInfoList, PetInfoList, BonusInfoList } from '../weapons/WeaponManager';
+import type { UpgradeChoice } from '../weapons/WeaponManager';
 import { PassiveInfoList } from '../weapons/PassiveManager';
 import { EventBus, GameEvents } from '../utils/EventBus';
+import type { RerollUpgradesPayload } from '../utils/EventBus';
 import { GAME_CONFIG, xpRequiredForLevel } from '../config';
 import { GROUND_TILE_KEY, MONSTER_WALK_KEYS } from '../assetKeys';
 import { EffectManager } from '../effects/EffectManager';
@@ -64,6 +66,9 @@ export class GameScene extends Phaser.Scene {
   private stateUpdateTimer: number = 0;
   private pendingLevelUp: boolean = false; // Track if level up is waiting for quiz
   private levelUpQueue: number = 0; // Stacked level ups awaiting quiz processing
+  // 현재 화면에 표시 중인 강화 카드 3장(선택형 다시 뽑기의 교체 대상/제외 목록 기준) —
+  // processNextLevelUp에서 매 레벨업마다 새로 채워지므로 레벨업 큐가 쌓여도 stale하지 않음
+  private currentLevelUpUpgrades: UpgradeChoice[] = [];
   private bgm: Phaser.Sound.BaseSound | null = null;
   private bgmEnabled: boolean = true;
   private sfxEnabled: boolean = true;
@@ -783,6 +788,7 @@ export class GameScene extends Phaser.Scene {
     this.stateUpdateTimer = 0;
     this.pendingLevelUp = false;
     this.levelUpQueue = 0;
+    this.currentLevelUpUpgrades = [];
     this.quizStreak = 0;
     this.isPaused = false;
     this.autoPausedByVisibility = false;
@@ -1914,6 +1920,8 @@ export class GameScene extends Phaser.Scene {
 
     // Get available upgrades
     const upgrades = this.weaponManager.getAvailableUpgrades(3);
+    // 선택형 다시 뽑기가 참조할 "현재 3장" 스냅샷 (레벨업마다 갱신)
+    this.currentLevelUpUpgrades = upgrades;
 
     // Pause and show level up UI
     this.pauseGame();
@@ -1928,17 +1936,25 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * 레벨업당 1회 "다시 뽑기": 카드 3장을 새로 뽑아 돌려줄 뿐, 레벨업 큐/pendingLevelUp 등
-   * 진행 상태는 건드리지 않는다(부작용 없음). LEVEL_UP을 재발행하면 React의 levelUpData
-   * 변경 감지 useEffect가 퀴즈를 다시 열어버리므로, 전용 이벤트로 카드만 교체한다.
+   * 선택형 "다시 뽑기"(레벨업당 1회): 지정한 슬롯 1장만 새 카드로 교체한다. 나머지 슬롯과
+   * 레벨업 큐/pendingLevelUp 등 진행 상태는 건드리지 않는다(부작용 없음). LEVEL_UP을
+   * 재발행하면 React의 levelUpData 변경 감지 useEffect가 퀴즈를 다시 열어버리므로,
+   * 전용 이벤트로 카드만 교체해 돌려준다. 새 카드는 현재 3장(버린 카드 포함)을 제외하고
+   * 뽑는다 — 후보 부족 시 완화 단계는 WeaponManager.getAvailableUpgrades가 담당.
    * 게임이 종료됐거나 일시정지(퀴즈/강화 흐름) 중이 아니면 잘못 도착한 요청으로 보고 무시.
    */
-  private handleRerollUpgrades(): void {
+  private handleRerollUpgrades(payload: RerollUpgradesPayload): void {
     if (this.gameFinished || this.finalBossDefeated || !this.isPaused) return;
 
-    const upgrades = this.weaponManager.getAvailableUpgrades(3);
+    const { index } = payload;
+    if (index < 0 || index >= this.currentLevelUpUpgrades.length) return;
+
+    const [replacement] = this.weaponManager.getAvailableUpgrades(1, this.currentLevelUpUpgrades);
+    if (!replacement) return;
+    this.currentLevelUpUpgrades[index] = replacement;
+
     EventBus.emit(GameEvents.UPGRADES_REROLLED, {
-      upgrades: upgrades.map((u) => ({
+      upgrades: this.currentLevelUpUpgrades.map((u) => ({
         ...u,
         ...this.getUpgradeInfo(u.type, u.id),
       })),

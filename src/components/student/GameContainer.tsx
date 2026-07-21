@@ -190,12 +190,12 @@ export function GameContainer({ nickname, difficulty, mode, onExit, onShowLeader
     setFilteredUpgrades([]);
   };
 
-  // 레벨업당 1회 "다시 뽑기" — ref로 즉시 잠가 연타 시 중복 emit 방지
-  const handleReroll = () => {
+  // 레벨업당 1회 "다시 뽑기" — ref로 즉시 잠가 연타 시 중복 emit 방지. 카드 1장(index)만 교체.
+  const handleReroll = (index: number) => {
     if (rerollUsedRef.current) return;
     rerollUsedRef.current = true;
     setRerollUsed(true);
-    EventBus.emit(GameEvents.REROLL_UPGRADES);
+    EventBus.emit(GameEvents.REROLL_UPGRADES, { index });
   };
 
   const handleRestart = () => {

@@ -273,8 +273,12 @@ export class WeaponManager {
    * - 슬롯 규칙 일원화 — 무기 6/패시브 6, 가득 차면 신규 제안 안 함 (보상 증발 버그 제거)
    * - 가중 추첨: 보유 강화 55 / 신규 무기 30 / 신규 패시브 15, 행운은 신규 확률을 높임
    * - 제안할 것이 전혀 없으면 대체 보상(bonus) 카드
+   *
+   * exclude: 선택형 다시 뽑기(카드 1장 교체)에서 중복을 피하려는 후보 목록(현재 3장,
+   * 버린 카드 포함). 제외 후 남는 후보가 count보다 적으면 제외를 무시하고 원래 후보 풀로
+   * 되돌린다 — 후보 풀이 좁을 때 카드가 안 나오는 것보다 중복이 낫다.
    */
-  getAvailableUpgrades(count: number = 3): UpgradeChoice[] {
+  getAvailableUpgrades(count: number = 3, exclude: Array<{ type: string; id: string }> = []): UpgradeChoice[] {
     const luck = this.player.luck;
 
     // 패시브는 descriptionKo가 이미 레벨당 효과 형식("공격력 +10%")이라 그대로 재사용
@@ -328,14 +332,30 @@ export class WeaponManager {
           }))
         : [];
 
-    this.shuffleArray(owned);
-    this.shuffleArray(newAcquisitions);
-    this.shuffleArray(newPassives);
+    const excludeKey = (t: string, id: string): string => `${t}:${id}`;
+    const excludeSet = new Set(exclude.map((e) => excludeKey(e.type, e.id)));
+    const withoutExcluded = (list: UpgradeChoice[]): UpgradeChoice[] =>
+      excludeSet.size === 0 ? list : list.filter((c) => !excludeSet.has(excludeKey(c.type, c.id)));
+
+    let ownedPool = withoutExcluded(owned);
+    let newAcqPool = withoutExcluded(newAcquisitions);
+    let newPassivesPool = withoutExcluded(newPassives);
+
+    // 제외 적용 후 후보가 count에 못 미치면 완화 단계 ①: 제외를 무시하고 원래 풀 사용
+    if (ownedPool.length + newAcqPool.length + newPassivesPool.length < count) {
+      ownedPool = owned;
+      newAcqPool = newAcquisitions;
+      newPassivesPool = newPassives;
+    }
+
+    this.shuffleArray(ownedPool);
+    this.shuffleArray(newAcqPool);
+    this.shuffleArray(newPassivesPool);
 
     const pools = [
-      { list: owned, weight: 55 },
-      { list: newAcquisitions, weight: 30 * (1 + luck) },
-      { list: newPassives, weight: 15 * (1 + luck) },
+      { list: ownedPool, weight: 55 },
+      { list: newAcqPool, weight: 30 * (1 + luck) },
+      { list: newPassivesPool, weight: 15 * (1 + luck) },
     ];
 
     const result: UpgradeChoice[] = [];
@@ -355,8 +375,16 @@ export class WeaponManager {
       result.push(chosen.list.shift()!);
     }
 
-    // 전부 만렙·만슬롯: 대체 보상 카드로 채움
+    // 전부 만렙·만슬롯: 대체 보상 카드로 채움 (완화 단계 ② — 제외 목록에 없는 것 우선)
     let bi = 0;
+    while (result.length < count && bi < BonusInfoList.length) {
+      const bonus = BonusInfoList[bi];
+      bi++;
+      if (excludeSet.has(excludeKey('bonus', bonus.id))) continue;
+      result.push({ type: 'bonus', id: bonus.id, isNew: false, effectKo: bonus.descriptionKo });
+    }
+    // 대체 보상 후보마저 전부 제외 목록과 겹치는 극단적인 경우 — 제외 무시하고 재채움
+    bi = 0;
     while (result.length < count && bi < BonusInfoList.length) {
       result.push({ type: 'bonus', id: BonusInfoList[bi].id, isNew: false, effectKo: BonusInfoList[bi].descriptionKo });
       bi++;

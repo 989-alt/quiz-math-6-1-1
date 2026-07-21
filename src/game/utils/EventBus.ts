@@ -72,6 +72,11 @@ export interface LevelUpPayload {
   }>;
 }
 
+// 다시 뽑기 요청 (React → GameScene) — index는 교체할 카드 슬롯(0~2)
+export interface RerollUpgradesPayload {
+  index: number;
+}
+
 // 다시 뽑기 결과로 GameScene이 돌려주는 새 업그레이드 3장 (LevelUpPayload와 동일한 카드 shape)
 export interface UpgradesRerolledPayload {
   upgrades: Array<{

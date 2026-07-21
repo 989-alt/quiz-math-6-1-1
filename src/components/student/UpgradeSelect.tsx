@@ -6,9 +6,10 @@ type UpgradeCardOption = UpgradeOption & { effectKo?: string };
 interface UpgradeSelectProps {
   upgrades: UpgradeCardOption[];
   onSelect: (type: string, id: string) => void;
-  /** 이번 레벨업에서 "다시 뽑기"를 이미 사용했는지 (레벨업당 1회) */
+  /** 이번 레벨업에서 "다시 뽑기"를 이미 사용했는지 (레벨업당 1회, 카드 3장 공통) */
   rerollUsed: boolean;
-  onReroll: () => void;
+  /** 교체할 카드 슬롯(0~2)을 지정해 다시 뽑기 요청 */
+  onReroll: (index: number) => void;
 }
 
 /** 카드 아이콘 (임시 이모지 — Phase 3B에서 픽셀아트 아이콘으로 교체 예정) */
@@ -120,155 +121,158 @@ export function UpgradeSelect({ upgrades, onSelect, rerollUsed, onReroll }: Upgr
             const isDuplicateNewPassiveDesc =
               upgrade.type === 'passive' && upgrade.isNew && upgrade.description === upgrade.effectKo;
 
+            // 카드 자체가 선택 버튼이라 안쪽에 리롤 버튼을 중첩할 수 없음 — 카드+리롤 버튼을
+            // 같은 key(카드 내용 기준)의 래퍼로 묶어, 교체된 카드만 리마운트돼 애니메이션이
+            // 재생되고 나머지 2장은 그대로 유지되게 한다.
             return (
-              <button
-                key={`${upgrade.type}-${upgrade.id}`}
-                onClick={() => onSelect(upgrade.type, upgrade.id)}
-                className="animate-scale-in"
-                style={{
-                  ...getCardStyle(upgrade),
-                  border: '1px solid',
-                  borderRadius: 20,
-                  padding: 'clamp(20px, 3vw, 36px) clamp(16px, 2vw, 24px)',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                  animationDelay: `${index * 0.1}s`,
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.transform = 'translateY(-8px) scale(1.02)';
-                  e.currentTarget.style.boxShadow = `0 20px 40px -12px ${config.color}30`;
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = '';
-                  e.currentTarget.style.boxShadow = '';
-                }}
-              >
-                {/* Rarity Badge */}
-                <div style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '6px 12px',
-                  borderRadius: 999,
-                  background: `${config.color}15`,
-                  border: `1px solid ${config.color}30`,
-                  marginBottom: 16,
-                }}>
+              <div key={`${upgrade.type}-${upgrade.id}`} className="animate-scale-in" style={{ animationDelay: `${index * 0.1}s` }}>
+                <button
+                  onClick={() => onSelect(upgrade.type, upgrade.id)}
+                  style={{
+                    ...getCardStyle(upgrade),
+                    border: '1px solid',
+                    borderRadius: 20,
+                    padding: 'clamp(20px, 3vw, 36px) clamp(16px, 2vw, 24px)',
+                    width: '100%',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.transform = 'translateY(-8px) scale(1.02)';
+                    e.currentTarget.style.boxShadow = `0 20px 40px -12px ${config.color}30`;
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = '';
+                    e.currentTarget.style.boxShadow = '';
+                  }}
+                >
+                  {/* Rarity Badge */}
                   <div style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    background: config.color,
-                  }} />
-                  <span style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: config.color,
-                  }}>
-                    {config.label}
-                  </span>
-                </div>
-
-                {/* Icon */}
-                <div style={{
-                  fontSize: 'clamp(36px, 4.5vw, 56px)',
-                  margin: '12px 0 16px',
-                }}>
-                  {CARD_ICONS[upgrade.id] || upgrade.icon || '⚡'}
-                </div>
-
-                {/* Name */}
-                <p style={{
-                  fontSize: 'clamp(14px, 1.4vw, 18px)',
-                  fontWeight: 700,
-                  color: '#fafafa',
-                  marginBottom: 8,
-                }}>
-                  {upgrade.name}
-                </p>
-
-                {/* Description */}
-                {!isDuplicateNewPassiveDesc && (
-                  <p style={{
-                    fontSize: 'clamp(11px, 1vw, 14px)',
-                    color: '#a1a1aa',
-                    lineHeight: 1.6,
-                  }}>
-                    {upgrade.description}
-                  </p>
-                )}
-
-                {/* Effect (이번 레벨업이 올려주는 것) */}
-                {upgrade.effectKo && (
-                  <p style={{
-                    fontSize: 'clamp(11px, 1vw, 13px)',
-                    fontWeight: 600,
-                    color: config.color,
-                    lineHeight: 1.5,
-                    marginTop: 8,
-                  }}>
-                    {`▲ ${upgrade.effectKo}`}
-                  </p>
-                )}
-
-                {/* Level Dots */}
-                {upgrade.type !== 'bonus' && upgrade.currentLevel !== undefined && (
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
+                    display: 'inline-flex',
+                    alignItems: 'center',
                     gap: 6,
-                    marginTop: 16,
+                    padding: '6px 12px',
+                    borderRadius: 999,
+                    background: `${config.color}15`,
+                    border: `1px solid ${config.color}30`,
+                    marginBottom: 16,
                   }}>
-                    {Array.from({ length: upgrade.maxLevel || 5 }).map((_, i) => (
-                      <div key={i} style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: '50%',
-                        background: i <= (upgrade.currentLevel || 0)
-                          ? '#6366f1'
-                          : 'rgba(255, 255, 255, 0.1)',
-                        transition: 'background 0.2s ease',
-                      }} />
-                    ))}
+                    <div style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: config.color,
+                    }} />
+                    <span style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: config.color,
+                    }}>
+                      {config.label}
+                    </span>
                   </div>
+
+                  {/* Icon */}
+                  <div style={{
+                    fontSize: 'clamp(36px, 4.5vw, 56px)',
+                    margin: '12px 0 16px',
+                  }}>
+                    {CARD_ICONS[upgrade.id] || upgrade.icon || '⚡'}
+                  </div>
+
+                  {/* Name */}
+                  <p style={{
+                    fontSize: 'clamp(14px, 1.4vw, 18px)',
+                    fontWeight: 700,
+                    color: '#fafafa',
+                    marginBottom: 8,
+                  }}>
+                    {upgrade.name}
+                  </p>
+
+                  {/* Description */}
+                  {!isDuplicateNewPassiveDesc && (
+                    <p style={{
+                      fontSize: 'clamp(11px, 1vw, 14px)',
+                      color: '#a1a1aa',
+                      lineHeight: 1.6,
+                    }}>
+                      {upgrade.description}
+                    </p>
+                  )}
+
+                  {/* Effect (이번 레벨업이 올려주는 것) */}
+                  {upgrade.effectKo && (
+                    <p style={{
+                      fontSize: 'clamp(11px, 1vw, 13px)',
+                      fontWeight: 600,
+                      color: config.color,
+                      lineHeight: 1.5,
+                      marginTop: 8,
+                    }}>
+                      {`▲ ${upgrade.effectKo}`}
+                    </p>
+                  )}
+
+                  {/* Level Dots */}
+                  {upgrade.type !== 'bonus' && upgrade.currentLevel !== undefined && (
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      gap: 6,
+                      marginTop: 16,
+                    }}>
+                      {Array.from({ length: upgrade.maxLevel || 5 }).map((_, i) => (
+                        <div key={i} style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          background: i <= (upgrade.currentLevel || 0)
+                            ? '#6366f1'
+                            : 'rgba(255, 255, 255, 0.1)',
+                          transition: 'background 0.2s ease',
+                        }} />
+                      ))}
+                    </div>
+                  )}
+                </button>
+
+                {/* 카드별 다시 뽑기 — 레벨업당 1회(3장 공통), 카드가 실제로 여러 장일 때만 의미가 있음 */}
+                {upgrades.length > 1 && (
+                  <button
+                    onClick={() => onReroll(index)}
+                    disabled={rerollUsed}
+                    style={{
+                      marginTop: 10,
+                      width: '100%',
+                      padding: '8px 16px',
+                      borderRadius: 999,
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      background: rerollUsed ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.08)',
+                      color: rerollUsed ? '#52525b' : '#e4e4e7',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: rerollUsed ? 'default' : 'pointer',
+                      transition: 'background 0.2s ease, border-color 0.2s ease',
+                    }}
+                    onMouseEnter={e => {
+                      if (rerollUsed) return;
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.14)';
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                    }}
+                    onMouseLeave={e => {
+                      if (rerollUsed) return;
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                    }}
+                  >
+                    {rerollUsed ? '다시 뽑기 사용됨' : '🔄 다시 뽑기'}
+                  </button>
                 )}
-              </button>
+              </div>
             );
           })}
         </div>
-
-        {/* 다시 뽑기 — 레벨업당 1회, 카드가 실제로 여러 장일 때만 의미가 있음 */}
-        {upgrades.length > 1 && (
-          <div style={{ marginTop: 28 }}>
-            <button
-              onClick={onReroll}
-              disabled={rerollUsed}
-              style={{
-                padding: '10px 22px',
-                borderRadius: 999,
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                background: rerollUsed ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.08)',
-                color: rerollUsed ? '#52525b' : '#e4e4e7',
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: rerollUsed ? 'default' : 'pointer',
-                transition: 'background 0.2s ease, border-color 0.2s ease',
-              }}
-              onMouseEnter={e => {
-                if (rerollUsed) return;
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.14)';
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-              }}
-              onMouseLeave={e => {
-                if (rerollUsed) return;
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-              }}
-            >
-              {rerollUsed ? '다시 뽑기 사용됨' : '🔄 다시 뽑기'}
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
